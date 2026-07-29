@@ -2,52 +2,70 @@
 defined( 'ABSPATH' ) || exit;
 
 final class SNP_Permissions {
-	public static function founder_id() {
-		return absint( get_option( 'spf_founder_user_id', 0 ) );
+	const CAP_SUBMIT   = 'smc_submit_publications';
+	const CAP_MODERATE = 'smc_moderate_publications';
+	const CAP_PRIVACY  = 'smc_review_patient_case_privacy';
+	const CAP_FEATURE  = 'smc_feature_publications';
+	const CAP_REPORTS  = 'smc_view_publication_reports';
+	const CAP_SENSITIVE_REPORTS = 'smc_view_sensitive_publication_reports';
+
+	public static function dependencies_available() {
+		return SNP_Membership_Adapter::available()
+			&& SNP_Profile_Adapter::file03_available()
+			&& SNP_Profile_Adapter::file09_available();
 	}
 
 	public static function is_founder( $user_id = 0 ) {
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
-		return $user_id && $user_id === self::founder_id();
-	}
-
-	public static function is_verified_doctor( $user_id = 0 ) {
-		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
-		if ( ! $user_id ) {
-			return false;
-		}
-		if ( class_exists( 'SPD_Helpers' ) && SPD_Helpers::is_doctor( $user_id ) ) {
-			return 'verified' === SPD_Helpers::verification_status( $user_id );
-		}
-		$user = get_userdata( $user_id );
-		return $user && in_array( 'sabri_doctor_verified', (array) $user->roles, true );
+		return $user_id && SNP_Membership_Adapter::is_founder( $user_id ) && SNP_Membership_Adapter::is_active( $user_id );
 	}
 
 	public static function can_submit( $user_id = 0 ) {
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
-		return $user_id && ( user_can( $user_id, 'manage_sabri_news' ) || self::is_founder( $user_id ) || self::is_verified_doctor( $user_id ) );
+		if ( ! $user_id || ! self::dependencies_available() || ! SNP_Profile_Adapter::author_eligible( $user_id ) ) {
+			return false;
+		}
+		$allowed = self::is_founder( $user_id ) || SNP_Membership_Adapter::has_capability( $user_id, self::CAP_SUBMIT );
+		return (bool) apply_filters( 'snp_can_submit_publication', $allowed, $user_id );
 	}
 
-	public static function initial_status( $user_id = 0 ) {
+	public static function can_moderate( $user_id = 0 ) {
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
-		return user_can( $user_id, 'manage_sabri_news' ) || self::is_founder( $user_id ) ? 'publish' : 'pending';
+		$allowed = $user_id && SNP_Membership_Adapter::has_capability( $user_id, self::CAP_MODERATE );
+		return (bool) apply_filters( 'snp_can_moderate_publications', $allowed, $user_id );
 	}
 
-	public static function author_label( $user_id ) {
-		if ( self::is_founder( $user_id ) ) {
-			return 'Verified Founder';
-		}
-		if ( self::is_verified_doctor( $user_id ) ) {
-			return 'Verified Doctor';
-		}
-		return 'Author';
+	public static function can_review_patient_privacy( $user_id = 0 ) {
+		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
+		$allowed = $user_id && SNP_Membership_Adapter::has_capability( $user_id, self::CAP_PRIVACY );
+		return (bool) apply_filters( 'snp_can_review_patient_privacy', $allowed, $user_id );
 	}
 
-	public static function profile_url( $user_id ) {
-		if ( class_exists( 'SPD_Helpers' ) ) {
-			return SPD_Helpers::profile_url( $user_id );
+	public static function can_feature( $user_id = 0 ) {
+		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
+		return $user_id && SNP_Membership_Adapter::has_capability( $user_id, self::CAP_FEATURE );
+	}
+
+	public static function can_view_reports( $user_id = 0 ) {
+		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
+		return $user_id && SNP_Membership_Adapter::has_capability( $user_id, self::CAP_REPORTS );
+	}
+
+	public static function can_view_sensitive_reports( $user_id = 0 ) {
+		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
+		return $user_id && SNP_Membership_Adapter::has_capability( $user_id, self::CAP_SENSITIVE_REPORTS );
+	}
+
+	public static function can_instant_publish( $user_id = 0, $topic = '' ) {
+		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
+		if ( 'patient-cases' === sanitize_title( $topic ) ) {
+			return false;
 		}
-		return get_author_posts_url( absint( $user_id ) );
+		$allowed = self::is_founder( $user_id ) && self::can_submit( $user_id );
+		return (bool) apply_filters( 'snp_can_instant_publish', $allowed, $user_id, sanitize_title( $topic ) );
+	}
+
+	public static function author_eligible( $user_id ) {
+		return self::dependencies_available() && SNP_Profile_Adapter::author_eligible( absint( $user_id ) );
 	}
 }
-

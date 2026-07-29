@@ -1,0 +1,124 @@
+name: Corrective Integrity
+
+on:
+  pull_request:
+  push:
+    branches:
+      - audit/file-04-source-review
+
+permissions:
+  contents: read
+
+jobs:
+  corrective-integrity:
+    name: Corrected source integrity and architecture
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout immutable action
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify baseline ancestry and corrected release
+        env:
+          EXPECTED_LOCK_SHA256: d456da3a5c5e921e205e8ebee380f7189b18b2bfd306647457de9792cd854d88
+          IMMUTABLE_BASELINE: b4d62e0dae045eb8b4b343c9b22b4ebbf3ffa94a
+        run: |
+          git merge-base --is-ancestor "$IMMUTABLE_BASELINE" HEAD || { echo 'ERROR: immutable baseline is not an ancestor'; exit 1; }
+          python3 - <<'PYVERIFY'
+          from pathlib import Path
+          import hashlib,json,re,sys
+          root=Path('.')
+          def fail(m): print('ERROR:',m);sys.exit(1)
+          lock_path=root/'CORRECTIVE-RELEASE-LOCK.json'
+          lock_bytes=lock_path.read_bytes()
+          expected='d456da3a5c5e921e205e8ebee380f7189b18b2bfd306647457de9792cd854d88'
+          if hashlib.sha256(lock_bytes).hexdigest()!=expected: fail('corrective release lock mismatch')
+          lock=json.loads(lock_bytes.decode('utf-8'))
+          if lock['immutable_baseline_commit']!='b4d62e0dae045eb8b4b343c9b22b4ebbf3ffa94a': fail('baseline identity mismatch')
+          lines=(root/'CORRECTIVE-SOURCE-INVENTORY.tsv').read_text(encoding='utf-8').splitlines()
+          if not lines or lines[0]!='sha256\tbytes\tpath': fail('corrective inventory header mismatch')
+          rows=[]
+          for line in lines[1:]:
+            h,s,p=line.split('\t',2);rows.append((h,int(s),p))
+          if rows!=sorted(rows,key=lambda r:r[2]): fail('inventory not path-sorted')
+          if len(rows)!=lock['source_file_count']: fail('source count mismatch')
+          source={p for _,_,p in rows}
+          governance={
+            'README.md','SOURCE-PROVENANCE.md','STATUS.md','MANIFEST.md','SOURCE-INVENTORY.tsv','CHECKSUMS.sha256','BASELINE-LOCK.json',
+            'CORRECTIVE-SOURCE-INVENTORY.tsv','CORRECTIVE-CHECKSUMS.sha256','CORRECTIVE-RELEASE-LOCK.json','CORRECTIVE-MANIFEST.md','CORRECTIVE-STATUS.md','SECURITY-PRIVACY-REVIEW.md',
+            'tests/security-unit.php','.github/workflows/baseline-integrity.yml','.github/workflows/corrective-integrity.yml'
+          }
+          actual={p.as_posix() for p in root.rglob('*') if p.is_file() and '.git/' not in p.as_posix()}
+          expected_files=source|governance
+          if actual!=expected_files: fail(f'repository allowlist mismatch missing={sorted(expected_files-actual)} unexpected={sorted(actual-expected_files)}')
+          total=php=0;canonical=[];checks=[]
+          for h,s,p in rows:
+            data=(root/p).read_bytes();actual_h=hashlib.sha256(data).hexdigest()
+            if len(data)!=s: fail(f'size mismatch {p}')
+            if actual_h!=h: fail(f'SHA-256 mismatch {p}')
+            total+=s;php+=p.endswith('.php');canonical.append(f'{h}\t{s}\t{p}\n');checks.append(f'{h}  {p}\n')
+          tree=hashlib.sha256(''.join(canonical).encode()).hexdigest()
+          if total!=lock['source_size'] or php!=lock['php_file_count'] or tree!=lock['source_tree_sha256']: fail('corrective aggregate mismatch')
+          if (root/'CORRECTIVE-CHECKSUMS.sha256').read_text()!=''.join(checks): fail('corrective checksums mismatch')
+          if hashlib.sha256((root/'tests/security-unit.php').read_bytes()).hexdigest()!=lock['security_test_sha256']: fail('security test checksum mismatch')
+          main=(root/'sabri-news-publishing.php').read_text();readme=(root/'readme.txt').read_text();v=lock['corrected_plugin_version']
+          if f'Version: {v}' not in main or f"define( 'SNP_VERSION', '{v}' );" not in main or f'Stable tag: {v}' not in readme: fail('version consistency failure')
+          forbidden_ext={'.zip','.tar','.gz','.7z','.sql','.sqlite','.bak','.pem','.p12','.pfx'}
+          forbidden_names={'.env','wp-config.php','id_rsa','id_ed25519','credentials.json','service-account.json'}
+          secret_patterns={
+            'private key':rb'-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----',
+            'Google API key':rb'\bAIza[0-9A-Za-z_-]{35}\b',
+            'GitHub token':rb'\bgh[pousr]_[A-Za-z0-9]{20,}\b',
+            'AWS access key':rb'\bAKIA[0-9A-Z]{16}\b',
+            'JWT-like token':rb'\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b',
+            'Pakistan phone':rb'(?<![0-9])(?:\+92|0092)3[0-9]{9}(?![0-9])',
+            'CNIC-like value':rb'(?<![0-9])[0-9]{5}-[0-9]{7}-[0-9](?![0-9])'
+          }
+          for p in root.rglob('*'):
+            if not p.is_file() or '.git/' in p.as_posix(): continue
+            if p.suffix.lower() in forbidden_ext or p.name in forbidden_names: fail('forbidden file '+p.as_posix())
+            data=p.read_bytes()
+            for label,pat in secret_patterns.items():
+              if re.search(pat,data): fail(f'possible {label} in {p}')
+          source_text='\n'.join((root/p).read_text(encoding='utf-8',errors='strict') for p in sorted(source) if p.endswith('.php'))
+          forbidden={
+            'spf_':'legacy File 01 dependency','sabri_doctor_verified':'obsolete role authority','option_comment_registration':'global comment policy',
+            'sabri_news_home':'duplicate Home owner','sabri_platform_home':'legacy Home replacement','add_role(':'role creation','set_role(':'role mutation',
+            "add_cap( 'manage_sabri_news'":'administrator-wide grant'
+          }
+          for needle,label in forbidden.items():
+            if needle in source_text: fail(label)
+          required=['SNP_Publication_State::public_eligible','private_headers_callback','valid_consent_date','protected_media_previewed','actor_digest','details_digest','snp_rate_limits','aes-256-gcm','sabri_file21_publication_provider','sabri_unified_notification_event','SABRI_ALLOW_DESTRUCTIVE_UNINSTALL']
+          for needle in required:
+            if needle not in source_text: fail('required safeguard missing: '+needle)
+          for wf in root.glob('.github/workflows/*.yml'):
+            text=wf.read_text()
+            if re.search(r'uses:\s+[^\s]+@(v\d+|main|master)\b',text): fail('mutable action tag in '+wf.as_posix())
+          print('Corrective integrity passed.')
+          print('Source files:',len(rows));print('PHP files:',php);print('Source bytes:',total);print('Source-tree SHA-256:',tree)
+          PYVERIFY
+          node --check assets/js/news.js
+
+  php-lint-and-tests:
+    name: PHP lint and security tests (${{ matrix.php }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4','8.3']
+    steps:
+      - name: Checkout immutable action
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Set up PHP from immutable action
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint corrected PHP and run deterministic tests
+        run: |
+          awk -F '\t' 'NR>1 && $3 ~ /\.php$/ {print $3}' CORRECTIVE-SOURCE-INVENTORY.tsv | while IFS= read -r file; do php -l "$file"; done
+          php -l tests/security-unit.php
+          php tests/security-unit.php
