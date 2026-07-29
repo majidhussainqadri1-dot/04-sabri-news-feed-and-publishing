@@ -10,9 +10,9 @@ This repository preserves the exact `0.1.0` baseline and develops the governed `
 - Original archive SHA-256: `49ccc4d1c575b0208d067e25e2b90df63bc6b591e150992c33f8cd4cdedd53ea`
 - Corrected source files: `26`
 - Corrected PHP files: `20`
-- Corrected source bytes: `143,712`
-- Corrected source-tree SHA-256: `3377c74ed2b5c4c2ac78df9ac2e01625d0420dbed1f3aeffb3f5091df1fb6435`
-- Corrective release-lock SHA-256: `981edbe2be736c4ac27ad25f08931e5e8c76d6442b2d8272776330f0571cba88`
+- Corrected source bytes: `143,206`
+- Corrected source-tree SHA-256: `24c490b8726b31de4b9485552f79c56e37d143208ccf118fc252ffb76c6b12e2`
+- Corrective release-lock SHA-256: `d456da3a5c5e921e205e8ebee380f7189b18b2bfd306647457de9792cd854d88`
 
 File 04 is a governed publication/editorial service. It does not own platform identity, doctor verification, the application shell, global navigation, or the canonical Home/News renderer.
 
