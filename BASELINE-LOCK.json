@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "file_number": "04",
+  "module": "Sabri News Feed and Publishing",
+  "plugin_version": "0.1.0",
+  "original_archive": "04-sabri-news-feed-and-publishing-0.1.0.zip",
+  "archive_sha256": "49ccc4d1c575b0208d067e25e2b90df63bc6b591e150992c33f8cd4cdedd53ea",
+  "archive_size": 30026,
+  "archive_entries": 24,
+  "archive_committed": false,
+  "source_file_count": 19,
+  "php_file_count": 13,
+  "source_size": 74862,
+  "source_tree_sha256": "3c7df20405cc2a9d210f40f5ec2f20556e2872f14efe9e14ec3d1a7b8a7fa420",
+  "inventory_file": "SOURCE-INVENTORY.tsv",
+  "checksums_file": "CHECKSUMS.sha256",
+  "baseline_branch": "baseline/file-04-original-import"
+}
