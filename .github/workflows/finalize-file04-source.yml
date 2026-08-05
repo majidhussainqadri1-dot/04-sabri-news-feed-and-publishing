@@ -1,0 +1,71 @@
+name: Finalize File 04 Canonical Source
+
+on:
+  push:
+    branches:
+      - codex/file-04-legacy-adapter-v1
+    paths:
+      - 'tools/final-bootstrap-parts/**'
+      - '.github/workflows/finalize-file04-source.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize-source:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout corrective branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Verify and stage canonical source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat tools/final-bootstrap-parts/part-* | base64 -d > /tmp/file04-final-source.tar.gz
+          actual="$(sha256sum /tmp/file04-final-source.tar.gz | awk '{print $1}')"
+          expected="5ef431fd62a3cfb9524edcaef6ae5c304d1fa81949690993fc967314469787a1"
+          test "$actual" = "$expected"
+
+          rm -rf /tmp/file04-final-source /tmp/file04-original-workflows
+          mkdir -p /tmp/file04-final-source
+          tar -xzf /tmp/file04-final-source.tar.gz -C /tmp/file04-final-source
+          cp -a .github/workflows /tmp/file04-original-workflows
+
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github -exec rm -rf {} +
+          find /tmp/file04-final-source -mindepth 1 -maxdepth 1 -exec cp -a {} . \;
+
+          rm -rf .github/workflows
+          mkdir -p .github/workflows
+          cp /tmp/file04-original-workflows/file04-legacy-adapter-ci.yml .github/workflows/file04-legacy-adapter-ci.yml
+
+      - name: Verify exact canonical source
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
+          php tests/run-unit.php
+          php tests/run-architecture.php
+          python3 tools/build-release.py --verify-only
+          python3 tools/build-release.py --output /tmp/file04-a.zip > /tmp/file04-a.json
+          python3 tools/build-release.py --output /tmp/file04-b.zip > /tmp/file04-b.json
+          cmp /tmp/file04-a.zip /tmp/file04-b.zip
+          sha256sum /tmp/file04-a.zip
+
+      - name: Restore workflows and commit canonical source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .github/workflows
+          cp -a /tmp/file04-original-workflows .github/workflows
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && { echo 'No source changes to commit.'; exit 0; }
+          git commit -m 'Finalize File 04 legacy adapter v1.0.1'
+          git push origin HEAD:codex/file-04-legacy-adapter-v1
