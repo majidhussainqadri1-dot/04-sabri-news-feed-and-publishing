@@ -1,17 +1,34 @@
-# Status
+# File 04 Release Status
 
-- Baseline upload: **Complete**
-- Exact inventory and checksums: **Recorded**
-- Automated PHP syntax verification: **Required through GitHub Actions**
-- Independent security review: **Pending**
-- Editorial-governance review: **Pending**
-- Medical-safety and patient-case privacy review: **Pending**
-- File 00 identity integration: **Pending**
-- File 03 profile projection integration: **Pending**
-- File 09 doctor-verification integration: **Pending**
-- File 20 shell integration: **Pending**
-- File 21 feed-authority integration: **Pending**
-- WordPress staging approval: **No**
-- Production approval: **No**
-- Live installation authorization: **No**
-- Merge authorization: **No**
+## Source implementation
+
+- Canonical role converted from News Feed/Publishing runtime to Legacy Foundation Adapter: **implemented**
+- Legacy source read-only protections: **implemented**
+- File 00 assurance and capability gates: **implemented**
+- File 21 publication/comment/interaction migration boundary: **implemented**
+- Inventory, dry-run, idempotent batches, checksums and quarantine: **implemented**
+- Reconciliation, redirects, fallback, rollback/replay and retirement: **implemented**
+- REST, WP-CLI, admin evidence center and runbooks: **implemented**
+- Automated lint, unit, architecture, integrity and reproducible package checks: **required in CI**
+
+## External acceptance gates
+
+- Independent post-correction source review: **required**
+- GitHub Actions green on the exact PR head: **required**
+- WordPress staging activation/migration from the historical database: **required**
+- File 00 step-up and capabilities integration: **required**
+- File 21 package/runtime integration: **required**
+- Backup restore proof: **required**
+- Browser/cache/redirect matrix: **required**
+- Database concurrency and interrupted-batch recovery: **required**
+- Full reconciliation on staging data: **required**
+- Non-destructive rollback rehearsal and replay: **required**
+- Founder/administrator acceptance: **required**
+
+## Authorization
+
+- Merge: **No until required review and CI pass**
+- Staging migration: **No until backup/restore proof is ready**
+- Production: **No**
+- Live installation: **No**
+- Retirement: **No until all runtime gates pass**

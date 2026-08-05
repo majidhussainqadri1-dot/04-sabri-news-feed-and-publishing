@@ -1,53 +1,33 @@
-=== Sabri News Feed and Publishing ===
+=== Sabri News Feed Legacy Foundation Adapter ===
 Contributors: sabrihomeopathy
-Tags: news feed, publishing, homeopathy, moderation, likes
+Tags: migration, legacy adapter, publishing, audit, rollback
 Requires at least: 6.0
-Tested up to: 6.8
-Requires PHP: 7.4
-Stable tag: 0.1.0
+Requires PHP: 8.1
+Stable tag: 1.0.0
 License: GPLv2 or later
 
-Moderated public news feed and approved-topic publishing for the Sabri Social Homeopathy Platform.
+Read-only, auditable and reversible migration of historical File 04 publications, comments and interactions into canonical File 21.
 
 == Description ==
 
-File 04 provides the first 25 percent of the News Feed and Publishing system.
+File 04 no longer owns Home, News, publishing, feeds, ranking, comments, reactions, saves, reports, navigation or public composition. Version 1.0.0 inventories and checksums legacy records, performs bounded dry-runs, delegates canonical migration to File 21, records deterministic mappings and conflicts, reconciles counts and checksums, controls legacy redirects, supports non-destructive rollback/replay and retires after strict acceptance gates.
 
-Core features:
-* Public reading without registration.
-* Founder and administrator publications can appear immediately.
-* Verified doctor submissions require administrator approval.
-* Sixteen hard-approved topics; no author-created topics.
-* Additional safeguards for anonymized Patient Cases and consent.
-* Like changes to Unlike after selection, allowing the user to remove the Like.
-* Save, share, report, comments and privacy-friendly view counting.
-* Popular ranking based on freshness, views, Likes, comments and saves.
-* Administrator moderation, reports, featured posts, pinned posts and audit history.
-* Article structured data, accessibility and medical disclaimers.
-
-Approved topics:
-Founder Update; Classical Homeopathy; Homeopathy Education; Materia Medica; Repertory; Clinical Education; Research; Nutrition; Public Health Education; Platform News; Pathology; Anatomy; Principles of Hygiene; Islamic Spiritual Healing; Patient Cases; Homeopathy Philosophy.
+The historical source is retained and write-disabled. No role or capability is granted by this plugin. File 00 fresh identity/two-factor assurance and canonical migration capabilities are mandatory.
 
 == Installation ==
 
-1. Keep Files 01 through 03 active: Sabri Platform Foundation, Sabri Authentication and Accounts, and Sabri Profiles and Doctors.
-2. Upload this ZIP from WordPress Admin > Plugins > Add New > Upload Plugin.
-3. Activate Sabri News Feed and Publishing.
-4. Open News & Publishing to review pending submissions and reports.
-5. Founder and verified doctors can use the Create Publication page.
-
-This plugin enhances the Foundation-managed Home and News pages without automatically changing the site's Reading Settings or active theme.
+1. Install on staging.
+2. Activate File 00 and File 21 package 1.0.3.2 or later.
+3. Assign canonical migration/review capabilities through File 00 governance.
+4. Activate this adapter.
+5. Follow MIGRATION-RUNBOOK.md.
 
 == Privacy ==
 
-Likes, saves and reports are connected to WordPress user IDs. Public view counts use a short-lived first-party cookie and do not store an IP address. Comments on this publication type remove the comment IP before insertion. WordPress privacy export and erasure hooks are included.
-
-== Medical and publishing notice ==
-
-Material is educational. It must not promise cures, delay emergency treatment, replace qualified healthcare, expose patient identity without appropriate permission, or provide a personalized prescription to an unknown reader.
+Evidence tables contain identifiers, checksums, lifecycle state and redacted bounded context. They do not copy post bodies, patient details, report narratives, consent documents, email, phone, identity numbers, IP addresses or user agents. Source data remains retained and read-only.
 
 == Changelog ==
 
-= 0.1.0 =
-* Initial modular release.
-
+= 1.0.0 =
+* Replaced the obsolete parallel News Feed and Publishing runtime with the canonical File 21 legacy adapter architecture.
+* Added lifecycle, inventory, dry-run, backup proof, idempotent batch migration, interaction provider, reconciliation, conflict quarantine, safe redirects, read-only fallback, rollback/replay, retirement, REST, WP-CLI, admin evidence and HMAC audit controls.
