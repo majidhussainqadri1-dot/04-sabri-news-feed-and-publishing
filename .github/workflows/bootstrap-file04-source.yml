@@ -1,0 +1,53 @@
+name: Bootstrap File 04 Canonical Source
+
+on:
+  push:
+    branches:
+      - codex/file-04-legacy-adapter-v1
+    paths:
+      - 'tools/bootstrap-parts/**'
+      - '.github/workflows/bootstrap-file04-source.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  expand-canonical-source:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout corrective branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Verify and expand canonical source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat tools/bootstrap-parts/part-* | base64 -d > /tmp/file04-source.tar.gz
+          actual="$(sha256sum /tmp/file04-source.tar.gz | awk '{print $1}')"
+          expected="9f74b00ad909007a32694a31161f5216435734c2fd8c27caeb45886288ef94b6"
+          test "$actual" = "$expected"
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          tar -xzf /tmp/file04-source.tar.gz -C .
+
+      - name: Verify exact source before commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -name '*.php' -print0 | xargs -0 -n1 php -l
+          php tests/run-unit.php
+          php tests/run-architecture.php
+          python3 tools/build-release.py --verify-only
+
+      - name: Commit canonical replacement
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Replace File 04 with canonical legacy adapter v1.0.0'
+          git push origin HEAD:codex/file-04-legacy-adapter-v1
