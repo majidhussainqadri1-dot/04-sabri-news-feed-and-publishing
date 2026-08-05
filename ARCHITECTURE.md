@@ -26,6 +26,8 @@ The adapter registers the historical post type and taxonomy only so existing dat
 
 The adapter does not copy source bodies into its own tables. Its evidence tables store only identifiers, checksums, bounded redacted context and canonical target references.
 
+Activation performs a fail-closed ownership handover: any active historical `sabri-news-publishing.php` runtime is deactivated and verified inactive; only pages proven to be legacy File 04-managed are changed from public/future to private. The handover stores hashes, identifiers, prior status and content checksums, never page bodies or credentials.
+
 ## 4. File 21 integration
 
 All canonical publication creation uses:
@@ -35,7 +37,7 @@ All canonical publication creation uses:
 - `Sabri\HomeNewsFeed\LegacyPublicationRollback::rollback_selected()`
 - `Sabri\HomeNewsFeed\LegacyPublicationMigration::target_for()`
 
-Legacy interactions use File 21's explicit provider registry and `InteractionRepository` write boundary. File 04 never issues direct INSERT/UPDATE/DELETE statements against File 21 tables. Inserted or reactivated canonical interaction row IDs are recorded in a private rollback ledger.
+Legacy interactions use File 21's explicit provider registry and `InteractionRepository` write boundary. File 04 never issues direct INSERT/UPDATE/DELETE statements against File 21 tables. Inserted, reactivated or merged canonical interaction rows are recorded with field-level original values and migration provenance, allowing exact restoration without overwriting canonical user intent.
 
 ## 5. Persistence
 
@@ -48,8 +50,12 @@ No table duplicates File 21 content, feed, comment, reaction, save, report or ra
 
 ## 6. Failure model
 
-The adapter fails closed when File 21 is absent/incompatible, File 00 assurance is stale, a capability is missing, a nonce is invalid, source inventory changes, a dry-run is stale, backup proof is absent, an idempotency key is invalid, a lock is unavailable, conflicts remain, a target changed after migration or a lifecycle request is stale.
+The adapter fails closed when File 21 is absent/incompatible, File 00 assurance is stale, a capability is missing, a nonce is invalid, source inventory changes, a dry-run is stale, backup proof is absent, an idempotency key is invalid, a lock is unavailable, conflicts remain, a target changed after migration, a lifecycle request is stale, or a stale run cannot be durably finalized as interrupted.
 
 ## 7. Retirement
 
 Retirement disables mutation endpoints but preserves source data and all evidence. Destructive uninstall is intentionally unavailable. Removing retained data is a separate owner-approved legal, privacy and backup process outside this plugin.
+
+## 8. Production package
+
+The deterministic install ZIP contains only plugin runtime, assets, runbooks and signed release evidence. Development-only GitHub workflows, tests and build tooling remain in the repository and are excluded from the WordPress package.

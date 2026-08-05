@@ -82,14 +82,26 @@ final class SNFLA_Inventory {
 	}
 
 	public static function lock( $actor_id, $expected_state, $expected_version ) {
-		$inventory = self::capture();
-		update_option( SNFLA_Schema::INVENTORY_OPTION, $inventory, false );
-		$transition = SNFLA_Schema::transition( 'inventory_locked', $expected_state, $expected_version, $actor_id, array( 'source_signature' => $inventory['source_signature'] ) );
-		if ( is_wp_error( $transition ) ) {
-			return $transition;
+		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) {
+			return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) );
 		}
-		SNFLA_Audit::record( 'inventory_locked', $actor_id, array( 'source_signature' => $inventory['source_signature'], 'counts' => $inventory['post_counts'] ) );
-		return array( 'inventory' => $inventory, 'lifecycle' => $transition );
+		try {
+			$check = SNFLA_Schema::assert_current( $expected_state, $expected_version );
+			if ( is_wp_error( $check ) ) { return $check; }
+			$previous = get_option( SNFLA_Schema::INVENTORY_OPTION, array() );
+			$inventory = self::capture();
+			if ( ! update_option( SNFLA_Schema::INVENTORY_OPTION, $inventory, false ) ) {
+				return new WP_Error( 'snfla_inventory_persist_failed', 'The inventory lock could not be persisted.', array( 'status' => 500 ) );
+			}
+			$transition = SNFLA_Schema::transition( 'inventory_locked', $expected_state, $expected_version, $actor_id, array( 'source_signature' => $inventory['source_signature'] ) );
+			if ( is_wp_error( $transition ) ) {
+				update_option( SNFLA_Schema::INVENTORY_OPTION, $previous, false );
+				return $transition;
+			}
+			return array( 'inventory' => $inventory, 'lifecycle' => $transition );
+		} finally {
+			SNFLA_Database::release_lock( 'operation' );
+		}
 	}
 
 	public static function locked() {

@@ -19,7 +19,8 @@ Rollback is required when canonical content, comments, interactions, routes, per
 3. File 04 restores interaction rows to their pre-migration status; newly inserted rows become safely inactive rather than being deleted.
 4. Source records remain untouched.
 5. File 04 mapping becomes `rolled_back`, and the lifecycle recovers to `batch_migration`.
-6. A redacted rollback proof and audit event are recorded.
+6. A redacted HMAC-signed rollback proof is written both to the run ledger and the operational proof option; the run ledger remains the recovery source if the secondary option write fails.
+7. Any partial File 21 or interaction rollback places every affected mapping in `rollback_conflict` quarantine; partial success is never accepted as a valid rehearsal.
 
 ## Replay
 
@@ -38,3 +39,11 @@ After correcting the cause:
 - Do not force rollback over a modified target.
 - Do not use database repair SQL against File 21 from File 04.
 - Do not retire until a rollback rehearsal has been followed by successful replay and green reconciliation.
+
+## Interrupted-run rule
+
+A stale running migration or rollback may be marked `interrupted` only when the run ledger update succeeds. If finalization fails, the adapter returns a server error and forbids retry under a new idempotency key until the ledger is repaired.
+
+## Interaction restoration
+
+For canonical rows that existed before migration, the rollback ledger restores the exact original reaction type, status, view count and report/save fields. Rows created solely by migration are moved to the canonical inactive state rather than deleted.

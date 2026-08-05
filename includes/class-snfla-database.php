@@ -14,6 +14,17 @@ final class SNFLA_Database {
 
 	public static function activate() {
 		self::install();
+		$deactivated = self::deactivate_obsolete_runtime();
+		if ( is_wp_error( $deactivated ) ) {
+			if ( function_exists( 'deactivate_plugins' ) ) { deactivate_plugins( plugin_basename( SNFLA_FILE ), true ); }
+			wp_die( esc_html( $deactivated->get_error_message() ), esc_html__( 'File 04 activation blocked', SNFLA_TEXT_DOMAIN ), array( 'response' => 500 ) );
+		}
+		$page_quarantine = self::quarantine_legacy_pages();
+		if ( is_wp_error( $page_quarantine ) ) {
+			if ( function_exists( 'deactivate_plugins' ) ) { deactivate_plugins( plugin_basename( SNFLA_FILE ), true ); }
+			wp_die( esc_html( $page_quarantine->get_error_message() ), esc_html__( 'File 04 activation blocked', SNFLA_TEXT_DOMAIN ), array( 'response' => 500 ) );
+		}
+		update_option( 'snfla_activation_handover', array( 'deactivated_plugins' => $deactivated, 'legacy_pages' => $page_quarantine, 'recorded_at_utc' => gmdate( 'Y-m-d H:i:s' ) ), false );
 		if ( ! get_option( SNFLA_Schema::STATE_OPTION, false ) ) {
 			add_option( SNFLA_Schema::STATE_OPTION, 'legacy_active', '', false );
 		}
@@ -22,6 +33,9 @@ final class SNFLA_Database {
 		}
 		update_option( 'snfla_schema_version', SNFLA_SCHEMA_VERSION, false );
 		update_option( 'snfla_plugin_version', SNFLA_VERSION, false );
+		if ( 'retired' !== (string) get_option( SNFLA_Schema::STATE_OPTION, 'legacy_active' ) && ! wp_next_scheduled( 'snfla_daily_integrity_check' ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'snfla_daily_integrity_check' );
+		}
 	}
 
 	public static function deactivate() {
@@ -33,6 +47,52 @@ final class SNFLA_Database {
 			self::install();
 			update_option( 'snfla_schema_version', SNFLA_SCHEMA_VERSION, false );
 		}
+	}
+
+	private static function deactivate_obsolete_runtime() {
+		if ( ! function_exists( 'deactivate_plugins' ) && defined( 'ABSPATH' ) && file_exists( ABSPATH . 'wp-admin/includes/plugin.php' ) ) { require_once ABSPATH . 'wp-admin/includes/plugin.php'; }
+		if ( ! function_exists( 'deactivate_plugins' ) ) { return array(); }
+		$current = plugin_basename( SNFLA_FILE );
+		$deactivated = array();
+		$active = (array) get_option( 'active_plugins', array() );
+		$sitewide = is_multisite() ? (array) get_site_option( 'active_sitewide_plugins', array() ) : array();
+		foreach ( array_unique( array_merge( $active, array_keys( $sitewide ) ) ) as $plugin ) {
+			$plugin = sanitize_text_field( (string) $plugin );
+			if ( $plugin === $current || 'sabri-news-publishing.php' !== basename( $plugin ) ) { continue; }
+			$network = isset( $sitewide[ $plugin ] );
+			deactivate_plugins( $plugin, true, $network );
+			$still_active = $network ? is_plugin_active_for_network( $plugin ) : is_plugin_active( $plugin );
+			if ( $still_active ) { return new WP_Error( 'snfla_obsolete_runtime_deactivation_failed', 'The obsolete File 04 publishing runtime could not be disabled safely.' ); }
+			$deactivated[] = array( 'plugin_hash' => hash( 'sha256', $plugin ), 'network' => $network );
+		}
+		return $deactivated;
+	}
+
+	private static function quarantine_legacy_pages() {
+		$map = (array) get_option( 'snp_page_map', array() );
+		$records = array();
+		foreach ( $map as $key => $page_id ) {
+			$page_id = absint( $page_id );
+			$page = $page_id > 0 ? get_post( $page_id ) : null;
+			if ( ! $page instanceof WP_Post || 'page' !== $page->post_type ) { continue; }
+			$managed_key = sanitize_key( (string) get_post_meta( $page_id, '_snp_managed_page_key', true ) );
+			$managed_flag = '1' === (string) get_post_meta( $page_id, '_snp_managed_page', true );
+			$legacy_shortcode = preg_match( '/\[(?:sabri_publish_form|sabri_news_feed|sabri_publication_feed|sabri_my_publication_reports)\b/i', (string) $page->post_content );
+			if ( ! $managed_key && ! $managed_flag && ! $legacy_shortcode ) { continue; }
+			$original_status = sanitize_key( $page->post_status );
+			if ( in_array( $original_status, array( 'publish', 'future' ), true ) ) {
+				$result = wp_update_post( array( 'ID' => $page_id, 'post_status' => 'private' ), true );
+				if ( is_wp_error( $result ) || ! $result ) { return new WP_Error( 'snfla_legacy_page_quarantine_failed', 'A legacy File 04 public page could not be quarantined safely.', array( 'page_id' => $page_id ) ); }
+			}
+			$records[] = array( 'page_id' => $page_id, 'map_key' => sanitize_key( $key ), 'managed_key' => $managed_key, 'original_status' => $original_status, 'quarantined_status' => in_array( $original_status, array( 'publish', 'future' ), true ) ? 'private' : $original_status, 'content_checksum' => hash( 'sha256', (string) $page->post_content ) );
+		}
+		if ( ! empty( $records ) ) {
+			update_option( 'snfla_legacy_page_quarantine', $records, false );
+			if ( ! SNFLA_Audit::record( 'legacy_pages_quarantined', get_current_user_id(), array( 'page_count' => count( $records ), 'page_ids' => array_column( $records, 'page_id' ) ) ) ) {
+				return new WP_Error( 'snfla_legacy_page_quarantine_audit_failed', 'Legacy pages were made private, but the required audit evidence could not be written.' );
+			}
+		}
+		return $records;
 	}
 
 	public static function install() {

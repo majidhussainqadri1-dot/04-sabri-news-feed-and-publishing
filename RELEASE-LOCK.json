@@ -6,10 +6,15 @@
   "inventory_file": "SOURCE-INVENTORY.tsv",
   "legacy_source_retained": true,
   "module": "Sabri News Feed Legacy Foundation Adapter",
-  "php_file_count": 23,
+  "php_file_count": 24,
+  "production_package_excludes": [
+    ".github",
+    "tests",
+    "tools"
+  ],
   "schema": 1,
-  "source_file_count": 34,
-  "source_size": 135928,
-  "source_tree_sha256": "4708027bb7ba50010a3397c7670e8060dd6c92b73a986c48282114057d7dcaec",
-  "version": "1.0.0"
+  "source_file_count": 35,
+  "source_size": 204522,
+  "source_tree_sha256": "d7d1f5e7677628f56dc2789365ed1d1d2dcf7862e867af05c37a13b333ca4c78",
+  "version": "1.0.1"
 }

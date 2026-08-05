@@ -9,7 +9,7 @@ final class SNFLA_Admin {
 	}
 
 	public static function menu() {
-		$cap = apply_filters( 'snfla_admin_menu_capability', 'sabri_feed_run_migrations' );
+		$cap = apply_filters( 'snfla_admin_menu_capability', SNFLA_Capabilities::CAP_REVIEW );
 		add_management_page( 'File 04 Legacy Adapter', 'File 04 Legacy Adapter', $cap, 'snfla-legacy-adapter', array( __CLASS__, 'page' ) );
 	}
 
@@ -20,10 +20,15 @@ final class SNFLA_Admin {
 	}
 
 	public static function dependency_notice() {
-		if ( SNFLA_Capabilities::file21_ready() || ! current_user_can( 'activate_plugins' ) ) {
-			return;
+		if ( ! current_user_can( 'activate_plugins' ) ) { return; }
+		$handover = get_option( 'snfla_activation_handover', array() );
+		if ( is_array( $handover ) && ( ! empty( $handover['deactivated_plugins'] ) || ! empty( $handover['legacy_pages'] ) ) ) {
+			echo '<div class="notice notice-success is-dismissible"><p><strong>File 04 legacy handover completed.</strong> The obsolete publishing runtime was disabled and its owned public pages were quarantined without deleting source records.</p></div>';
+			delete_option( 'snfla_activation_handover' );
 		}
-		echo '<div class="notice notice-error"><p><strong>File 04 Legacy Adapter is fail-closed.</strong> Canonical File 21 package ' . esc_html( SNFLA_FILE21_MIN_PACKAGE ) . ' or later and File 00 fresh identity assurance are required.</p></div>';
+		if ( ! SNFLA_Capabilities::file21_ready() ) {
+			echo '<div class="notice notice-error"><p><strong>File 04 Legacy Adapter is fail-closed.</strong> Canonical File 21 package ' . esc_html( SNFLA_FILE21_MIN_PACKAGE ) . ' or later and File 00 fresh identity assurance are required.</p></div>';
+		}
 	}
 
 	public static function page() {
@@ -52,9 +57,9 @@ final class SNFLA_Admin {
 				case 'conflicts': self::table_block( $wpdb->get_results( "SELECT id,legacy_id,conflict_code,severity,status,run_uuid,created_at,resolved_at FROM {$t['conflicts']} ORDER BY status ASC,severity DESC,id DESC LIMIT 500", ARRAY_A ) ); break;
 				case 'redirects': self::json_block( array( 'state' => $status['state'], 'fallback_window' => get_option( SNFLA_Schema::FALLBACK_OPTION, array() ), 'policy' => 'Same-origin target only; 301 after retirement, 302 during cutover/fallback; no open redirects.' ) ); break;
 				case 'reconciliation': self::json_block( SNFLA_Reconciliation::report() ); break;
-				case 'rollback': self::json_block( get_option( 'snfla_last_rollback_proof', array() ) ); break;
+				case 'rollback': self::json_block( SNFLA_Rollback::proof() ); break;
 				case 'retirement': self::json_block( array( 'required_confirmation' => SNFLA_Retirement::CONFIRMATION, 'evidence' => get_option( SNFLA_Schema::RETIREMENT_OPTION, array() ), 'source_deletion' => 'Never automatic' ) ); break;
-				default: self::json_block( array( 'status' => $status, 'file21' => SNFLA_File21_Adapter::status(), 'backup_proof_valid' => SNFLA_Migration::backup_proof_valid(), 'reconciliation' => SNFLA_Reconciliation::report(), 'rest_namespace' => SNFLA_REST::NAMESPACE, 'runbook' => 'MIGRATION-RUNBOOK.md and ROLLBACK-RUNBOOK.md' ) );
+				default: self::json_block( array( 'status' => $status, 'file21' => SNFLA_File21_Adapter::status(), 'backup_proof_valid' => SNFLA_Migration::backup_proof_valid(), 'reconciliation' => SNFLA_Reconciliation::report(), 'rest_namespace' => SNFLA_REST::NAMESPACE, 'legacy_page_quarantine' => get_option( 'snfla_legacy_page_quarantine', array() ), 'runbook' => 'MIGRATION-RUNBOOK.md and ROLLBACK-RUNBOOK.md' ) );
 			}
 			?>
 			</section>

@@ -17,10 +17,16 @@ function get_option( $key, $default = false ) { return array_key_exists( $key, $
 function update_option( $key, $value, $autoload = null ) { unset( $autoload ); $GLOBALS['snfla_test_options'][ $key ] = $value; return true; }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function wp_salt( $scheme = 'auth' ) { return 'test-salt-' . $scheme; }
-function wp_generate_uuid4() { return '00000000-0000-4000-8000-' . str_pad( (string) count( $GLOBALS['snfla_test_options'] ), 12, '0', STR_PAD_LEFT ); }
+function wp_generate_uuid4() { return '00000000-0000-4000-8000-' . str_pad( (string) count( SNFLA_Audit::$events ), 12, '0', STR_PAD_LEFT ); }
+
+final class SNFLA_Database {
+	public static function acquire_lock( $name, $timeout = 5 ) { unset( $name, $timeout ); return true; }
+	public static function release_lock( $name ) { unset( $name ); }
+}
 
 final class SNFLA_Audit {
 	public static $events = array();
-	public static function record( $action, $actor_id, $context = array(), $object_ref = '' ) { self::$events[] = compact( 'action', 'actor_id', 'context', 'object_ref' ); return true; }
+	public static $fail = false;
+	public static function record( $action, $actor_id, $context = array(), $object_ref = '' ) { if ( self::$fail ) { return false; } self::$events[] = compact( 'action', 'actor_id', 'context', 'object_ref' ); return true; }
 	public static function actor_digest( $actor_id ) { return hash( 'sha256', 'actor|' . (int) $actor_id ); }
 }

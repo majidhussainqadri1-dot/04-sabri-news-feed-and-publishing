@@ -63,20 +63,28 @@ final class SNFLA_Redirects {
 	}
 
 	public static function open_fallback( $actor_id, $hours, $expected_state, $expected_version ) {
-		$hours = min( 168, max( 1, absint( $hours ) ) );
-		$transition = SNFLA_Schema::transition( 'read_only_fallback', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'hours' => $hours ) );
-		if ( is_wp_error( $transition ) ) {
-			return $transition;
+		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) {
+			return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) );
 		}
-		$window = array( 'opened_at_utc' => gmdate( 'Y-m-d H:i:s' ), 'expires_at_utc' => gmdate( 'Y-m-d H:i:s', time() + $hours * HOUR_IN_SECONDS ), 'hours' => $hours, 'read_only' => true );
-		update_option( SNFLA_Schema::FALLBACK_OPTION, $window, false );
-		SNFLA_Audit::record( 'read_only_fallback_opened', $actor_id, $window );
-		return array( 'window' => $window, 'lifecycle' => $transition );
+		try {
+			if ( ! SNFLA_Reconciliation::validate_current_report() ) {
+				return new WP_Error( 'snfla_reconciliation_not_green', 'A fresh green reconciliation report is required before opening fallback.', array( 'status' => 412 ) );
+			}
+			$hours = min( 168, max( 1, absint( $hours ) ) );
+			$window = SNFLA_Integrity::sign_evidence( array( 'opened_at_utc' => gmdate( 'Y-m-d H:i:s' ), 'expires_at_utc' => gmdate( 'Y-m-d H:i:s', time() + $hours * HOUR_IN_SECONDS ), 'hours' => $hours, 'read_only' => true, 'tombstone_only' => true, 'reconciliation_checksum' => SNFLA_Reconciliation::report()['report_checksum'] ?? '' ) );
+			$previous = get_option( SNFLA_Schema::FALLBACK_OPTION, array() );
+			if ( ! update_option( SNFLA_Schema::FALLBACK_OPTION, $window, false ) ) { return new WP_Error( 'snfla_fallback_persist_failed', 'The fallback window could not be persisted.', array( 'status' => 500 ) ); }
+			$transition = SNFLA_Schema::transition( 'read_only_fallback', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'hours' => $hours, 'fallback_checksum' => SNFLA_Checksum::hash( $window ) ) );
+			if ( is_wp_error( $transition ) ) { update_option( SNFLA_Schema::FALLBACK_OPTION, $previous, false ); return $transition; }
+			return array( 'window' => $window, 'lifecycle' => $transition );
+		} finally {
+			SNFLA_Database::release_lock( 'operation' );
+		}
 	}
 
 	public static function fallback_active() {
 		$window = get_option( SNFLA_Schema::FALLBACK_OPTION, array() );
 		$expires = is_array( $window ) && ! empty( $window['expires_at_utc'] ) ? strtotime( $window['expires_at_utc'] . ' UTC' ) : false;
-		return false !== $expires && $expires >= time();
+		return SNFLA_Integrity::evidence_valid( $window ) && false !== $expires && $expires >= time();
 	}
 }

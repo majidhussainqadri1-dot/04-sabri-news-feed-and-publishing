@@ -24,7 +24,7 @@ Reject the run if source counts, tables, routes or maximum modification timestam
 
 Call `POST /dry-run` with `limit ≤ 100`. Review every candidate checksum and every conflict. A migration batch can contain only IDs in the current unchanged dry-run report.
 
-Resolve a conflict only after independent evidence review. The resolution code must describe the actual decision; it is not a bypass.
+Resolve a conflict only after the underlying defect has been corrected. Allowed resolution codes are fixed, the original redacted context is preserved, and the adapter re-evaluates the defect before closure; administrative dismissal is not a bypass.
 
 ### 3. Batch migration
 
@@ -48,6 +48,9 @@ After no unmigrated candidate remains, call `/reconcile`. The report must show:
 - every File 04 map agrees with File 21's mapping;
 - target provenance matches the legacy ID;
 - source and target checksums remain unchanged;
+- title, author, dates, content, excerpt, slug, thumbnail, topics and approved comment trees are semantically equivalent;
+- every legacy reaction, save, view and report has an exact canonical File 21 counterpart;
+- the HMAC audit chain verifies end to end;
 - zero open conflicts;
 - `green: true`.
 
@@ -80,3 +83,19 @@ Retirement preserves all source and evidence.
 - fallback timestamps;
 - retirement evidence checksum;
 - GitHub commit, CI run and release package SHA-256.
+
+
+## WP-CLI command parity
+
+The authenticated CLI exposes the same operational sequence as REST:
+
+- `wp snfla inventory --expected-state=<state> --expected-version=<n> --user=<id>`
+- `wp snfla dry_run --limit=100 --expected-state=<state> --expected-version=<n> --user=<id>`
+- `wp snfla backup_proof --reference=<opaque-reference> --checksum=<sha256> --created-at='YYYY-MM-DD HH:MM:SS' --user=<id>`
+- `wp snfla migrate --ids=1,2 --idempotency-key=<stable-key> --expected-state=<state> --expected-version=<n> --user=<id>`
+- `wp snfla reconcile --expected-state=<state> --expected-version=<n> --user=<id>`
+- `wp snfla cutover --expected-state=<state> --expected-version=<n> --user=<id>`
+- `wp snfla fallback --hours=24 --expected-state=<state> --expected-version=<n> --user=<id>`
+- `wp snfla resolve_conflict --id=<conflict-id> --resolution-code=<allowed-code> --user=<id>`
+
+Every mutation still requires the canonical capability and fresh File 00 action assurance.

@@ -9,11 +9,11 @@
 - Inventory, dry-run, idempotent batches, checksums and quarantine: **implemented**
 - Reconciliation, redirects, fallback, rollback/replay and retirement: **implemented**
 - REST, WP-CLI, admin evidence center and runbooks: **implemented**
-- Automated lint, unit, architecture, integrity and reproducible package checks: **required in CI**
+- Automated lint, unit, architecture, integrity and reproducible package checks: **implemented; exact GitHub head must pass CI**
 
 ## External acceptance gates
 
-- Independent post-correction source review: **required**
+- Independent post-correction source review: **completed locally; GitHub-head review required after push**
 - GitHub Actions green on the exact PR head: **required**
 - WordPress staging activation/migration from the historical database: **required**
 - File 00 step-up and capabilities integration: **required**
@@ -32,3 +32,11 @@
 - Production: **No**
 - Live installation: **No**
 - Retirement: **No until all runtime gates pass**
+
+## Additional hardening
+
+- Source-bound backup/rollback evidence, fresh reconciliation event binding, and failure quarantine: **implemented**
+- Production package allowlist excluding `.github`, `tests`, and `tools`: **implemented**
+- Safe obsolete-runtime deactivation and proven legacy-page quarantine: **implemented**
+- Stale-run durable-finalization guard: **implemented**
+- Field-level reversible canonical interaction merge: **implemented**

@@ -31,6 +31,14 @@ final class SNFLA_CLI {
 		$this->output( $result );
 	}
 
+
+	/** Record a recent backup/restore proof bound to the locked source. */
+	public function backup_proof( $args, $assoc ) {
+		unset( $args );
+		$actor = $this->actor( SNFLA_Capabilities::CAP_RUN );
+		$this->output( SNFLA_Migration::record_backup_proof( $actor, $assoc['reference'] ?? '', $assoc['checksum'] ?? '', $assoc['created-at'] ?? '' ) );
+	}
+
 	/** Migrate explicit comma-separated legacy IDs. */
 	public function migrate( $args, $assoc ) {
 		unset( $args );
@@ -45,6 +53,28 @@ final class SNFLA_CLI {
 		unset( $args );
 		$actor = $this->actor( SNFLA_Capabilities::CAP_REVIEW );
 		$this->output( SNFLA_Reconciliation::run( $actor, $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version() ) );
+	}
+
+
+	/** Approve canonical redirect cutover after fresh green reconciliation. */
+	public function cutover( $args, $assoc ) {
+		unset( $args );
+		$actor = $this->actor( SNFLA_Capabilities::CAP_REVIEW );
+		$this->output( SNFLA_Reconciliation::approve_cutover( $actor, $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version() ) );
+	}
+
+	/** Open a bounded signed read-only tombstone fallback window. */
+	public function fallback( $args, $assoc ) {
+		unset( $args );
+		$actor = $this->actor( SNFLA_Capabilities::CAP_REVIEW );
+		$this->output( SNFLA_Redirects::open_fallback( $actor, $assoc['hours'] ?? 24, $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version() ) );
+	}
+
+	/** Resolve one conflict only after its underlying defect is gone. */
+	public function resolve_conflict( $args, $assoc ) {
+		unset( $args );
+		$actor = $this->actor( SNFLA_Capabilities::CAP_REVIEW );
+		$this->output( SNFLA_Reconciliation::resolve_conflict( $actor, $assoc['id'] ?? 0, $assoc['resolution-code'] ?? '' ) );
 	}
 
 	/** Roll back explicit comma-separated legacy IDs non-destructively. */
@@ -63,6 +93,7 @@ final class SNFLA_CLI {
 	}
 
 	private function actor( $capability ) {
+		if ( ! SNFLA_Retirement::mutations_allowed() ) { WP_CLI::error( 'snfla_retired: The adapter is retired and mutation commands are disabled.' ); }
 		$actor = SNFLA_Capabilities::current_actor( $capability );
 		if ( is_wp_error( $actor ) ) { WP_CLI::error( $actor->get_error_code() . ': ' . $actor->get_error_message() ); }
 		return $actor;

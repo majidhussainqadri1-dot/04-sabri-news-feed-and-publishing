@@ -11,7 +11,7 @@ final class SNFLA_Plugin {
 
 	public function boot() {
 		SNFLA_Database::maybe_upgrade();
-		add_action( 'init', array( $this, 'register_legacy_schema' ), 0 );
+		add_action( 'init', array( $this, 'register_legacy_schema' ), 9999 );
 		add_action( 'init', array( $this, 'neutralize_legacy_runtime' ), 1000 );
 		add_action( 'rest_api_init', array( 'SNFLA_REST', 'register' ) );
 		add_filter( 'wp_insert_post_empty_content', array( $this, 'block_legacy_post_write' ), 999, 2 );
@@ -24,6 +24,12 @@ final class SNFLA_Plugin {
 		add_filter( 'comments_open', array( $this, 'close_legacy_comments' ), 999, 2 );
 		add_filter( 'pings_open', array( $this, 'close_legacy_comments' ), 999, 2 );
 		add_filter( 'preprocess_comment', array( $this, 'block_legacy_comment_write' ), 999 );
+		add_filter( 'pre_insert_term', array( $this, 'block_legacy_term_insert' ), 999, 2 );
+		add_action( 'pre_delete_term', array( $this, 'block_legacy_term_delete' ), 999, 2 );
+		add_action( 'edit_terms', array( $this, 'block_legacy_term_edit' ), 999, 2 );
+		add_action( 'add_term_relationship', array( $this, 'block_legacy_term_relationship_add' ), 999, 3 );
+		add_action( 'delete_term_relationships', array( $this, 'block_legacy_term_relationship_delete' ), 999, 3 );
+		add_action( 'snfla_daily_integrity_check', array( $this, 'daily_integrity_check' ) );
 		add_filter( 'wp_sitemaps_post_types', array( $this, 'exclude_sitemap' ) );
 		add_action( 'pre_get_posts', array( $this, 'exclude_search' ) );
 		SNFLA_Interaction_Provider::register();
@@ -111,6 +117,56 @@ final class SNFLA_Plugin {
 	public function block_legacy_meta_write( $check, $object_id, $meta_key, $meta_value, $extra ) {
 		unset( $meta_key, $meta_value, $extra );
 		return SNFLA_Inventory::LEGACY_POST_TYPE === get_post_type( absint( $object_id ) ) ? false : $check;
+	}
+
+	public function block_legacy_term_insert( $term, $taxonomy ) {
+		return SNFLA_Inventory::LEGACY_TAXONOMY === $taxonomy ? new WP_Error( 'snfla_legacy_taxonomy_read_only', 'Legacy File 04 taxonomy is read-only.' ) : $term;
+	}
+
+	public function block_legacy_term_delete( $term, $taxonomy ) {
+		unset( $term );
+		if ( SNFLA_Inventory::LEGACY_TAXONOMY === $taxonomy ) {
+			wp_die( esc_html__( 'Legacy File 04 taxonomy is read-only.', SNFLA_TEXT_DOMAIN ), '', array( 'response' => 403 ) );
+		}
+	}
+
+	public function block_legacy_term_edit( $term_id, $taxonomy ) {
+		unset( $term_id );
+		if ( SNFLA_Inventory::LEGACY_TAXONOMY === $taxonomy ) {
+			wp_die( esc_html__( 'Legacy File 04 taxonomy is read-only.', SNFLA_TEXT_DOMAIN ), '', array( 'response' => 403 ) );
+		}
+	}
+
+	public function block_legacy_term_relationship_add( $object_id, $tt_id, $taxonomy ) {
+		unset( $tt_id );
+		if ( SNFLA_Inventory::LEGACY_TAXONOMY === $taxonomy || SNFLA_Inventory::LEGACY_POST_TYPE === get_post_type( absint( $object_id ) ) ) {
+			wp_die( esc_html__( 'Legacy File 04 term relationships are read-only.', SNFLA_TEXT_DOMAIN ), '', array( 'response' => 403 ) );
+		}
+	}
+
+	public function block_legacy_term_relationship_delete( $object_id, $tt_ids, $taxonomy ) {
+		unset( $tt_ids );
+		if ( SNFLA_Inventory::LEGACY_TAXONOMY === $taxonomy || SNFLA_Inventory::LEGACY_POST_TYPE === get_post_type( absint( $object_id ) ) ) {
+			wp_die( esc_html__( 'Legacy File 04 term relationships are read-only.', SNFLA_TEXT_DOMAIN ), '', array( 'response' => 403 ) );
+		}
+	}
+
+	public function daily_integrity_check() {
+		if ( ! SNFLA_Retirement::mutations_allowed() ) { wp_clear_scheduled_hook( 'snfla_daily_integrity_check' ); return; }
+		if ( ! SNFLA_Database::acquire_lock( 'operation', 0 ) ) { return; }
+		try {
+			$evidence = array(
+				'checked_at_utc'    => gmdate( 'Y-m-d H:i:s' ),
+				'source_unchanged'  => SNFLA_Inventory::unchanged(),
+				'audit_chain'       => SNFLA_Audit::verify_chain(),
+				'reconciliation_ok' => SNFLA_Reconciliation::validate_current_report(),
+			);
+			$evidence = SNFLA_Integrity::sign_evidence( $evidence );
+			update_option( 'snfla_last_integrity_check', $evidence, false );
+			SNFLA_Audit::record( 'daily_integrity_checked', 0, array( 'source_unchanged' => $evidence['source_unchanged'], 'audit_valid' => ! empty( $evidence['audit_chain']['valid'] ), 'reconciliation_ok' => $evidence['reconciliation_ok'] ) );
+		} finally {
+			SNFLA_Database::release_lock( 'operation' );
+		}
 	}
 
 	public function close_legacy_comments( $open, $post_id ) {

@@ -35,14 +35,20 @@ final class SNFLA_Mapping {
 		return false !== $wpdb->insert( $t['map'], $row, array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s' ) );
 	}
 
-	public static function append_interaction_row( $legacy_id, $target_id, $slug, $row_id, $original_status = '' ) {
+	public static function append_interaction_row( $legacy_id, $target_id, $slug, $row_id, $original = array() ) {
 		$current = self::get( $legacy_id );
 		$ledger  = $current && ! empty( $current['interaction_ledger_json'] ) ? json_decode( $current['interaction_ledger_json'], true ) : array();
 		$ledger  = is_array( $ledger ) ? $ledger : array();
 		$slug    = sanitize_key( $slug );
+		$original = is_array( $original ) ? SNFLA_Audit::redact( $original ) : array( 'status' => sanitize_key( $original ) );
 		$ledger[ $slug ] = isset( $ledger[ $slug ] ) && is_array( $ledger[ $slug ] ) ? $ledger[ $slug ] : array();
-		$ledger[ $slug ][] = array( 'id' => absint( $row_id ), 'status' => sanitize_key( $original_status ), 'target_id' => absint( $target_id ) );
-		$ledger[ $slug ]   = array_slice( $ledger[ $slug ], -10000 );
+		$entry = array( 'id' => absint( $row_id ), 'original' => $original, 'target_id' => absint( $target_id ) );
+		$already_recorded = false;
+		foreach ( $ledger[ $slug ] as $existing ) {
+			if ( absint( $existing['id'] ?? 0 ) === absint( $row_id ) ) { $already_recorded = true; break; }
+		}
+		if ( ! $already_recorded ) { $ledger[ $slug ][] = $entry; }
+		$ledger[ $slug ] = array_slice( $ledger[ $slug ], -10000 );
 		return self::upsert(
 			$legacy_id,
 			array(

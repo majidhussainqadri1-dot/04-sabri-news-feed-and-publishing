@@ -5,17 +5,32 @@ final class SNFLA_REST {
 	const NAMESPACE = 'sabri/v1/legacy/file-04';
 
 	public static function register() {
-		register_rest_route( self::NAMESPACE, '/status', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( __CLASS__, 'status' ), 'permission_callback' => '__return_true' ) );
-		register_rest_route( self::NAMESPACE, '/inventory', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'inventory' ), 'permission_callback' => '__return_true' ) );
-		register_rest_route( self::NAMESPACE, '/dry-run', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'dry_run' ), 'permission_callback' => '__return_true' ) );
-		register_rest_route( self::NAMESPACE, '/backup-proof', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'backup_proof' ), 'permission_callback' => '__return_true' ) );
-		register_rest_route( self::NAMESPACE, '/migrate', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'migrate' ), 'permission_callback' => '__return_true' ) );
-		register_rest_route( self::NAMESPACE, '/reconcile', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'reconcile' ), 'permission_callback' => '__return_true' ) );
-		register_rest_route( self::NAMESPACE, '/cutover', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'cutover' ), 'permission_callback' => '__return_true' ) );
-		register_rest_route( self::NAMESPACE, '/fallback', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'fallback' ), 'permission_callback' => '__return_true' ) );
-		register_rest_route( self::NAMESPACE, '/rollback', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'rollback' ), 'permission_callback' => '__return_true' ) );
-		register_rest_route( self::NAMESPACE, '/retire', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'retire' ), 'permission_callback' => '__return_true' ) );
-		register_rest_route( self::NAMESPACE, '/conflicts/resolve', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'resolve_conflict' ), 'permission_callback' => '__return_true' ) );
+		register_rest_route( self::NAMESPACE, '/status', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( __CLASS__, 'status' ), 'permission_callback' => array( __CLASS__, 'permission_read' ) ) );
+		register_rest_route( self::NAMESPACE, '/inventory', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'inventory' ), 'permission_callback' => array( __CLASS__, 'permission_mutate' ) ) );
+		register_rest_route( self::NAMESPACE, '/dry-run', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'dry_run' ), 'permission_callback' => array( __CLASS__, 'permission_mutate' ) ) );
+		register_rest_route( self::NAMESPACE, '/backup-proof', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'backup_proof' ), 'permission_callback' => array( __CLASS__, 'permission_mutate' ) ) );
+		register_rest_route( self::NAMESPACE, '/migrate', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'migrate' ), 'permission_callback' => array( __CLASS__, 'permission_mutate' ) ) );
+		register_rest_route( self::NAMESPACE, '/reconcile', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'reconcile' ), 'permission_callback' => array( __CLASS__, 'permission_mutate' ) ) );
+		register_rest_route( self::NAMESPACE, '/cutover', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'cutover' ), 'permission_callback' => array( __CLASS__, 'permission_mutate' ) ) );
+		register_rest_route( self::NAMESPACE, '/fallback', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'fallback' ), 'permission_callback' => array( __CLASS__, 'permission_mutate' ) ) );
+		register_rest_route( self::NAMESPACE, '/rollback', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'rollback' ), 'permission_callback' => array( __CLASS__, 'permission_mutate' ) ) );
+		register_rest_route( self::NAMESPACE, '/retire', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'retire' ), 'permission_callback' => array( __CLASS__, 'permission_mutate' ) ) );
+		register_rest_route( self::NAMESPACE, '/conflicts/resolve', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'resolve_conflict' ), 'permission_callback' => array( __CLASS__, 'permission_mutate' ) ) );
+	}
+
+	public static function permission_read( WP_REST_Request $request ) {
+		unset( $request );
+		$actor = SNFLA_Capabilities::current_read_actor( SNFLA_Capabilities::CAP_REVIEW );
+		return is_wp_error( $actor ) ? $actor : true;
+	}
+
+	public static function permission_mutate( WP_REST_Request $request ) {
+		if ( ! SNFLA_Retirement::mutations_allowed() ) {
+			return new WP_Error( 'snfla_retired', 'The adapter is retired and mutation endpoints are disabled.', array( 'status' => 410 ) );
+		}
+		$nonce = SNFLA_Capabilities::verify_rest_nonce( $request );
+		if ( is_wp_error( $nonce ) ) { return $nonce; }
+		return get_current_user_id() > 0 ? true : new WP_Error( 'snfla_authentication_required', 'Authentication is required.', array( 'status' => 401 ) );
 	}
 
 	public static function status( WP_REST_Request $request ) {
@@ -43,7 +58,9 @@ final class SNFLA_REST {
 			'backup_proof'     => array( 'valid' => SNFLA_Migration::backup_proof_valid() ),
 			'fallback'         => array( 'active' => SNFLA_Redirects::fallback_active(), 'window' => get_option( SNFLA_Schema::FALLBACK_OPTION, array() ) ),
 			'retirement'       => get_option( SNFLA_Schema::RETIREMENT_OPTION, array() ),
+			'legacy_page_quarantine' => get_option( 'snfla_legacy_page_quarantine', array() ),
 			'mutations_allowed'=> SNFLA_Retirement::mutations_allowed(),
+			'integrity'        => array( 'audit_chain' => SNFLA_Audit::verify_chain(), 'last_check' => get_option( 'snfla_last_integrity_check', array() ) ),
 		);
 		return self::success( 'snfla_status', $data );
 	}

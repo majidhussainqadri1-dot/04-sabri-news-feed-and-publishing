@@ -19,7 +19,10 @@ Legacy report details remain in the retained read-only source. Canonical migrate
 - one mapping per legacy ID;
 - conflict fingerprints;
 - append-only HMAC audit chain;
-- exact lifecycle optimistic concurrency.
+- exact lifecycle optimistic concurrency;
+- source-bound, HMAC-signed backup/rollback/fallback evidence with matching audit events;
+- fresh reconciliation evidence bound to its report checksum and audit chain;
+- fail-closed stale-run finalization before any retry.
 
 ## Web controls
 
@@ -32,3 +35,11 @@ Migration and rollback are bounded, resumable and non-destructive. Target modifi
 ## External validation gates
 
 Static tests do not prove WordPress hooks, MySQL locking semantics, File 00 session assurance, File 21 runtime behavior, cache/CDN behavior, large datasets, media/comment edge cases or restore viability. These must be demonstrated on staging.
+
+## Safe replacement
+
+Activation never permits the old and new File 04 runtimes to remain authoritative together. It loads the WordPress plugin API, deactivates site or network-active historical runtimes, verifies the result, and blocks its own activation on failure. Proven legacy-owned public pages are made private and recorded by ID/checksum; unrelated pages are untouched.
+
+## Package hygiene
+
+The install ZIP excludes `.github`, `tests` and `tools`. Secret/credential and personal-data indicator scans run against the complete repository source before packaging.
