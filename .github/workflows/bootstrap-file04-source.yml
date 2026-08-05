@@ -22,7 +22,7 @@ jobs:
           persist-credentials: true
           fetch-depth: 0
 
-      - name: Verify and expand canonical source
+      - name: Verify and stage canonical source
         shell: bash
         run: |
           set -euo pipefail
@@ -30,10 +30,19 @@ jobs:
           actual="$(sha256sum /tmp/file04-source.tar.gz | awk '{print $1}')"
           expected="9f74b00ad909007a32694a31161f5216435734c2fd8c27caeb45886288ef94b6"
           test "$actual" = "$expected"
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          tar -xzf /tmp/file04-source.tar.gz -C .
 
-      - name: Verify exact source before commit
+          mkdir -p /tmp/file04-source
+          tar -xzf /tmp/file04-source.tar.gz -C /tmp/file04-source
+
+          cp -a .github/workflows /tmp/file04-original-workflows
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github -exec rm -rf {} +
+          find /tmp/file04-source -mindepth 1 -maxdepth 1 ! -name .github -exec cp -a {} . \;
+
+          rm -rf .github/workflows
+          mkdir -p .github/workflows
+          cp /tmp/file04-source/.github/workflows/file04-legacy-adapter-ci.yml .github/workflows/file04-legacy-adapter-ci.yml
+
+      - name: Verify exact canonical source
         shell: bash
         run: |
           set -euo pipefail
@@ -42,12 +51,16 @@ jobs:
           php tests/run-architecture.php
           python3 tools/build-release.py --verify-only
 
-      - name: Commit canonical replacement
+      - name: Restore unchanged workflow files and commit source
         shell: bash
         run: |
           set -euo pipefail
+          rm -rf .github/workflows
+          cp -a /tmp/file04-original-workflows .github/workflows
+
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
+          git diff --cached --quiet && { echo 'No source changes to commit.'; exit 0; }
           git commit -m 'Replace File 04 with canonical legacy adapter v1.0.0'
           git push origin HEAD:codex/file-04-legacy-adapter-v1
