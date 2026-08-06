@@ -1,7 +1,7 @@
 <?php
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
-// Publications, interactions, reports and moderation history are retained by
-// default to prevent accidental loss. Administrators may remove them manually
-// after satisfying privacy, legal, consent and backup obligations.
-
+// File 04 retains all legacy source records, mappings, conflict evidence,
+// checksums, rollback ledgers and audit history by default. No destructive
+// uninstall is provided because retirement is a reversible governance state,
+// not a data-deletion event.

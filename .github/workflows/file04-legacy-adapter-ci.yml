@@ -1,0 +1,73 @@
+name: File 04 Legacy Adapter — Forty-Round CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - codex/file-04-forty-round-review-v120
+
+permissions:
+  contents: read
+
+jobs:
+  integrity-and-architecture:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Verify generated evidence
+        run: python3 tools/build-release.py --verify-only
+      - name: Architecture and ownership checks
+        run: python3 tests/run-architecture.py
+      - name: Forty Review-Fix-Retest rounds
+        run: python3 tests/run-forty-rounds.py --verify-only
+      - name: Secret and personal-data indicator scan
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,sys
+          patterns={
+            'private key':rb'-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----',
+            'GitHub token':rb'\bgh[pousr]_[A-Za-z0-9]{20,}\b',
+            'Google API key':rb'\bAIza[0-9A-Za-z_-]{35}\b',
+            'AWS access key':rb'\bAKIA[0-9A-Z]{16}\b',
+            'Pakistan CNIC':rb'(?<![0-9])[0-9]{5}-[0-9]{7}-[0-9](?![0-9])',
+            'Pakistan phone':rb'(?<![0-9])(?:\+92|0092)3[0-9]{9}(?![0-9])',
+          }
+          forbidden={'.env','wp-config.php','id_rsa','id_ed25519','credentials.json'}
+          for p in Path('.').rglob('*'):
+            if not p.is_file() or '.git' in p.parts: continue
+            if p.name in forbidden or p.suffix.lower() in {'.zip','.sql','.sqlite','.pem','.p12','.pfx'}:
+              print('Forbidden file:',p);sys.exit(1)
+            data=p.read_bytes()
+            for label,pat in patterns.items():
+              if re.search(pat,data): print('Possible',label,'in',p);sys.exit(1)
+          print('Credential and personal-data indicator scan passed.')
+          PY
+      - name: Reproducible package twice
+        run: |
+          python3 tools/build-release.py --output /tmp/file04-a.zip --source-output /tmp/file04-source-a.zip > /tmp/a.json
+          python3 tools/build-release.py --output /tmp/file04-b.zip --source-output /tmp/file04-source-b.zip > /tmp/b.json
+          cmp /tmp/file04-a.zip /tmp/file04-b.zip
+          cmp /tmp/file04-source-a.zip /tmp/file04-source-b.zip
+          sha256sum /tmp/file04-a.zip /tmp/file04-source-a.zip
+
+  php-lint-and-tests:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.3']
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: PHP syntax
+        run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
+      - name: Deterministic unit checks
+        run: php tests/run-unit.php

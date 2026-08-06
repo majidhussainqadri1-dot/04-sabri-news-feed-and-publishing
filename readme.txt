@@ -1,53 +1,42 @@
-=== Sabri News Feed and Publishing ===
-Contributors: sabrihomeopathy
-Tags: news feed, publishing, homeopathy, moderation, likes
+=== Sabri News Feed Legacy Foundation Adapter ===
+Contributors: majidhussainqadri1-dot
+Tags: legacy migration, reconciliation, rollback, wordpress
 Requires at least: 6.0
-Tested up to: 6.8
-Requires PHP: 7.4
-Stable tag: 0.1.0
+Tested up to: 7.0
+Requires PHP: 8.1
+Stable tag: 1.2.0
 License: GPLv2 or later
-
-Moderated public news feed and approved-topic publishing for the Sabri Social Homeopathy Platform.
 
 == Description ==
 
-File 04 provides the first 25 percent of the News Feed and Publishing system.
+File 04 is a temporary, write-disabled and reversible adapter from historical `snp_publication` records into File 21. It does not own Home, News, publishing, ranking, comments, reactions, saves, reports, navigation or composition.
 
-Core features:
-* Public reading without registration.
-* Founder and administrator publications can appear immediately.
-* Verified doctor submissions require administrator approval.
-* Sixteen hard-approved topics; no author-created topics.
-* Additional safeguards for anonymized Patient Cases and consent.
-* Like changes to Unlike after selection, allowing the user to remove the Like.
-* Save, share, report, comments and privacy-friendly view counting.
-* Popular ranking based on freshness, views, Likes, comments and saves.
-* Administrator moderation, reports, featured posts, pinned posts and audit history.
-* Article structured data, accessibility and medical disclaimers.
-
-Approved topics:
-Founder Update; Classical Homeopathy; Homeopathy Education; Materia Medica; Repertory; Clinical Education; Research; Nutrition; Public Health Education; Platform News; Pathology; Anatomy; Principles of Hygiene; Islamic Spiritual Healing; Patient Cases; Homeopathy Philosophy.
+Version 1.2.0 adds dependency-gated compensating activation, complete bounded dry-run evidence, explicit governed quarantine, isolated restore verification, resumable interaction migration including historical meta-only views, bounded comment reconciliation, complete read-only enforcement, final-delta/cutover evidence, verified retirement route handoff, inert self-deactivation, resumable rollback and package-specific embedded checksums.
 
 == Installation ==
 
-1. Keep Files 01 through 03 active: Sabri Platform Foundation, Sabri Authentication and Accounts, and Sabri Profiles and Doctors.
-2. Upload this ZIP from WordPress Admin > Plugins > Add New > Upload Plugin.
-3. Activate Sabri News Feed and Publishing.
-4. Open News & Publishing to review pending submissions and reports.
-5. Founder and verified doctors can use the Create Publication page.
-
-This plugin enhances the Foundation-managed Home and News pages without automatically changing the site's Reading Settings or active theme.
-
-== Privacy ==
-
-Likes, saves and reports are connected to WordPress user IDs. Public view counts use a short-lived first-party cookie and do not store an IP address. Comments on this publication type remove the comment IP before insertion. WordPress privacy export and erasure hooks are included.
-
-== Medical and publishing notice ==
-
-Material is educational. It must not promise cures, delay emergency treatment, replace qualified healthcare, expose patient identity without appropriate permission, or provide a personalized prescription to an unknown reader.
+1. Use Hostinger staging only.
+2. Activate accepted File 00 and File 21 builds first.
+3. Install this package and verify the System Status page.
+4. Follow MIGRATION-RUNBOOK.md and ROLLBACK-RUNBOOK.md.
+5. Do not merge, deploy live, cut over or retire without required evidence and Founder approval.
 
 == Changelog ==
 
-= 0.1.0 =
-* Initial modular release.
+= 1.2.0 =
+* Added File 00/File 21 activation preflight and compensating handover restoration.
+* Added schema verification and complete legacy-page discovery.
+* Added complete persisted dry-run rows and bounded inventories/reconciliation.
+* Added independently verified isolated backup restore rehearsal.
+* Added resumable interaction migration, historical meta-only view preservation and exact contribution/rollback ledger.
+* Added complete comment/taxonomy/metadata read-only enforcement.
+* Added bounded comment/status reconciliation, final delta, cache invalidation and search reindex cutover gates.
+* Added resumable publication+interaction rollback and optional full handover restoration.
+* Added checksum-bound canonical redirect/gone handoff and removed permanent File 04 runtime after retirement.
+* Replaced source checksum leakage in the installable ZIP with package-specific embedded evidence.
 
+= 1.0.1 =
+* Initial corrective legacy-adapter staging candidate.
+
+= 1.0.0 =
+* Replaced the obsolete parallel publishing runtime with an adapter-only architecture.

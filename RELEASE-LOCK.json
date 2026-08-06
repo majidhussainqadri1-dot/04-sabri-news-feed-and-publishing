@@ -1,0 +1,21 @@
+{
+  "complete_source_filename": "file04-source-b.zip",
+  "complete_source_zip_sha256": "71a38ede9a23a88e122778457f89ae3097654028993625374fa8abe2e1144976",
+  "installable_filename": "file04-b.zip",
+  "installable_zip_sha256": "77444ecfb451c28f265c817b2cd039a5dfa64194e01496ffb85e35820233d0a7",
+  "known_unresolved_source_scope_blockers": 0,
+  "review_fix_retest_rounds": 40,
+  "schema": 2,
+  "source_file_count": 39,
+  "source_tree_sha256": "bf4f3e6b910e942600f36e8dec820b9499320703da68ed888137253aeeb23b6e",
+  "truthful_status": {
+    "automated_qa": "local green",
+    "coded": "local candidate",
+    "live_deployed": "pending",
+    "operational": "pending",
+    "packaged": "reproducible candidate",
+    "specified": "complete",
+    "staging_accepted": "pending"
+  },
+  "version": "1.2.0"
+}
