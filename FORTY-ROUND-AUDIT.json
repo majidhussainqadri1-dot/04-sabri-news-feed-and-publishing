@@ -1,0 +1,297 @@
+{
+  "failed_rounds": 0,
+  "governing_plans": [
+    "SSH-PMP-2026-v3.0",
+    "Consolidated All-Chats Recovered Directives v2.1",
+    "SSH-F04-PLAN-2026-v1.0"
+  ],
+  "known_unresolved_source_scope_blockers": 0,
+  "module": "File 04 — News Feed and Publishing — Legacy Foundation Adapter",
+  "passed_rounds": 40,
+  "review_fix_retest_rounds": 40,
+  "rounds": [
+    {
+      "area": "Canonical scope and ownership",
+      "correction": "Runtime is adapter-only; File 21 is declared canonical and no new feed/composer owner is present.",
+      "finding": "Historical code risked acting as a second publishing system.",
+      "retest": "PASS",
+      "round": 1
+    },
+    {
+      "area": "Version and schema identity",
+      "correction": "Header, runtime and schema were aligned at 1.2.0.",
+      "finding": "Prior package/document identity remained at 1.2.0.",
+      "retest": "PASS",
+      "round": 2
+    },
+    {
+      "area": "File 00 and File 21 dependency gate",
+      "correction": "Fail-closed current identity/2FA and File 21 package/runtime/class gates are required.",
+      "finding": "Migration operations could not trust mere feature detection.",
+      "retest": "PASS",
+      "round": 3
+    },
+    {
+      "area": "Multisite activation boundary",
+      "correction": "Network-wide activation is rejected; activation is per site only.",
+      "finding": "Network-wide activation could produce cross-site ownership and migration ambiguity.",
+      "retest": "PASS",
+      "round": 4
+    },
+    {
+      "area": "Activation compensation",
+      "correction": "Pre-activation table baseline and compensating removal of only newly-created adapter tables were added.",
+      "finding": "A failed activation could leave newly-created adapter tables behind.",
+      "retest": "PASS",
+      "round": 5
+    },
+    {
+      "area": "Cache invalidation",
+      "correction": "All global flushes were removed in favor of targeted File 21/cutover invalidation hooks.",
+      "finding": "Global cache flushing was over-broad and could disrupt unrelated modules.",
+      "retest": "PASS",
+      "round": 6
+    },
+    {
+      "area": "Unsafe serialization",
+      "correction": "Unsafe unserialize/maybe_unserialize paths were removed; evidence is treated as untrusted data.",
+      "finding": "Legacy evidence could be materialized through unsafe unserialization.",
+      "retest": "PASS",
+      "round": 7
+    },
+    {
+      "area": "Deterministic checksums",
+      "correction": "Canonicalization and deterministic JSON encoding now cover arrays, objects, resources and special floats.",
+      "finding": "Associative order, objects and non-finite values could yield unstable evidence hashes.",
+      "retest": "PASS",
+      "round": 8
+    },
+    {
+      "area": "Inventory schema fingerprint",
+      "correction": "Inventory captures source records, comments, terms, attachments, interactions, routes and table fingerprints.",
+      "finding": "Inventory evidence needed exact source-schema and data signatures.",
+      "retest": "PASS",
+      "round": 9
+    },
+    {
+      "area": "Bounded keyset traversal",
+      "correction": "All source traversal is cursor/keyset bounded; OFFSET is absent.",
+      "finding": "OFFSET pagination could skip or repeat records during concurrent legacy changes.",
+      "retest": "PASS",
+      "round": 10
+    },
+    {
+      "area": "Inventory database failures",
+      "correction": "Inventory and legacy-page discovery explicitly inspect database errors and fail closed.",
+      "finding": "Database read errors could be misread as empty inventory.",
+      "retest": "PASS",
+      "round": 11
+    },
+    {
+      "area": "Legacy page handover evidence",
+      "correction": "Quarantine completion now requires exact restoration evidence to persist or activation fails.",
+      "finding": "Page quarantine evidence persistence failure could be ignored.",
+      "retest": "PASS",
+      "round": 12
+    },
+    {
+      "area": "Lifecycle concurrency",
+      "correction": "Lifecycle state/version is re-read under locks and transitions remain optimistic-version guarded.",
+      "finding": "State/version checks could become stale while waiting for locks.",
+      "retest": "PASS",
+      "round": 13
+    },
+    {
+      "area": "Actor continuity",
+      "correction": "A reusable revalidate_actor gate now compares the current canonical actor under every critical lock.",
+      "finding": "The authenticated actor could change while a protected operation waited for a lock.",
+      "retest": "PASS",
+      "round": 14
+    },
+    {
+      "area": "REST input schemas",
+      "correction": "State, version, IDs, hashes, limits and confirmation fields now have explicit REST validation.",
+      "finding": "Mutation routes previously lacked uniform bounded schemas.",
+      "retest": "PASS",
+      "round": 15
+    },
+    {
+      "area": "REST idempotency",
+      "correction": "Header/body equality, printable content and 16–190 length are enforced.",
+      "finding": "Conflicting header/body keys or weak keys could permit replay ambiguity.",
+      "retest": "PASS",
+      "round": 16
+    },
+    {
+      "area": "REST privacy and indexing",
+      "correction": "All REST success/error evidence is private no-store and noindex/noarchive.",
+      "finding": "Sensitive migration evidence could be cached or indexed.",
+      "retest": "PASS",
+      "round": 17
+    },
+    {
+      "area": "CLI boolean handling",
+      "correction": "CLI now recognizes 0/false/no for --with-interactions.",
+      "finding": "A textual false value could still enable interaction migration.",
+      "retest": "PASS",
+      "round": 18
+    },
+    {
+      "area": "Current File 21 compatibility",
+      "correction": "Minimum package 1.0.3.2 and runtime contract 1.0.3 are frozen.",
+      "finding": "An obsolete File 21 minimum could accept an incompatible target.",
+      "retest": "PASS",
+      "round": 19
+    },
+    {
+      "area": "Canonical target provenance",
+      "correction": "Target type, File 21 mapping and both legacy provenance metadata fields are verified.",
+      "finding": "A target ID alone did not prove correct File 21 ownership.",
+      "retest": "PASS",
+      "round": 20
+    },
+    {
+      "area": "No direct File 21 writes",
+      "correction": "Containment now calls File 21 LegacyPublicationRollback only; no direct post/table write exists in the adapter.",
+      "finding": "Containment fallback could mutate File 21 posts directly.",
+      "retest": "PASS",
+      "round": 21
+    },
+    {
+      "area": "Interaction resume race",
+      "correction": "Mapping and canonical target are re-read and validated after operation/migration locks.",
+      "finding": "Interaction resume could rely on mapping state read before lock acquisition.",
+      "retest": "PASS",
+      "round": 22
+    },
+    {
+      "area": "Interaction source schema probes",
+      "correction": "Table/column probes and source queries now produce explicit fail-closed errors.",
+      "finding": "Missing/query-failed interaction schemas could silently look empty.",
+      "retest": "PASS",
+      "round": 23
+    },
+    {
+      "area": "Reaction migration",
+      "correction": "Source-record, canonical-row and ledger operations return/propagate WP_Error.",
+      "finding": "Reaction ledger reads/inserts needed explicit database-failure handling.",
+      "retest": "PASS",
+      "round": 24
+    },
+    {
+      "area": "Save migration",
+      "correction": "Save records use the bounded canonical interaction ledger and checked queries.",
+      "finding": "Save deduplication and contribution evidence required the same fail-closed behavior.",
+      "retest": "PASS",
+      "round": 25
+    },
+    {
+      "area": "View migration",
+      "correction": "Exact contribution-ledger handling and query-error gates cover aggregate and table views.",
+      "finding": "Meta-only and table views could be undercounted or silently lost.",
+      "retest": "PASS",
+      "round": 26
+    },
+    {
+      "area": "Report migration",
+      "correction": "Reports are migrated through the typed ledger with missing-user/schema blockers.",
+      "finding": "Reports require preserved reason/status and verified user provenance.",
+      "retest": "PASS",
+      "round": 27
+    },
+    {
+      "area": "Interaction reconciliation and rollback",
+      "correction": "Group, contribution and original-row reads now return WP_Error and rollback propagates failures.",
+      "finding": "Canonical group/contribution reads could convert DB failures to zero.",
+      "retest": "PASS",
+      "round": 28
+    },
+    {
+      "area": "Dry-run retention",
+      "correction": "Dry-run cleanup uses scoped DELETE operations; TRUNCATE is absent.",
+      "finding": "TRUNCATE could destroy unrelated/simultaneous evidence.",
+      "retest": "PASS",
+      "round": 29
+    },
+    {
+      "area": "Quarantine governance",
+      "correction": "Actor is revalidated under lock; mapping reads are checked; source-only evidence stays nonpublic.",
+      "finding": "Quarantine decisions needed fresh actor checks and mapping-ledger error handling.",
+      "retest": "PASS",
+      "round": 30
+    },
+    {
+      "area": "Migration idempotency race",
+      "correction": "Existing run is checked both before and after locks; corrupt/stale ledgers fail closed.",
+      "finding": "A duplicate idempotency key could be inserted after the pre-lock check.",
+      "retest": "PASS",
+      "round": 31
+    },
+    {
+      "area": "Mapping/conflict ledger failures",
+      "correction": "get_checked, fail-closed conflict codes and PHP_INT_MAX blocker count were added.",
+      "finding": "Mapping/conflict DB errors could masquerade as absent records or zero conflicts.",
+      "retest": "PASS",
+      "round": 32
+    },
+    {
+      "area": "Backup and restore proof",
+      "correction": "Current actor, SHA-256, UTC recency, restored counts, source signature and independent verifier are required.",
+      "finding": "Backup evidence could be recorded by a stale actor or without source-bound restore proof.",
+      "retest": "PASS",
+      "round": 33
+    },
+    {
+      "area": "Full reconciliation",
+      "correction": "Count reads fail closed and every target uses full canonical provenance validation.",
+      "finding": "Disposition count query errors and invalid canonical targets could produce a false green report.",
+      "retest": "PASS",
+      "round": 34
+    },
+    {
+      "area": "Cutover side effects",
+      "correction": "Actor/state are revalidated and provider-verified cache invalidation plus search reindex evidence is mandatory.",
+      "finding": "Cutover could proceed with stale actor/state or assumed cache/search completion.",
+      "retest": "PASS",
+      "round": 35
+    },
+    {
+      "area": "Redirect and fallback semantics",
+      "correction": "Canonical targets use 301; quarantined/fallback tombstones use 410 without false 404 state.",
+      "finding": "Temporary redirects and 404 marking of gone records weakened canonicality.",
+      "retest": "PASS",
+      "round": 36
+    },
+    {
+      "area": "Rollback checkpoints and new-data protection",
+      "correction": "Checkpoint failures now stop before interaction rollback; full target checksum/provenance gates protect changed/new File 21 data.",
+      "finding": "Interaction reversal could begin before local rollback checkpoint persistence.",
+      "retest": "PASS",
+      "round": 37
+    },
+    {
+      "area": "Retirement and self-deactivation",
+      "correction": "Retirement revalidates actor/state/source, verifies route handoff and requires confirmed deactivation.",
+      "finding": "Retirement could report success even if actor/state changed or plugin deactivation failed.",
+      "retest": "PASS",
+      "round": 38
+    },
+    {
+      "area": "Packaging, CI and evidence",
+      "correction": "Deterministic canonical-folder build, dependency manifest, CycloneDX SBOM, source inventory, release lock, secret scan and PHP 8.1/8.3 CI are included.",
+      "finding": "The prior artifact did not preserve a 40-round, exact-source reproducible evidence set.",
+      "retest": "PASS",
+      "round": 39
+    },
+    {
+      "area": "Fresh adversarial regression",
+      "correction": "Fresh static, unit, architecture, packaging and all 40 scoped checks pass with zero known source-scope blockers.",
+      "finding": "A final cross-cutting pass was required after all corrections.",
+      "retest": "PASS",
+      "round": 40
+    }
+  ],
+  "schema": 1,
+  "truthful_boundary": "Locally reviewable source and reproducible package only; Hostinger staging, real File 00/File 21 integrations, browser/WCAG/RTL, backup/restore rehearsal, Founder acceptance, live deployment and operations remain separate gates.",
+  "version": "1.2.0"
+}
