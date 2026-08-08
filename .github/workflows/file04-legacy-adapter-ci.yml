@@ -1,10 +1,10 @@
-name: File 04 Legacy Adapter — Forty-Round CI
+name: File 04 Legacy Adapter — Modern Central-Plan CI
 
 on:
   pull_request:
   push:
     branches:
-      - codex/file-04-forty-round-review-v120
+      - 'codex/file-04-*'
 
 permissions:
   contents: read
@@ -16,12 +16,14 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
-      - name: Verify generated evidence
-        run: python3 tools/build-release.py --verify-only
-      - name: Architecture and ownership checks
+      - name: File 04 architecture and canonical ownership
         run: python3 tests/run-architecture.py
-      - name: Forty Review-Fix-Retest rounds
-        run: python3 tests/run-forty-rounds.py --verify-only
+      - name: Modern central-plan requirement trace
+        run: php tests/run-central-plan.php
+      - name: Two post-central-plan review-fix-retest rounds
+        run: python3 tests/run-central-reviews.py
+      - name: Deterministic release evidence
+        run: python3 tools/build-release.py --verify-only
       - name: Secret and personal-data indicator scan
         run: |
           python3 - <<'PY'
@@ -45,12 +47,13 @@ jobs:
               if re.search(pat,data): print('Possible',label,'in',p);sys.exit(1)
           print('Credential and personal-data indicator scan passed.')
           PY
-      - name: Reproducible package twice
+      - name: Reproducible v1.3.0 package twice
         run: |
           python3 tools/build-release.py --output /tmp/file04-a.zip --source-output /tmp/file04-source-a.zip > /tmp/a.json
           python3 tools/build-release.py --output /tmp/file04-b.zip --source-output /tmp/file04-source-b.zip > /tmp/b.json
           cmp /tmp/file04-a.zip /tmp/file04-b.zip
           cmp /tmp/file04-source-a.zip /tmp/file04-source-b.zip
+          cat /tmp/a.json
           sha256sum /tmp/file04-a.zip /tmp/file04-source-a.zip
 
   php-lint-and-tests:
@@ -71,3 +74,5 @@ jobs:
         run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
       - name: Deterministic unit checks
         run: php tests/run-unit.php
+      - name: Central-plan contract checks
+        run: php tests/run-central-plan.php
