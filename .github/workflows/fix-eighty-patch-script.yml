@@ -17,17 +17,37 @@ jobs:
         with:
           ref: audit-file-04-eighty-round-hardening
           persist-credentials: true
-      - name: Repair Python triple-quote boundary
+      - name: Repair and diagnose Python driver
+        id: repair
         shell: bash
         run: |
-          set -euo pipefail
-          grep -n 'capture_activation_handover' tools/apply-eighty-round-hardening.py
+          set +e
           sed -i 's/capture_activation_handover", """/capture_activation_handover""", """/' tools/apply-eighty-round-hardening.py
-          python3 -m py_compile tools/apply-eighty-round-hardening.py
-      - name: Commit syntax repair
+          python3 -m py_compile tools/apply-eighty-round-hardening.py > /tmp/compile.log 2>&1
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            {
+              echo 'Driver compile failed after direct repair:'
+              cat /tmp/compile.log
+              echo '--- capture lines ---'
+              grep -n 'capture_activation_handover' tools/apply-eighty-round-hardening.py || true
+            } > EIGHTY-FIX-DIAGNOSTIC.txt
+            git checkout -- tools/apply-eighty-round-hardening.py
+            echo 'failed=true' >> "$GITHUB_OUTPUT"
+          else
+            rm -f EIGHTY-FIX-DIAGNOSTIC.txt
+            echo 'failed=false' >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+      - name: Commit repair result
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tools/apply-eighty-round-hardening.py
-          git commit -m '80-round audit: repair corrective driver syntax'
+          if [ "${{ steps.repair.outputs.failed }}" = "true" ]; then
+            git add EIGHTY-FIX-DIAGNOSTIC.txt
+            git commit -m '80-round audit: record driver repair diagnostic'
+          else
+            git add -A tools/apply-eighty-round-hardening.py EIGHTY-FIX-DIAGNOSTIC.txt
+            git commit -m '80-round audit: repair corrective driver syntax'
+          fi
           git push origin HEAD:audit-file-04-eighty-round-hardening
