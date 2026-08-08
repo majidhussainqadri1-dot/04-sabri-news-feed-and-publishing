@@ -29,6 +29,7 @@ final class SNFLA_Redirects {
 		if ( is_array( $mapping ) && 'quarantined' === sanitize_key( (string) ( $mapping['status'] ?? '' ) ) ) {
 			self::private_legacy_response( 410 );
 		}
+		$file21_ready = SNFLA_Capabilities::file21_ready();
 		$target_id = SNFLA_File21_Adapter::target_for( $legacy_id );
 		if ( $target_id > 0 && SNFLA_File21_Adapter::target_public( $target_id ) ) {
 			$url = get_permalink( $target_id );
@@ -37,20 +38,86 @@ final class SNFLA_Redirects {
 				exit;
 			}
 		}
+
+		// The fallback is an outage bridge for records that were already proven to
+		// have migrated canonically. A zero target from target_for() is ambiguous:
+		// it can mean File 21 is unavailable, but it can also mean a broken/missing
+		// canonical mapping while File 21 is healthy. Only the former may expose
+		// immutable legacy source content, and only when the local mapping ledger
+		// proves a prior successful migration of this exact unchanged source.
+		if ( 'read_only_fallback' === $state
+			&& self::fallback_active()
+			&& ! $file21_ready
+			&& 0 === $target_id
+			&& self::legacy_public_fallback_allowed( $legacy_id, $mapping ) ) {
+			self::prepare_read_only_fallback_response();
+			return;
+		}
+
 		if ( 'read_only_fallback' === $state && self::fallback_active() ) {
 			self::private_legacy_response( 410 );
 		}
 		self::private_legacy_response( 404 );
 	}
 
+	private static function legacy_public_fallback_allowed( $legacy_id, $mapping ) {
+		$legacy_id = absint( $legacy_id );
+		$post = get_post( $legacy_id );
+		if ( ! $post instanceof WP_Post || SNFLA_Inventory::LEGACY_POST_TYPE !== (string) $post->post_type || 'publish' !== (string) $post->post_status ) {
+			return false;
+		}
+		if ( ! is_array( $mapping )
+			|| 'migrated' !== sanitize_key( (string) ( $mapping['status'] ?? '' ) )
+			|| absint( $mapping['target_id'] ?? 0 ) <= 0
+			|| empty( $mapping['source_checksum'] ) ) {
+			return false;
+		}
+		$current_checksum = SNFLA_Checksum::post( $legacy_id );
+		if ( '' === $current_checksum || ! hash_equals( (string) $mapping['source_checksum'], $current_checksum ) ) {
+			return false;
+		}
+		// Any open conflict, including a conflict-ledger read failure sentinel,
+		// blocks fallback rather than guessing that the historic mapping is safe.
+		if ( ! empty( SNFLA_Mapping::open_conflict_codes( $legacy_id ) ) ) {
+			return false;
+		}
+		return true;
+	}
+
+	private static function prepare_read_only_fallback_response() {
+		status_header( 200 );
+		nocache_headers();
+		header( 'Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0', true );
+		header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
+		header( 'X-Sabri-File04-Fallback: read-only', true );
+	}
+
 	private static function safe_target( $url, $legacy_id ) {
 		if ( ! is_string( $url ) || '' === $url || ! wp_http_validate_url( $url ) ) {
 			return false;
 		}
-		$home_host = strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) );
-		$url_host  = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
+		$home       = wp_parse_url( home_url( '/' ) );
+		$target     = wp_parse_url( $url );
 		$legacy_url = get_permalink( absint( $legacy_id ) );
-		return '' !== $home_host && $home_host === $url_host && untrailingslashit( $url ) !== untrailingslashit( (string) $legacy_url );
+		$legacy     = is_string( $legacy_url ) ? wp_parse_url( $legacy_url ) : false;
+		if ( ! is_array( $home ) || ! is_array( $target ) || ! is_array( $legacy ) ) {
+			return false;
+		}
+		$home_scheme   = strtolower( (string) ( $home['scheme'] ?? '' ) );
+		$target_scheme = strtolower( (string) ( $target['scheme'] ?? '' ) );
+		$home_host     = strtolower( (string) ( $home['host'] ?? '' ) );
+		$target_host   = strtolower( (string) ( $target['host'] ?? '' ) );
+		$home_port     = absint( $home['port'] ?? ( 'https' === $home_scheme ? 443 : 80 ) );
+		$target_port   = absint( $target['port'] ?? ( 'https' === $target_scheme ? 443 : 80 ) );
+		if ( '' === $home_scheme || '' === $home_host || $home_scheme !== $target_scheme || $home_host !== $target_host || $home_port !== $target_port ) {
+			return false;
+		}
+
+		// Query strings and fragments cannot turn the same legacy path into a safe
+		// redirect destination; comparing only full URLs can create a self-loop.
+		$target_path = untrailingslashit( rawurldecode( '/' . ltrim( (string) ( $target['path'] ?? '/' ), '/' ) ) );
+		$legacy_path = untrailingslashit( rawurldecode( '/' . ltrim( (string) ( $legacy['path'] ?? '/' ), '/' ) ) );
+		return $target_path !== $legacy_path;
 	}
 
 	private static function private_legacy_response( $status ) {
@@ -82,7 +149,7 @@ final class SNFLA_Redirects {
 				return new WP_Error( 'snfla_reconciliation_not_green', 'A fresh green reconciliation report is required before opening fallback.', array( 'status' => 412 ) );
 			}
 			$hours = min( 168, max( 1, absint( $hours ) ) );
-			$window = SNFLA_Integrity::sign_evidence( array( 'opened_at_utc' => gmdate( 'Y-m-d H:i:s' ), 'expires_at_utc' => gmdate( 'Y-m-d H:i:s', time() + $hours * HOUR_IN_SECONDS ), 'hours' => $hours, 'read_only' => true, 'tombstone_only' => true, 'reconciliation_checksum' => SNFLA_Reconciliation::report()['report_checksum'] ?? '' ) );
+			$window = SNFLA_Integrity::sign_evidence( array( 'opened_at_utc' => gmdate( 'Y-m-d H:i:s' ), 'expires_at_utc' => gmdate( 'Y-m-d H:i:s', time() + $hours * HOUR_IN_SECONDS ), 'hours' => $hours, 'read_only' => true, 'tombstone_only' => false, 'public_source_fallback' => true, 'reconciliation_checksum' => SNFLA_Reconciliation::report()['report_checksum'] ?? '' ) );
 			$previous = get_option( SNFLA_Schema::FALLBACK_OPTION, array() );
 			if ( ! update_option( SNFLA_Schema::FALLBACK_OPTION, $window, false ) ) { return new WP_Error( 'snfla_fallback_persist_failed', 'The fallback window could not be persisted.', array( 'status' => 500 ) ); }
 			$transition = SNFLA_Schema::transition( 'read_only_fallback', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'hours' => $hours, 'fallback_checksum' => SNFLA_Checksum::hash( $window ) ) );

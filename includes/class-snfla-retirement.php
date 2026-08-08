@@ -75,7 +75,7 @@ final class SNFLA_Retirement {
 				$batch_no++;
 				$batch_checksum = SNFLA_Checksum::hash( array( 'source_signature' => $source_signature, 'batch_number' => $batch_no, 'entries' => $entries ) );
 				$request = array(
-					'schema'           => 1,
+					'schema'           => 2,
 					'batch_number'     => $batch_no,
 					'batch_count'      => count( $entries ),
 					'batch_checksum'   => $batch_checksum,
@@ -83,8 +83,17 @@ final class SNFLA_Retirement {
 					'source_signature' => $source_signature,
 					'entries'          => $entries,
 				);
+				$request['request_digest'] = SNFLA_Checksum::hash( $request );
 				$response = apply_filters( 'snfla_retirement_redirect_handoff_batch', array( 'verified' => false ), $request );
-				if ( ! is_array( $response ) || empty( $response['verified'] ) || absint( $response['accepted_count'] ?? 0 ) !== count( $entries ) || ! hash_equals( $batch_checksum, (string) ( $response['batch_checksum'] ?? '' ) ) || '' === sanitize_text_field( (string) ( $response['provider_id'] ?? '' ) ) ) {
+				$verified_at = is_array( $response ) && ! empty( $response['verified_at_utc'] ) ? strtotime( (string) $response['verified_at_utc'] . ' UTC' ) : false;
+				if ( ! is_array( $response ) || empty( $response['verified'] )
+					|| absint( $response['accepted_count'] ?? 0 ) !== count( $entries )
+					|| ! hash_equals( $batch_checksum, (string) ( $response['batch_checksum'] ?? '' ) )
+					|| ! hash_equals( $source_signature, (string) ( $response['source_signature'] ?? '' ) )
+					|| ! hash_equals( $chain, (string) ( $response['previous_checksum'] ?? '' ) )
+					|| ! hash_equals( (string) $request['request_digest'], (string) ( $response['request_digest'] ?? '' ) )
+					|| false === $verified_at || $verified_at < time() - 15 * MINUTE_IN_SECONDS || $verified_at > time() + 300
+					|| '' === sanitize_text_field( (string) ( $response['provider_id'] ?? '' ) ) ) {
 					return new WP_Error( 'snfla_retirement_redirect_handoff_batch_failed', 'The canonical route owner did not verify a retirement handoff batch.', array( 'batch_number' => $batch_no ) );
 				}
 				$current_provider = sanitize_text_field( (string) $response['provider_id'] );
@@ -102,7 +111,7 @@ final class SNFLA_Retirement {
 			return new WP_Error( 'snfla_retirement_route_manifest_incomplete', 'The route handoff does not cover every reconciled legacy record.', array( 'expected' => absint( $expected_count ), 'actual' => absint( $stream['count'] ?? 0 ) ) );
 		}
 		$summary = array(
-			'schema'            => 1,
+			'schema'            => 2,
 			'provider_id'       => $provider_id,
 			'source_signature'  => $source_signature,
 			'manifest_checksum' => $chain,
@@ -111,13 +120,15 @@ final class SNFLA_Retirement {
 			'gone_count'        => absint( $stream['gone_count'] ?? 0 ),
 			'batch_count'       => $batch_no,
 		);
+		$summary['request_digest'] = SNFLA_Checksum::hash( $summary );
 		$response = apply_filters( 'snfla_verify_retirement_redirect_handoff', array( 'verified' => false ), $summary );
 		$response_provider = is_array( $response ) ? sanitize_text_field( (string) ( $response['provider_id'] ?? '' ) ) : '';
 		if ( '' === $provider_id && '' !== $response_provider ) {
 			$provider_id           = $response_provider;
 			$summary['provider_id'] = $provider_id;
 		}
-		if ( ! is_array( $response ) || empty( $response['verified'] ) || 'completed' !== sanitize_key( (string) ( $response['status'] ?? '' ) ) || '' === $provider_id || ! hash_equals( $provider_id, $response_provider ) || ! hash_equals( $source_signature, (string) ( $response['source_signature'] ?? '' ) ) || ! hash_equals( $chain, (string) ( $response['manifest_checksum'] ?? '' ) ) || absint( $response['count'] ?? 0 ) !== $summary['count'] ) {
+		$summary_verified_at = is_array( $response ) && ! empty( $response['verified_at_utc'] ) ? strtotime( (string) $response['verified_at_utc'] . ' UTC' ) : false;
+		if ( ! is_array( $response ) || empty( $response['verified'] ) || 'completed' !== sanitize_key( (string) ( $response['status'] ?? '' ) ) || '' === $provider_id || ! hash_equals( $provider_id, $response_provider ) || ! hash_equals( $source_signature, (string) ( $response['source_signature'] ?? '' ) ) || ! hash_equals( $chain, (string) ( $response['manifest_checksum'] ?? '' ) ) || ! hash_equals( (string) $summary['request_digest'], (string) ( $response['request_digest'] ?? '' ) ) || absint( $response['count'] ?? 0 ) !== $summary['count'] || false === $summary_verified_at || $summary_verified_at < time() - 15 * MINUTE_IN_SECONDS || $summary_verified_at > time() + 300 ) {
 			return new WP_Error( 'snfla_retirement_redirect_handoff_unverified', 'The canonical route owner did not verify the complete redirect/gone manifest.', array( 'status' => 412 ) );
 		}
 		if ( ! SNFLA_Audit::record( 'retirement_redirect_handoff_verified', $actor_id, array( 'provider_digest' => hash( 'sha256', $provider_id ), 'source_signature' => $source_signature, 'manifest_checksum' => $chain, 'count' => $summary['count'], 'redirect_count' => $summary['redirect_count'], 'gone_count' => $summary['gone_count'], 'batch_count' => $batch_no ), 'retirement-handoff:' . $chain ) ) {

@@ -195,15 +195,16 @@ final class SNFLA_Reconciliation {
 			$locked = SNFLA_Inventory::locked();
 			if ( empty( $locked['source_signature'] ) || ! hash_equals( (string) $locked['source_signature'], (string) ( $before['source_signature'] ?? '' ) ) ) { return new WP_Error( 'snfla_final_delta_changed', 'The legacy source changed immediately before cutover.', array( 'status' => 409 ) ); }
 			$context = array( 'canonical_owner' => 'File 21', 'source_signature' => $locked['source_signature'], 'reconciliation_checksum' => (string) ( $report['report_checksum'] ?? '' ) );
+			$context['request_digest'] = SNFLA_Checksum::hash( $context );
 			do_action( 'sabri_hnf_invalidate_cache' );
 			do_action( 'snfla_targeted_cache_invalidation', $context );
 			$cache_evidence = apply_filters( 'snfla_verify_cutover_cache_invalidation', array( 'verified' => false ), $context );
-			if ( ! self::integration_evidence_valid( $cache_evidence, array( 'completed', 'not_required' ) ) ) {
+			if ( ! self::integration_evidence_valid( $cache_evidence, array( 'completed', 'not_required' ), $context ) ) {
 				return new WP_Error( 'snfla_cutover_cache_evidence_required', 'A canonical cache provider must verify cutover cache invalidation.', array( 'status' => 412 ) );
 			}
 			do_action( 'snfla_request_search_reindex', $context );
 			$search_evidence = apply_filters( 'snfla_verify_cutover_search_reindex', array( 'verified' => false ), $context );
-			if ( ! self::integration_evidence_valid( $search_evidence, array( 'completed', 'accepted', 'not_required' ) ) ) {
+			if ( ! self::integration_evidence_valid( $search_evidence, array( 'completed', 'accepted', 'not_required' ), $context ) ) {
 				return new WP_Error( 'snfla_cutover_search_evidence_required', 'The canonical search/index provider must verify completion, acceptance, or a documented not-required state.', array( 'status' => 412 ) );
 			}
 			$side_effect_evidence = array(
@@ -222,7 +223,7 @@ final class SNFLA_Reconciliation {
 		}
 	}
 
-	private static function integration_evidence_valid( $evidence, array $allowed_statuses ) {
+	private static function integration_evidence_valid( $evidence, array $allowed_statuses, array $request ) {
 		if ( ! is_array( $evidence ) || empty( $evidence['verified'] ) || empty( $evidence['provider_id'] ) ) {
 			return false;
 		}
@@ -233,7 +234,22 @@ final class SNFLA_Reconciliation {
 		if ( 'not_required' === $status && empty( $evidence['reason_code'] ) ) {
 			return false;
 		}
-		return true;
+		$source_signature = strtolower( (string) ( $request['source_signature'] ?? '' ) );
+		$reconciliation_checksum = strtolower( (string) ( $request['reconciliation_checksum'] ?? '' ) );
+		$request_digest = strtolower( (string) ( $request['request_digest'] ?? '' ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $source_signature )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $reconciliation_checksum )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $request_digest )
+			|| empty( $evidence['source_signature'] )
+			|| empty( $evidence['reconciliation_checksum'] )
+			|| empty( $evidence['request_digest'] )
+			|| ! hash_equals( $source_signature, strtolower( (string) $evidence['source_signature'] ) )
+			|| ! hash_equals( $reconciliation_checksum, strtolower( (string) $evidence['reconciliation_checksum'] ) )
+			|| ! hash_equals( $request_digest, strtolower( (string) $evidence['request_digest'] ) ) ) {
+			return false;
+		}
+		$verified_at = ! empty( $evidence['verified_at_utc'] ) ? strtotime( (string) $evidence['verified_at_utc'] . ' UTC' ) : false;
+		return false !== $verified_at && $verified_at >= time() - 15 * MINUTE_IN_SECONDS && $verified_at <= time() + 300;
 	}
 
 	public static function resolve_conflict( $actor_id, $conflict_id, $resolution_code ) {

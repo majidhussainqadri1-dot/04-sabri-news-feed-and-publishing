@@ -11,6 +11,10 @@ final class SNFLA_Audit {
 		$t       = SNFLA_Database::tables();
 		$action  = sanitize_key( $action );
 		$context = self::redact( is_array( $context ) ? $context : array() );
+		$context_json = wp_json_encode( $context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+		if ( ! is_string( $context_json ) ) {
+			return false;
+		}
 		$created = gmdate( 'Y-m-d H:i:s' );
 		$uuid    = wp_generate_uuid4();
 		$result  = false;
@@ -39,7 +43,7 @@ final class SNFLA_Audit {
 					'actor_digest' => $payload['actor_digest'],
 					'action'       => $action,
 					'object_ref'   => $payload['object_ref'],
-					'context_json' => wp_json_encode( $context ),
+					'context_json' => $context_json,
 					'prev_hash'    => $previous,
 					'event_hash'   => $event_hash,
 					'created_at'   => $created,
@@ -77,7 +81,9 @@ final class SNFLA_Audit {
 			foreach ( $rows as $row ) {
 				$cursor  = max( $cursor, absint( $row['id'] ?? 0 ) );
 				$context = json_decode( (string) $row['context_json'], true );
-				$context = is_array( $context ) ? $context : array();
+				if ( ! is_array( $context ) || JSON_ERROR_NONE !== json_last_error() ) {
+					return array( 'valid' => false, 'checked' => $checked, 'error' => 'audit_context_json_invalid', 'event_uuid' => (string) $row['event_uuid'] );
+				}
 				$payload = array(
 					'event_uuid'   => (string) $row['event_uuid'],
 					'actor_digest' => (string) $row['actor_digest'],
@@ -122,7 +128,7 @@ final class SNFLA_Audit {
 			foreach ( $rows as $row ) {
 				$cursor  = min( $cursor, absint( $row['id'] ?? 0 ) );
 				$context = json_decode( (string) ( $row['context_json'] ?? '' ), true );
-				if ( ! is_array( $context ) ) {
+				if ( ! is_array( $context ) || JSON_ERROR_NONE !== json_last_error() ) {
 					continue;
 				}
 				if ( '' === $context_key ) {

@@ -54,10 +54,10 @@ need('redact' in audit and 'patient' in audit and 'authorization' in audit and '
 need('silent_normalization_performed' in future and "preg_match( '//u'" in future, 'R8 Unicode/RTL fidelity guard must remain non-normalizing.', fail)
 
 # Historical Review 9 — current release metadata/CI/package must retain these controls after later patches.
-need('Version: 2.0.2' in main and "SNFLA_VERSION', '2.0.2'" in main, 'Current runtime version must be 2.0.2 after the second audit.', fail)
-need('Stable tag: 2.0.2' in wpreadme, 'Current WordPress stable tag must match runtime.', fail)
-need('2.0.2' in readme and '2.0.2' in status, 'Current human release/status docs must identify 2.0.2.', fail)
-need("VERSION='2.0.2'" in build and 'TEN_ROUND_REVIEW_ROUNDS=10' in build, 'Deterministic builder must retain first-ten-round evidence under v2.0.2.', fail)
+need('Version: 2.0.3' in main and "SNFLA_VERSION', '2.0.3'" in main, 'Current runtime version must be 2.0.3 after the second audit.', fail)
+need('Stable tag: 2.0.3' in wpreadme, 'Current WordPress stable tag must match runtime.', fail)
+need('2.0.3' in readme and '2.0.3' in status, 'Current human release/status docs must identify 2.0.3.', fail)
+need("VERSION='2.0.3'" in build and 'TEN_ROUND_REVIEW_ROUNDS=10' in build, 'Deterministic builder must retain first-ten-round evidence under v2.0.3.', fail)
 need('run-ten-round-post-future18.py' in build and 'run-ten-round-post-future18.py' in workflow, 'Builder and CI must execute the historical ten-round hardening gate.', fail)
 need("- main" in workflow and "audit/file-04-*" in workflow, 'Push CI must cover main and audit branches.', fail)
 
@@ -70,4 +70,4 @@ if fail:
     print('Historical ten-round post-Future18 audit gate failed:', file=sys.stderr)
     for item in fail: print('-', item, file=sys.stderr)
     sys.exit(1)
-print('Historical first ten-round post-Future18 guardrails remain present under v2.0.2.')
+print('Historical first ten-round post-Future18 guardrails remain present under v2.0.3.')

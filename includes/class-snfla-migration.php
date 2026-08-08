@@ -294,16 +294,28 @@ final class SNFLA_Migration {
 			'restored_comment_count' => $restored_comment_count,
 			'restored_table_counts'  => SNFLA_Checksum::canonicalize( $restored_table_counts ),
 		);
+		$verification_request['request_digest'] = SNFLA_Checksum::hash( $verification_request );
 		$verification = apply_filters( 'snfla_verify_restore_evidence', array( 'verified' => false ), $verification_request, $locked );
-		if ( ! is_array( $verification ) || empty( $verification['verified'] ) || empty( $verification['verifier_id'] ) ) {
-			return new WP_Error( 'snfla_restore_verifier_required', 'An approved staging restore-verifier adapter must independently verify the restore rehearsal.', array( 'status' => 412 ) );
+		$verified_at = is_array( $verification ) ? self::parse_utc_timestamp( $verification['verified_at_utc'] ?? '' ) : false;
+		$provider_bound = is_array( $verification )
+			&& ! empty( $verification['verified'] )
+			&& ! empty( $verification['verifier_id'] )
+			&& ! empty( $verification['source_signature'] )
+			&& ! empty( $verification['request_digest'] )
+			&& hash_equals( $source_signature, strtolower( (string) $verification['source_signature'] ) )
+			&& hash_equals( (string) $verification_request['request_digest'], strtolower( (string) $verification['request_digest'] ) )
+			&& false !== $verified_at
+			&& $verified_at >= time() - 15 * MINUTE_IN_SECONDS
+			&& $verified_at <= time() + 300;
+		if ( ! $provider_bound ) {
+			return new WP_Error( 'snfla_restore_verifier_required', 'An approved staging restore-verifier must attest the exact current source-bound restore request and a fresh verification timestamp.', array( 'status' => 412 ) );
 		}
 		$proof = SNFLA_Integrity::sign_evidence(
 			array_merge(
 				$verification_request,
 				array(
 					'verifier_id'       => sanitize_key( $verification['verifier_id'] ),
-					'verified_at_utc'   => sanitize_text_field( (string) ( $verification['verified_at_utc'] ?? gmdate( 'Y-m-d H:i:s' ) ) ),
+					'verified_at_utc'   => gmdate( 'Y-m-d H:i:s', $verified_at ),
 					'recorded_at_utc'   => gmdate( 'Y-m-d H:i:s' ),
 					'actor_digest'      => SNFLA_Audit::actor_digest( $actor_id ),
 					'restore_verified'  => true,
