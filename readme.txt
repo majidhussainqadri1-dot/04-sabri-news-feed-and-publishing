@@ -11,7 +11,7 @@ License: GPLv2 or later
 
 File 04 is a temporary, write-disabled, auditable and reversible adapter from historical `snp_publication` records into canonical File 21. It does not own Home, News, publishing, ranking, comments, reactions, saves, reports, navigation, composition or search truth.
 
-Version 2.0.3 retains the complete v1.3.0 migration/rollback foundation, all 18 Future18 migration-safety capabilities and the first ten-round hardening, then applies a second fresh ten-round adversarial hardening: deny-only authorization extension hooks, fail-closed corrupted lifecycle state, source/request-bound provider evidence, explicit signed contract baselines, durable receipts/evidence, truthful source-vs-production readiness, real-sample canary gating and anti-replay File 21 media evidence.
+Version 2.0.3 retains the v1.3.0 migration/rollback foundation, all 18 Future18 migration-safety capabilities and the first two fresh ten-round hardening audits, then applies a **third fresh ten-round adversarial audit** covering controlled read-only fallback, deterministic evidence encoding, exact opaque idempotency tokens, source/request-bound restore/cutover/retirement attestations, redirect-loop integrity, fail-closed mapping evidence serialization and release/QA consistency. Hostinger staging, live deployment and operational acceptance remain separate evidence gates.
 
 == Installation ==
 
