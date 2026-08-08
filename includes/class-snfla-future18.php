@@ -197,9 +197,21 @@ final class SNFLA_Future18 {
 			'external_simulation' => SNFLA_Audit::redact( is_array( $external ) ? $external : array() ),
 		);
 		$twin['twin_checksum'] = SNFLA_Checksum::hash( $twin );
-		update_option( self::TWIN_OPTION, $twin, false );
+		$previous_twin = get_option( self::TWIN_OPTION, array() );
+		$previous_checkpoints = get_option( self::CHECKPOINTS_OPTION, array() );
+		if ( ! update_option( self::TWIN_OPTION, $twin, false ) && get_option( self::TWIN_OPTION, array() ) !== $twin ) {
+			return new WP_Error( 'snfla_twin_persist_failed', 'Digital Twin evidence could not be persisted; no successful simulation evidence is reported.', array( 'status' => 500 ) );
+		}
 		$checkpoint = self::store_checkpoint( 'digital_twin', $twin );
-		if ( $actor_id > 0 ) { SNFLA_Audit::record( 'future18_digital_twin_completed', $actor_id, array( 'twin_checksum' => $twin['twin_checksum'], 'count' => count( $rows ), 'checkpoint_id' => $checkpoint['checkpoint_id'] ?? '' ), 'future18-twin:' . $twin['twin_checksum'] ); }
+		if ( is_wp_error( $checkpoint ) ) {
+			update_option( self::TWIN_OPTION, $previous_twin, false );
+			return $checkpoint;
+		}
+		if ( $actor_id > 0 && ! SNFLA_Audit::record( 'future18_digital_twin_completed', $actor_id, array( 'twin_checksum' => $twin['twin_checksum'], 'count' => count( $rows ), 'checkpoint_id' => $checkpoint['checkpoint_id'] ?? '' ), 'future18-twin:' . $twin['twin_checksum'] ) ) {
+			update_option( self::TWIN_OPTION, $previous_twin, false );
+			update_option( self::CHECKPOINTS_OPTION, $previous_checkpoints, false );
+			return new WP_Error( 'snfla_twin_audit_failed', 'Digital Twin evidence was reverted because its audit event could not be persisted.', array( 'status' => 500 ) );
+		}
 		$twin['checkpoint'] = $checkpoint;
 		return $twin;
 	}
@@ -393,8 +405,14 @@ final class SNFLA_Future18 {
 		$provider = apply_filters( 'sabri_file21_shadow_read_v1', array( 'verified' => false ), array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'read_only' => true ) );
 		$result = array( 'feature_id' => 'F04-FUT-008', 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'read_only' => true, 'dual_write' => false, 'fidelity' => $fidelity, 'provider' => SNFLA_Audit::redact( is_array( $provider ) ? $provider : array() ), 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ) );
 		$result['shadow_checksum'] = SNFLA_Checksum::hash( $result );
-		update_option( self::SHADOW_OPTION, $result, false );
-		if ( $actor_id > 0 ) { SNFLA_Audit::record( 'future18_shadow_read_completed', $actor_id, array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'shadow_checksum' => $result['shadow_checksum'] ), 'future18-shadow:' . $result['shadow_checksum'] ); }
+		$previous = get_option( self::SHADOW_OPTION, array() );
+		if ( ! update_option( self::SHADOW_OPTION, $result, false ) && get_option( self::SHADOW_OPTION, array() ) !== $result ) {
+			return new WP_Error( 'snfla_shadow_persist_failed', 'Shadow-read evidence could not be persisted; no successful evidence is reported.', array( 'status' => 500 ) );
+		}
+		if ( $actor_id > 0 && ! SNFLA_Audit::record( 'future18_shadow_read_completed', $actor_id, array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'shadow_checksum' => $result['shadow_checksum'] ), 'future18-shadow:' . $result['shadow_checksum'] ) ) {
+			update_option( self::SHADOW_OPTION, $previous, false );
+			return new WP_Error( 'snfla_shadow_audit_failed', 'Shadow-read evidence was reverted because its audit event could not be persisted.', array( 'status' => 500 ) );
+		}
 		return $result;
 	}
 
@@ -422,8 +440,14 @@ final class SNFLA_Future18 {
 		if ( $requested_percent > $max_next ) { $blockers[] = 'canary_phase_skip_forbidden'; }
 		$approved = empty( $blockers );
 		$decision = array( 'feature_id' => 'F04-FUT-009', 'requested_percent' => $requested_percent, 'previous_percent' => $current_percent, 'approved' => $approved, 'approved_percent' => $approved ? $requested_percent : $current_percent, 'blockers' => array_values( array_unique( $blockers ) ), 'controller_only' => true, 'migration_invoked' => false, 'decided_at_utc' => gmdate( 'Y-m-d H:i:s' ) );
-		if ( $approved ) { update_option( self::CANARY_OPTION, $decision, false ); }
-		if ( $actor_id > 0 ) { SNFLA_Audit::record( 'future18_canary_decision', $actor_id, $decision, 'future18-canary:' . $requested_percent . ':' . gmdate( 'YmdHis' ) ); }
+		$previous = get_option( self::CANARY_OPTION, array( 'approved_percent' => 0 ) );
+		if ( $approved && ! update_option( self::CANARY_OPTION, $decision, false ) && get_option( self::CANARY_OPTION, array() ) !== $decision ) {
+			return new WP_Error( 'snfla_canary_persist_failed', 'The approved canary decision could not be persisted; rollout remains at the prior phase.', array( 'status' => 500 ) );
+		}
+		if ( $actor_id > 0 && ! SNFLA_Audit::record( 'future18_canary_decision', $actor_id, $decision, 'future18-canary:' . $requested_percent . ':' . gmdate( 'YmdHis' ) ) ) {
+			if ( $approved ) { update_option( self::CANARY_OPTION, $previous, false ); }
+			return new WP_Error( 'snfla_canary_audit_failed', 'The canary decision was reverted because its audit event could not be persisted.', array( 'status' => 500 ) );
+		}
 		return $decision;
 	}
 
@@ -482,7 +506,10 @@ final class SNFLA_Future18 {
 		$checkpoint['checkpoint_checksum'] = SNFLA_Checksum::hash( $checkpoint );
 		$list = get_option( self::CHECKPOINTS_OPTION, array() ); if ( ! is_array( $list ) ) { $list = array(); }
 		$list[] = $checkpoint; if ( count( $list ) > self::MAX_CHECKPOINTS ) { $list = array_slice( $list, -self::MAX_CHECKPOINTS ); }
-		update_option( self::CHECKPOINTS_OPTION, $list, false ); return array( 'checkpoint_id' => $checkpoint['checkpoint_id'], 'checkpoint_checksum' => $checkpoint['checkpoint_checksum'] );
+		if ( ! update_option( self::CHECKPOINTS_OPTION, $list, false ) && get_option( self::CHECKPOINTS_OPTION, array() ) !== $list ) {
+			return new WP_Error( 'snfla_checkpoint_persist_failed', 'Replay checkpoint evidence could not be persisted.', array( 'status' => 500 ) );
+		}
+		return array( 'checkpoint_id' => $checkpoint['checkpoint_id'], 'checkpoint_checksum' => $checkpoint['checkpoint_checksum'] );
 	}
 
 	public static function replay_checkpoint( $checkpoint_id ) {

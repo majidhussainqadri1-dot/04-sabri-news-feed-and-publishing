@@ -16,9 +16,9 @@
 | 7 | System/release truth | **Defect.** File26/audit evidence was insufficiently blocking and source checks could imply production readiness; fixed binding/blocker propagation and source-level `production_ready=false`. |
 | 8 | Observability, media evidence, proof durability | **Defect.** Zero-sample canary, unbound File21 media attestations and evidence-durability false-success paths were corrected. |
 | 9 | Release/version/QA integration | **Defect.** Material corrections still identified as v2.0.1 and had no deterministic second-audit gate; aligned v2.0.2 runtime/docs/builder/CI/tests. |
-| 10 | Final fresh adversarial regression after Round 9 | **PENDING — not pre-certified.** |
+| 10 | Final fresh adversarial regression after Round 9 | **Defect.** Digital Twin, checkpoint, shadow-read and canary control could still report success after option/audit persistence failure. All remaining Future18 state/evidence writes now fail closed and roll back prior state where applicable. |
 
-**Round 10 status: PENDING.** It must be executed freshly on the fully corrected Round-9 source; it is not counted as passed merely because earlier regression gates are green.
+**Round 10 status: DEFECT FOUND AND CORRECTED.** Fresh final adversarial review found the remaining evidence-durability false-success paths; the affected controls were corrected and must pass exact-head regression before release.
 
 ## Evidence boundary
 
