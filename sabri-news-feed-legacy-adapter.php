@@ -3,7 +3,7 @@
  * Plugin Name: Sabri News Feed Legacy Foundation Adapter
  * Plugin URI: https://github.com/majidhussainqadri1-dot/04-sabri-news-feed-and-publishing
  * Description: Read-only, auditable, reversible migration adapter from historical File 04 records into canonical File 21.
- * Version: 1.2.0
+ * Version: 1.3.0
  * Requires at least: 6.0
  * Requires PHP: 8.1
  * Author: Dr. Allamah Majid Hussain Sabri Muhaddith Mursheed
@@ -13,8 +13,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SNFLA_VERSION', '1.2.0' );
-define( 'SNFLA_SCHEMA_VERSION', '1.2.0' );
+define( 'SNFLA_VERSION', '1.3.0' );
+define( 'SNFLA_SCHEMA_VERSION', '1.3.0' );
 define( 'SNFLA_FILE', __FILE__ );
 define( 'SNFLA_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SNFLA_URL', plugin_dir_url( __FILE__ ) );
@@ -41,6 +41,7 @@ $snfla_files = array(
 	'class-snfla-rest.php',
 	'class-snfla-admin.php',
 	'class-snfla-cli.php',
+	'class-snfla-central-plan.php',
 	'class-snfla-plugin.php',
 );
 
@@ -54,6 +55,7 @@ register_deactivation_hook( SNFLA_FILE, array( 'SNFLA_Database', 'deactivate' ) 
 add_action(
 	'plugins_loaded',
 	static function () {
+		SNFLA_Central_Plan::boot();
 		SNFLA_Plugin::instance()->boot();
 	},
 	30
