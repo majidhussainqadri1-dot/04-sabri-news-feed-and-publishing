@@ -156,7 +156,7 @@ def build(output:Path,source_output:Path):
           'known_unresolved_source_scope_blockers':0,
           'truthful_status':{
             'specified':'complete current source scope',
-            'coded':'v1.3.0 candidate',
+            'coded':'v2.0.0 Future18 candidate',
             'packaged':'reproducible candidate when this build succeeds',
             'automated_qa':'source gates executed by builder/CI',
             'staging_accepted':'pending',
