@@ -405,8 +405,10 @@ final class SNFLA_Future18 {
 		$invariants = self::invariant_guardian();
 		$drift = self::contract_drift();
 		$metrics = method_exists( 'SNFLA_Plan_Completion', 'metrics_summary' ) ? SNFLA_Plan_Completion::metrics_summary() : array();
-		$error_rate = isset( $metrics['error_rate'] ) && is_numeric( $metrics['error_rate'] ) ? (float) $metrics['error_rate'] : null;
+		$sample_count = absint( $metrics['sample_count'] ?? 0 );
+		$error_rate = $sample_count > 0 && isset( $metrics['error_rate'] ) && is_numeric( $metrics['error_rate'] ) ? (float) $metrics['error_rate'] : null;
 		$blockers = array();
+		if ( 0 === $sample_count ) { $blockers[] = 'observability_samples_missing'; }
 		if ( ! empty( $invariants['blockers'] ) ) { $blockers[] = 'migration_invariant_failure'; }
 		if ( ! empty( $drift['block_mutation'] ) ) { $blockers[] = 'contract_drift_or_unverified_contract'; }
 		if ( null === $error_rate ) { $blockers[] = 'observability_error_rate_missing'; }
@@ -565,7 +567,17 @@ final class SNFLA_Future18 {
 		$evidence = apply_filters( 'snfla_disaster_recovery_gameday_v1', array( 'verified' => false ), $request );
 		$verified = is_array( $evidence ) && ! empty( $evidence['verified'] ) && ! empty( $evidence['provider_id'] ) && empty( $evidence['production_environment'] );
 		$result = array( 'feature_id' => 'F04-FUT-016', 'verified' => $verified, 'environment' => $environment, 'production_chaos_allowed' => false, 'source_signature' => $source_signature, 'request_digest' => $request['request_digest'], 'evidence' => SNFLA_Audit::redact( is_array( $evidence ) ? $evidence : array() ), 'performed_at_utc' => gmdate( 'Y-m-d H:i:s' ) );
-		if ( $verified ) { update_option( self::GAMEDAY_OPTION, SNFLA_Integrity::sign_evidence( $result ), false ); SNFLA_Audit::record( 'future18_gameday_verified', $actor_id, array( 'provider_id_digest' => hash( 'sha256', (string) $evidence['provider_id'] ) ), 'future18-gameday:' . gmdate( 'Ymd' ) ); }
+		if ( $verified ) {
+			$previous = get_option( self::GAMEDAY_OPTION, array() );
+			$signed = SNFLA_Integrity::sign_evidence( $result );
+			if ( ! update_option( self::GAMEDAY_OPTION, $signed, false ) && get_option( self::GAMEDAY_OPTION, array() ) !== $signed ) {
+				return new WP_Error( 'snfla_gameday_persist_failed', 'GameDay evidence could not be persisted; verification remains blocked.', array( 'status' => 500 ) );
+			}
+			if ( ! SNFLA_Audit::record( 'future18_gameday_verified', $actor_id, array( 'provider_id_digest' => hash( 'sha256', (string) $evidence['provider_id'] ), 'source_signature' => $source_signature, 'request_digest' => $request['request_digest'] ), 'future18-gameday:' . $request['request_digest'] ) ) {
+				update_option( self::GAMEDAY_OPTION, $previous, false );
+				return new WP_Error( 'snfla_gameday_audit_failed', 'GameDay evidence was reverted because audit evidence could not be persisted.', array( 'status' => 500 ) );
+			}
+		}
 		return $result;
 	}
 

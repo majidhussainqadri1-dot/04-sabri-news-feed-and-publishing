@@ -200,7 +200,19 @@ final class SNFLA_Post_Audit_Hardening {
 			'contains_raw_url'  => false,
 			'contains_raw_pii'  => false,
 		);
-		update_option( self::REDIRECT_EVIDENCE_OPTION, SNFLA_Integrity::sign_evidence( $summary ), false );
+		$previous = get_option( self::REDIRECT_EVIDENCE_OPTION, array() );
+		$signed = SNFLA_Integrity::sign_evidence( $summary );
+		$persisted = update_option( self::REDIRECT_EVIDENCE_OPTION, $signed, false ) || get_option( self::REDIRECT_EVIDENCE_OPTION, array() ) === $signed;
+		if ( ! $persisted ) {
+			$evidence['verified'] = false;
+			$evidence['hardening_validation']['persistence_failed'] = true;
+			return $evidence;
+		}
+		if ( ! SNFLA_Audit::record( 'future18_redirect_observatory_verified', get_current_user_id(), array( 'source_signature' => (string) ( $summary['source_signature'] ?? '' ), 'request_digest' => (string) ( $summary['request_digest'] ?? '' ), 'verified' => (bool) $valid ), 'future18-redirect:' . (string) ( $summary['request_digest'] ?? '' ) ) ) {
+			update_option( self::REDIRECT_EVIDENCE_OPTION, $previous, false );
+			$evidence['verified'] = false;
+			$evidence['hardening_validation']['audit_persistence_failed'] = true;
+		}
 		return $evidence;
 	}
 

@@ -225,14 +225,21 @@ final class SNFLA_Plan_Completion {
 				return new WP_Error( 'snfla_media_reference_broken', 'A legacy attachment is missing or cannot be checksummed; it must be repaired or quarantined.', array( 'status' => 412, 'legacy_id' => $legacy_id, 'reference_id' => $ref['reference_id'] ) );
 			}
 		}
+		$source_signature = (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $source_signature ) || ! SNFLA_Inventory::unchanged() ) {
+			return new WP_Error( 'snfla_media_source_signature_invalid', 'A current locked legacy source signature is required for media/reference attestation.', array( 'status' => 412, 'legacy_id' => $legacy_id ) );
+		}
 		$request = array(
 			'file_number' => '04',
 			'legacy_id' => $legacy_id,
 			'references' => $refs,
 			'required_assertions' => array( 'ownership_verified', 'rights_or_license_verified', 'alt_policy_verified', 'duplicate_hash_checked', 'broken_links_zero', 'canonical_target_contract' ),
+			'source_signature' => $source_signature,
 		);
+		$request['request_digest'] = SNFLA_Checksum::hash( $request );
 		$evidence = apply_filters( 'sabri_file21_legacy_media_preflight_v1', array( 'verified' => false ), $request );
-		if ( ! is_array( $evidence ) || empty( $evidence['verified'] ) || empty( $evidence['provider_id'] ) || empty( $evidence['ownership_verified'] ) || empty( $evidence['rights_or_license_verified'] ) || empty( $evidence['alt_policy_verified'] ) || empty( $evidence['duplicate_hash_checked'] ) || ! array_key_exists( 'broken_links', $evidence ) || 0 !== absint( $evidence['broken_links'] ) ) {
+		$provider_bound = is_array( $evidence ) && ! empty( $evidence['source_signature'] ) && ! empty( $evidence['request_digest'] ) && hash_equals( $source_signature, (string) $evidence['source_signature'] ) && hash_equals( (string) $request['request_digest'], (string) $evidence['request_digest'] );
+		if ( ! is_array( $evidence ) || ! $provider_bound || empty( $evidence['verified'] ) || empty( $evidence['provider_id'] ) || empty( $evidence['ownership_verified'] ) || empty( $evidence['rights_or_license_verified'] ) || empty( $evidence['alt_policy_verified'] ) || empty( $evidence['duplicate_hash_checked'] ) || ! array_key_exists( 'broken_links', $evidence ) || 0 !== absint( $evidence['broken_links'] ) ) {
 			return new WP_Error( 'snfla_file21_media_contract_required', 'Media/reference migration requires a current File 21 provider attestation for rights, ownership, alt policy, duplicate hashes and broken links.', array( 'status' => 412, 'legacy_id' => $legacy_id ) );
 		}
 		$accepted = array_values( array_unique( array_map( 'sanitize_text_field', (array) ( $evidence['accepted_reference_ids'] ?? array() ) ) ) );
@@ -247,6 +254,8 @@ final class SNFLA_Plan_Completion {
 			'legacy_id' => $legacy_id,
 			'references' => $refs,
 			'reference_count' => count( $refs ),
+			'source_signature' => $source_signature,
+			'request_digest' => $request['request_digest'],
 			'evidence' => SNFLA_Audit::redact( $evidence ),
 		);
 	}
@@ -285,12 +294,15 @@ final class SNFLA_Plan_Completion {
 			$preflight = self::media_preflight( $legacy_id );
 			if ( is_wp_error( $preflight ) ) { return $preflight; }
 			if ( empty( $preflight['reference_count'] ) ) { continue; }
+			$verify_request = array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'references' => $preflight['references'], 'provider_id' => $preflight['provider_id'], 'source_signature' => (string) ( $preflight['source_signature'] ?? '' ), 'preflight_request_digest' => (string) ( $preflight['request_digest'] ?? '' ) );
+			$verify_request['request_digest'] = SNFLA_Checksum::hash( $verify_request );
 			$verify = apply_filters(
 				'sabri_file21_verify_migrated_legacy_media_v1',
 				array( 'verified' => false ),
-				array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'references' => $preflight['references'], 'provider_id' => $preflight['provider_id'] )
+				$verify_request
 			);
-			if ( ! is_array( $verify ) || empty( $verify['verified'] ) || empty( $verify['provider_id'] ) || absint( $verify['target_id'] ?? 0 ) !== $target_id || absint( $verify['verified_reference_count'] ?? -1 ) !== absint( $preflight['reference_count'] ) ) {
+			$verify_bound = is_array( $verify ) && ! empty( $verify['source_signature'] ) && ! empty( $verify['request_digest'] ) && hash_equals( (string) $verify_request['source_signature'], (string) $verify['source_signature'] ) && hash_equals( (string) $verify_request['request_digest'], (string) $verify['request_digest'] );
+			if ( ! is_array( $verify ) || ! $verify_bound || empty( $verify['verified'] ) || empty( $verify['provider_id'] ) || absint( $verify['target_id'] ?? 0 ) !== $target_id || absint( $verify['verified_reference_count'] ?? -1 ) !== absint( $preflight['reference_count'] ) ) {
 				$containment = $target_id > 0 ? SNFLA_File21_Adapter::contain_orphan_target( $legacy_id, $target_id, $actor_id, 'media_reference_post_migration_unverified' ) : null;
 				return new WP_Error( 'snfla_file21_media_post_migration_unverified', 'Canonical File 21 media/reference migration could not be verified; the target was contained where possible.', array( 'status' => 412, 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'contained' => is_array( $containment ) && ! empty( $containment['contained'] ) ) );
 			}
