@@ -1,2 +1,0 @@
-Third ten-round hardening gate failed:
-- Round10 state must be explicit
