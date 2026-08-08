@@ -31,7 +31,7 @@ status=text('STATUS.md')
 all_php='\n'.join(p.read_text(encoding='utf-8') for p in ROOT.rglob('*.php') if '.git' not in p.parts and 'tests' not in p.parts)
 
 round1=report('Central-plan Review/Fix Round 1 — requirements, ownership and File 04 plan traceability',[
-    ('Version: 1.3.0' in main, 'Runtime must be promoted to 1.3.0.'),
+    ('Version: 2.0.0' in main, 'Runtime must be promoted to 2.0.0.'),
     ('class-snfla-central-plan.php' in main and 'SNFLA_Central_Plan::boot' in main, 'Central-plan contract layer must be loaded.'),
     ('class-snfla-plan-completion.php' in main and 'SNFLA_Plan_Completion::boot' in main, 'File 04 own-plan completion layer must be loaded.'),
     ('array( 37, 49 )' in central and 'array( 74, 84 )' in central and 'array( 239, 285 )' in central, 'All 71 File-04-applicable CV requirements must be registered.'),
@@ -53,7 +53,7 @@ round2=report('Central-plan Review/Fix Round 2 — fresh adversarial/source regr
     ('snfla_verify_cutover_cache_invalidation' in reconciliation and 'snfla_verify_cutover_search_reindex' in reconciliation, 'Cutover must require cache and canonical-search evidence.'),
     ('focus-visible' in css and 'prefers-reduced-motion' in css and 'direction:rtl' in css and 'unicode-bidi' in css, 'RTL/accessibility/reduced-motion source safeguards must exist.'),
     ('codex/file-04-*' in workflow and 'run-central-plan.php' in workflow and 'run-file04-own-plan.py' in workflow and 'run-central-reviews.py' in workflow, 'Workflow must target modern File 04 branches and execute all current review gates.'),
-    ("VERSION='1.3.0'" in build and 'central_plan_review_rounds' in build, 'Deterministic package generator must identify v1.3.0 and the two new review rounds.'),
+    ("VERSION='2.0.0'" in build and 'central_plan_review_rounds' in build, 'Deterministic package generator must identify v2.0.0 and the two new review rounds.'),
     ('production_ready' in central and 'staging_accepted_pending' in status, 'Source completion must not fabricate staging/production acceptance.'),
 ])
 

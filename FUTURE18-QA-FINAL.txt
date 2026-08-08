@@ -1,0 +1,6 @@
+Final tested Future18 source head before this evidence-only note: ef252c3e3e5c6fa84a3377550cc9461fd979e43e
+Exact-head CI: 31264625593
+Conclusion: SUCCESS
+PHP 8.1: PASS
+PHP 8.3: PASS
+Architecture/File04/Central/Future18/two-review/release/security/reproducibility: PASS
