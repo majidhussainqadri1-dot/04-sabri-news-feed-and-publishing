@@ -1,4 +1,4 @@
-name: File 04 Legacy Adapter — Modern Central-Plan CI
+name: File 04 Legacy Adapter — Modern Central-Plan + Future18 CI
 
 on:
   pull_request:
@@ -22,6 +22,8 @@ jobs:
         run: python3 tests/run-file04-own-plan.py
       - name: Modern central-plan requirement trace
         run: php tests/run-central-plan.php
+      - name: Future18 source completion
+        run: python3 tests/run-future18.py
       - name: Two post-central-plan review-fix-retest rounds
         run: python3 tests/run-central-reviews.py
       - name: Deterministic release evidence
@@ -49,7 +51,7 @@ jobs:
               if re.search(pat,data): print('Possible',label,'in',p);sys.exit(1)
           print('Credential and personal-data indicator scan passed.')
           PY
-      - name: Reproducible v1.3.0 package twice
+      - name: Reproducible v2.0.0 package twice
         run: |
           python3 tools/build-release.py --output /tmp/file04-a.zip --source-output /tmp/file04-source-a.zip > /tmp/a.json
           python3 tools/build-release.py --output /tmp/file04-b.zip --source-output /tmp/file04-source-b.zip > /tmp/b.json
@@ -80,3 +82,5 @@ jobs:
         run: php tests/run-central-plan.php
       - name: File 04 own-plan source checks
         run: python3 tests/run-file04-own-plan.py
+      - name: Future18 source checks
+        run: python3 tests/run-future18.py
