@@ -174,15 +174,19 @@ final class SNFLA_REST {
 
 
 	private static function idempotency_key( WP_REST_Request $request ) {
-		$header = trim( sanitize_text_field( (string) $request->get_header( 'Idempotency-Key' ) ) );
-		$body   = trim( sanitize_text_field( (string) $request->get_param( 'idempotency_key' ) ) );
+		// Idempotency keys are opaque security tokens, not human text. Sanitizing
+		// them can normalize distinct raw keys into one value and make unrelated
+		// requests share an operation ledger entry. Accept exact printable ASCII
+		// bytes only, compare them byte-for-byte, and hash that exact accepted key.
+		$header = trim( (string) $request->get_header( 'Idempotency-Key' ) );
+		$body   = trim( (string) $request->get_param( 'idempotency_key' ) );
 		if ( '' !== $header && '' !== $body && ! hash_equals( $header, $body ) ) {
 			return new WP_Error( 'snfla_idempotency_key_mismatch', 'The Idempotency-Key header and request field do not match.', array( 'status' => 400 ) );
 		}
 		$key = '' !== $header ? $header : $body;
 		$length = strlen( $key );
-		if ( $length < 16 || $length > 190 || preg_match( '/[\x00-\x1F\x7F]/', $key ) ) {
-			return new WP_Error( 'snfla_invalid_idempotency_key', 'A stable printable idempotency key of 16–190 characters is required.', array( 'status' => 400 ) );
+		if ( $length < 16 || $length > 190 || 1 !== preg_match( '/^[!-~]+$/D', $key ) ) {
+			return new WP_Error( 'snfla_invalid_idempotency_key', 'A stable ASCII idempotency key of 16–190 printable non-space characters is required.', array( 'status' => 400 ) );
 		}
 		return $key;
 	}
