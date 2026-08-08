@@ -1,0 +1,30 @@
+name: File04 eighty-round corrective self-patch
+
+on:
+  push:
+    branches:
+      - audit-file-04-eighty-round-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: audit-file-04-eighty-round-hardening
+          persist-credentials: true
+      - name: Apply sequential corrective source patch
+        run: python3 tools/apply-eighty-round-hardening.py
+      - name: Syntax after correction
+        run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
+      - name: Commit corrected source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add includes sabri-news-feed-legacy-adapter.php
+          git commit -m 'File 04 v2.0.4: correct defects from 80-round audit R01-R33'
+          git push origin HEAD:audit-file-04-eighty-round-hardening
