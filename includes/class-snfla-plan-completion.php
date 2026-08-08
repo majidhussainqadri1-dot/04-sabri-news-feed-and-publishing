@@ -176,23 +176,40 @@ final class SNFLA_Plan_Completion {
 			return new WP_Error( 'snfla_media_legacy_id_invalid', 'A valid legacy publication ID is required.', array( 'status' => 400 ) );
 		}
 		$refs = array();
-		$attachments = get_children( array( 'post_parent' => $legacy_id, 'post_type' => 'attachment', 'post_status' => 'inherit', 'fields' => 'ids', 'numberposts' => -1 ) );
-		foreach ( array_map( 'absint', (array) $attachments ) as $attachment_id ) {
-			if ( $attachment_id <= 0 ) { continue; }
-			$file = get_attached_file( $attachment_id, true );
-			$mime = (string) get_post_mime_type( $attachment_id );
-			$alt  = (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
-			$refs[] = array(
-				'reference_id' => 'attachment:' . $attachment_id,
-				'type'         => 'attachment',
-				'attachment_id'=> $attachment_id,
-				'mime'         => sanitize_mime_type( $mime ),
-				'bytes'        => is_string( $file ) && is_file( $file ) ? (int) filesize( $file ) : 0,
-				'sha256'       => is_string( $file ) && is_file( $file ) ? hash_file( 'sha256', $file ) : '',
-				'alt_present'  => '' !== trim( $alt ),
-				'file_present' => is_string( $file ) && is_file( $file ),
+		global $wpdb;
+		$cursor = 0;
+		$batch_size = 200;
+		do {
+			$wpdb->last_error = '';
+			$attachment_ids = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT ID FROM {$wpdb->posts} WHERE post_parent=%d AND post_type='attachment' AND post_status='inherit' AND ID>%d ORDER BY ID ASC LIMIT %d",
+					$legacy_id,
+					$cursor,
+					$batch_size
+				)
 			);
-		}
+			if ( ! empty( $wpdb->last_error ) || ! is_array( $attachment_ids ) ) {
+				return new WP_Error( 'snfla_media_attachment_query_failed', 'Legacy attachment references could not be read safely.', array( 'status' => 500, 'legacy_id' => $legacy_id ) );
+			}
+			foreach ( array_map( 'absint', $attachment_ids ) as $attachment_id ) {
+				if ( $attachment_id <= $cursor ) { return new WP_Error( 'snfla_media_attachment_cursor_invalid', 'Legacy attachment traversal could not make forward progress.', array( 'status' => 500, 'legacy_id' => $legacy_id ) ); }
+				$cursor = $attachment_id;
+				$file = get_attached_file( $attachment_id, true );
+				$mime = (string) get_post_mime_type( $attachment_id );
+				$alt  = (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+				$refs[] = array(
+					'reference_id' => 'attachment:' . $attachment_id,
+					'type'         => 'attachment',
+					'attachment_id'=> $attachment_id,
+					'mime'         => sanitize_mime_type( $mime ),
+					'bytes'        => is_string( $file ) && is_file( $file ) ? (int) filesize( $file ) : 0,
+					'sha256'       => is_string( $file ) && is_file( $file ) ? hash_file( 'sha256', $file ) : '',
+					'alt_present'  => '' !== trim( $alt ),
+					'file_present' => is_string( $file ) && is_file( $file ),
+				);
+			}
+		} while ( count( $attachment_ids ) === $batch_size );
 		foreach ( array( '_snp_video_url', '_snp_media_manifest', '_snp_source_ledger' ) as $key ) {
 			$value = get_post_meta( $legacy_id, $key, true );
 			$present = is_array( $value ) ? ! empty( $value ) : ( is_object( $value ) || '' !== trim( (string) $value ) );
@@ -309,7 +326,7 @@ final class SNFLA_Plan_Completion {
 		if ( $attachment_count > 0 && ! is_numeric( $attachment_bytes ) ) { return new WP_Error( 'snfla_media_storage_estimate_provider_required', 'A bounded storage provider estimate is required for legacy attachments; File 04 will not perform an unbounded filesystem scan.', array( 'status' => 412, 'attachment_count' => $attachment_count ) ); }
 		$parts['attachment_bytes'] = max( 0, (int) $attachment_bytes );
 		$parts['attachment_count'] = $attachment_count;
-		$source_bytes = array_sum( $parts );
+		$source_bytes = $parts['publication_bytes'] + $parts['meta_bytes'] + $parts['comment_bytes'] + $parts['attachment_bytes'];
 		$items = absint( $totals['candidate_count'] ?? 0 );
 		$throughput = (float) apply_filters( 'snfla_migration_estimated_items_per_second', 5.0, $items, $source_bytes );
 		$throughput = min( 1000.0, max( 0.1, $throughput ) );
