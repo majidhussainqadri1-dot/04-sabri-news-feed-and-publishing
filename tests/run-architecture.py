@@ -21,7 +21,7 @@ mapping=PHP['includes/class-snfla-mapping.php']
 central=PHP['includes/class-snfla-central-plan.php']
 hard=PHP['includes/class-snfla-post-audit-hardening.php']
 
-require('Version: 2.0.1' in main and "SNFLA_VERSION', '2.0.1'" in main and "SNFLA_SCHEMA_VERSION', '1.3.0'" in main, 'Runtime/header must be hardened 2.0.1 while unchanged storage schema remains 1.3.0.')
+require('Version: 2.0.2' in main and "SNFLA_VERSION', '2.0.2'" in main and "SNFLA_SCHEMA_VERSION', '1.3.0'" in main, 'Runtime/header must be second-audit hardened 2.0.2 while unchanged storage schema remains 1.3.0.')
 require("SNFLA_FILE21_MIN_PACKAGE', '1.0.3.2'" in main and "SNFLA_FILE21_MIN_RUNTIME', '1.0.3'" in main, 'File 21 package/runtime compatibility gates must match current canonical contract.')
 for pat in [r'\bOFFSET\b', r'\bTRUNCATE\b', r'maybe_unserialize', r'(?<![A-Za-z_])unserialize\s*\(', r'wp_cache_flush\s*\(']:
     require(not re.search(pat, ALL_PHP, re.I), f'Forbidden pattern found: {pat}')
@@ -67,4 +67,4 @@ if errors:
     print('Architecture checks failed:')
     for e in errors: print('-',e)
     sys.exit(1)
-print(f'Architecture and ownership checks passed across {len(PHP)} PHP files, including v2.0.1 post-audit hardening.')
+print(f'Architecture and ownership checks passed across {len(PHP)} PHP files, including v2.0.2 second-audit hardening.')
