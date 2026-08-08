@@ -37,10 +37,44 @@ final class SNFLA_Redirects {
 				exit;
 			}
 		}
+
+		// The governing File 04 plan requires a *time-bounded read-only fallback*,
+		// not a tombstone-only state. If File 21 is temporarily unavailable after
+		// an otherwise valid cutover, a previously public legacy record may render
+		// from its immutable source evidence for the active fallback window. The
+		// legacy mutation guards remain installed globally, comments stay closed,
+		// and the temporary source URL is noindex/no-store so it cannot become a
+		// second permanent public route. A known non-public canonical target never
+		// falls back to the public legacy body.
+		if ( 'read_only_fallback' === $state && self::fallback_active() && 0 === $target_id && self::legacy_public_fallback_allowed( $legacy_id, $mapping ) ) {
+			self::prepare_read_only_fallback_response();
+			return;
+		}
+
 		if ( 'read_only_fallback' === $state && self::fallback_active() ) {
 			self::private_legacy_response( 410 );
 		}
 		self::private_legacy_response( 404 );
+	}
+
+	private static function legacy_public_fallback_allowed( $legacy_id, $mapping ) {
+		$post = get_post( absint( $legacy_id ) );
+		if ( ! $post instanceof WP_Post || SNFLA_Inventory::LEGACY_POST_TYPE !== (string) $post->post_type || 'publish' !== (string) $post->post_status ) {
+			return false;
+		}
+		$status = is_array( $mapping ) ? sanitize_key( (string) ( $mapping['status'] ?? '' ) ) : '';
+		if ( in_array( $status, array( 'quarantined', 'conflict', 'rollback_conflict', 'rolled_back', 'publication_rolled_back_interactions_pending' ), true ) ) {
+			return false;
+		}
+		return true;
+	}
+
+	private static function prepare_read_only_fallback_response() {
+		status_header( 200 );
+		nocache_headers();
+		header( 'Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0', true );
+		header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
+		header( 'X-Sabri-File04-Fallback: read-only', true );
 	}
 
 	private static function safe_target( $url, $legacy_id ) {
@@ -82,7 +116,7 @@ final class SNFLA_Redirects {
 				return new WP_Error( 'snfla_reconciliation_not_green', 'A fresh green reconciliation report is required before opening fallback.', array( 'status' => 412 ) );
 			}
 			$hours = min( 168, max( 1, absint( $hours ) ) );
-			$window = SNFLA_Integrity::sign_evidence( array( 'opened_at_utc' => gmdate( 'Y-m-d H:i:s' ), 'expires_at_utc' => gmdate( 'Y-m-d H:i:s', time() + $hours * HOUR_IN_SECONDS ), 'hours' => $hours, 'read_only' => true, 'tombstone_only' => true, 'reconciliation_checksum' => SNFLA_Reconciliation::report()['report_checksum'] ?? '' ) );
+			$window = SNFLA_Integrity::sign_evidence( array( 'opened_at_utc' => gmdate( 'Y-m-d H:i:s' ), 'expires_at_utc' => gmdate( 'Y-m-d H:i:s', time() + $hours * HOUR_IN_SECONDS ), 'hours' => $hours, 'read_only' => true, 'tombstone_only' => false, 'public_source_fallback' => true, 'reconciliation_checksum' => SNFLA_Reconciliation::report()['report_checksum'] ?? '' ) );
 			$previous = get_option( SNFLA_Schema::FALLBACK_OPTION, array() );
 			if ( ! update_option( SNFLA_Schema::FALLBACK_OPTION, $window, false ) ) { return new WP_Error( 'snfla_fallback_persist_failed', 'The fallback window could not be persisted.', array( 'status' => 500 ) ); }
 			$transition = SNFLA_Schema::transition( 'read_only_fallback', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'hours' => $hours, 'fallback_checksum' => SNFLA_Checksum::hash( $window ) ) );
