@@ -148,7 +148,7 @@ final class SNFLA_Mapping {
 		if ( ! empty( $wpdb->last_error ) ) { return new WP_Error( 'snfla_interaction_ledger_query_failed' ); }
 		if ( ! is_array( $row ) ) { return array(); }
 		$original = json_decode( (string) $row['original_json'], true );
-		$original = is_array( $original ) ? $original : array();
+		if ( ! is_array( $original ) || JSON_ERROR_NONE !== json_last_error() ) { return new WP_Error( 'snfla_interaction_original_corrupt' ); }
 		if ( ! empty( $row['created_by_migration'] ) ) { $original['created_by_migration'] = true; }
 		return $original;
 	}
@@ -217,6 +217,8 @@ final class SNFLA_Mapping {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
 		$conflicts = array_values( array_unique( array_filter( array_map( 'sanitize_key', $conflicts ) ) ) );
+		$conflicts_json = wp_json_encode( $conflicts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+		if ( ! is_string( $conflicts_json ) ) { return false; }
 		$sql = $wpdb->prepare(
 			"INSERT INTO {$t['dry_run']} (run_uuid,source_signature,legacy_id,source_checksum,target_type,eligible,conflict_codes_json,created_at) VALUES (%s,%s,%d,%s,%s,%d,%s,%s) ON DUPLICATE KEY UPDATE source_signature=VALUES(source_signature),source_checksum=VALUES(source_checksum),target_type=VALUES(target_type),eligible=VALUES(eligible),conflict_codes_json=VALUES(conflict_codes_json),created_at=VALUES(created_at)",
 			sanitize_text_field( $run_uuid ),
@@ -225,7 +227,7 @@ final class SNFLA_Mapping {
 			$source_checksum,
 			sanitize_key( $target_type ) ?: 'auto',
 			empty( $conflicts ) ? 1 : 0,
-			wp_json_encode( $conflicts ),
+			$conflicts_json,
 			gmdate( 'Y-m-d H:i:s' )
 		);
 		return false !== $wpdb->query( $sql );
@@ -305,6 +307,8 @@ final class SNFLA_Mapping {
 		$code = sanitize_key( $code );
 		$severity = in_array( $severity, array( 'low', 'medium', 'high', 'blocker' ), true ) ? $severity : 'high';
 		$redacted = SNFLA_Audit::redact( $context );
+		$redacted_json = wp_json_encode( $redacted, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+		if ( '' === $code || ! is_string( $redacted_json ) ) { return false; }
 		$fingerprint = SNFLA_Checksum::hash( array( $legacy_id, $code, $redacted ) );
 		$sql = $wpdb->prepare(
 			"INSERT INTO {$t['conflicts']} (legacy_id,conflict_code,severity,fingerprint,status,redacted_context_json,run_uuid,created_at) VALUES (%d,%s,%s,%s,'open',%s,%s,%s) ON DUPLICATE KEY UPDATE severity=VALUES(severity),status='open',redacted_context_json=VALUES(redacted_context_json),run_uuid=VALUES(run_uuid),resolved_at=NULL",
@@ -312,7 +316,7 @@ final class SNFLA_Mapping {
 			$code,
 			$severity,
 			$fingerprint,
-			wp_json_encode( $redacted ),
+			$redacted_json,
 			sanitize_text_field( $run_uuid ),
 			gmdate( 'Y-m-d H:i:s' )
 		);

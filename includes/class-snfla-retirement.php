@@ -51,7 +51,10 @@ final class SNFLA_Retirement {
 			$previous = get_option( SNFLA_Schema::RETIREMENT_OPTION, array() );
 			if ( ! update_option( SNFLA_Schema::RETIREMENT_OPTION, $evidence, false ) ) { return new WP_Error( 'snfla_retirement_evidence_persist_failed', 'Retirement evidence could not be persisted.', array( 'status' => 500 ) ); }
 			$transition = SNFLA_Schema::transition( 'retired', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'confirmation_hash' => hash( 'sha256', self::CONFIRMATION ), 'reconciliation_checksum' => $report['report_checksum'] ?? '', 'retirement_evidence_checksum' => SNFLA_Checksum::hash( $evidence ), 'redirect_handoff_checksum' => $handoff['manifest_checksum'] ?? '' ) );
-			if ( is_wp_error( $transition ) ) { update_option( SNFLA_Schema::RETIREMENT_OPTION, $previous, false ); return $transition; }
+			if ( is_wp_error( $transition ) ) {
+				$restored_previous = update_option( SNFLA_Schema::RETIREMENT_OPTION, $previous, false ) || get_option( SNFLA_Schema::RETIREMENT_OPTION, array() ) === $previous;
+				return $restored_previous ? $transition : new WP_Error( 'snfla_retirement_compensation_failed', 'Retirement transition failed and previous retirement evidence could not be restored exactly.', array( 'status' => 500, 'cause' => $transition->get_error_code(), 'manual_recovery_required' => true ) );
+			}
 			wp_clear_scheduled_hook( 'snfla_daily_integrity_check' );
 			$deactivated = self::deactivate_retired_plugin();
 			if ( ! $deactivated ) {

@@ -42,6 +42,9 @@ final class SNFLA_Capabilities {
 		if ( ! self::file21_ready() ) {
 			return new WP_Error( 'snfla_file21_unavailable', 'Canonical File 21 is unavailable or incompatible.', array( 'status' => 503 ) );
 		}
+		if ( class_exists( 'SNFLA_Database' ) && ! SNFLA_Database::schema_healthy() ) {
+			return new WP_Error( 'snfla_schema_unhealthy', 'File 04 storage schema is not accepted for protected mutation.', array( 'status' => 503 ) );
+		}
 		$canonical_migration_authority = in_array( $capability, array( self::CAP_RUN, self::CAP_REVIEW ), true ) && current_user_can( 'sabri_feed_run_migrations' );
 		$allowed = current_user_can( $capability ) || $canonical_migration_authority;
 		// Extension filters may narrow an already-authorized decision, never grant authority.

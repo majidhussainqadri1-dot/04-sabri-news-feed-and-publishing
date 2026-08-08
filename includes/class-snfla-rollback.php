@@ -14,8 +14,8 @@ final class SNFLA_Rollback {
 		$state_check = SNFLA_Schema::assert_current( $expected_state, $expected_version );
 		if ( is_wp_error( $state_check ) ) { return $state_check; }
 
-		$idempotency_key = trim( (string) $idempotency_key );
-		if ( strlen( $idempotency_key ) < 16 || strlen( $idempotency_key ) > 190 ) { return new WP_Error( 'snfla_invalid_idempotency_key', 'A stable rollback idempotency key of 16–190 characters is required.', array( 'status' => 400 ) ); }
+		$idempotency_key = (string) $idempotency_key;
+		if ( strlen( $idempotency_key ) < 16 || strlen( $idempotency_key ) > 190 || 1 !== preg_match( '/^[!-~]+$/D', $idempotency_key ) ) { return new WP_Error( 'snfla_invalid_idempotency_key', 'A stable exact ASCII rollback idempotency key of 16–190 non-space characters is required.', array( 'status' => 400 ) ); }
 		$signature        = (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $signature ) || ! SNFLA_Inventory::unchanged() ) { return new WP_Error( 'snfla_inventory_signature_invalid', 'A current locked legacy inventory is required for rollback.', array( 'status' => 412 ) ); }
 		$idempotency_hash = hash_hmac( 'sha256', $idempotency_key, wp_salt( 'auth' ) );

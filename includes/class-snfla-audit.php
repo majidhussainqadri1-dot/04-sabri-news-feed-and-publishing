@@ -129,7 +129,7 @@ final class SNFLA_Audit {
 				$cursor  = min( $cursor, absint( $row['id'] ?? 0 ) );
 				$context = json_decode( (string) ( $row['context_json'] ?? '' ), true );
 				if ( ! is_array( $context ) || JSON_ERROR_NONE !== json_last_error() ) {
-					continue;
+					return false;
 				}
 				if ( '' === $context_key ) {
 					return true;
@@ -146,9 +146,13 @@ final class SNFLA_Audit {
 		if ( $depth >= 5 ) { return array( '_truncated' => true ); }
 		$deny = array( 'name', 'email', 'phone', 'address', 'cnic', 'passport', 'content', 'post_content', 'details', 'notes', 'ip', 'user_agent', 'consent', 'password', 'secret', 'token', 'cookie', 'authorization', 'credential' );
 		$out  = array();
-		foreach ( array_slice( $context, 0, 100, true ) as $key => $value ) {
-			$key = sanitize_key( (string) $key );
-			if ( '' === $key ) { $key = 'field'; }
+		$key_index = 0;
+		foreach ( array_slice( $context, 0, 100, true ) as $raw_key => $value ) {
+			$key_index++;
+			$raw_key_string = (string) $raw_key;
+			$key = sanitize_key( $raw_key_string );
+			if ( '' === $key ) { $key = 'field_' . substr( hash( 'sha256', $raw_key_string . '|' . $key_index ), 0, 12 ); }
+			while ( array_key_exists( $key, $out ) ) { $key .= '_' . $key_index; }
 			if ( in_array( $key, $deny, true ) || preg_match( '/(?:email|phone|address|identity|content|detail|note|consent|patient|ip|secret|token|password|cookie|authorization|credential)/', $key ) ) {
 				$out[ $key ] = '[redacted]';
 				continue;
@@ -160,7 +164,8 @@ final class SNFLA_Audit {
 			} elseif ( null === $value ) {
 				$out[ $key ] = null;
 			} else {
-				$out[ $key ] = substr( sanitize_text_field( is_object( $value ) ? get_class( $value ) : (string) $value ), 0, 300 );
+				$clean = sanitize_text_field( is_object( $value ) ? get_class( $value ) : (string) $value );
+				$out[ $key ] = function_exists( 'mb_substr' ) ? mb_substr( $clean, 0, 300, 'UTF-8' ) : wp_check_invalid_utf8( substr( $clean, 0, 300 ), true );
 			}
 		}
 		return $out;

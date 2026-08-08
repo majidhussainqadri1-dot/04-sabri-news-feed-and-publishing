@@ -41,11 +41,18 @@ final class SNFLA_Schema {
 	}
 
 	public static function state_valid() {
-		return in_array( self::state(), self::states(), true );
+		return in_array( self::state(), self::states(), true ) && self::version() >= 1;
 	}
 
 	public static function version() {
-		return max( 1, absint( get_option( self::STATE_VERSION_OPTION, 1 ) ) );
+		$sentinel = new stdClass();
+		$stored = get_option( self::STATE_VERSION_OPTION, $sentinel );
+		if ( $stored === $sentinel ) { return 1; }
+		if ( is_int( $stored ) || ( is_string( $stored ) && preg_match( '/^[1-9][0-9]*$/D', $stored ) ) ) {
+			$version = (int) $stored;
+			return $version >= 1 ? $version : 0;
+		}
+		return 0;
 	}
 
 	public static function transition( $to, $expected_state, $expected_version, $actor_id, $context = array() ) {
@@ -58,7 +65,7 @@ final class SNFLA_Schema {
 			$expected_version = absint( $expected_version );
 			$current          = self::state();
 			$version          = self::version();
-			if ( self::INVALID_STATE === $current ) {
+			if ( self::INVALID_STATE === $current || $version < 1 ) {
 				return new WP_Error( 'snfla_lifecycle_state_invalid', 'The persisted lifecycle state is invalid. Repair the lifecycle evidence before any mutation.', array( 'status' => 412 ) );
 			}
 			if ( $current !== $expected_state || $version !== $expected_version ) {
@@ -73,7 +80,8 @@ final class SNFLA_Schema {
 			if ( ! $state_ok || ! $version_ok ) {
 				update_option( self::STATE_OPTION, $current, false );
 				update_option( self::STATE_VERSION_OPTION, $version, false );
-				return new WP_Error( 'snfla_lifecycle_persist_failed', 'The lifecycle transition could not be persisted.', array( 'status' => 500 ) );
+				$restored = self::state() === $current && self::version() === $version;
+				return new WP_Error( $restored ? 'snfla_lifecycle_persist_failed' : 'snfla_lifecycle_compensation_failed', $restored ? 'The lifecycle transition could not be persisted.' : 'Lifecycle persistence failed and the previous state/version pair could not be restored exactly.', array( 'status' => 500, 'manual_recovery_required' => ! $restored ) );
 			}
 			$recorded = SNFLA_Audit::record(
 				'lifecycle_transitioned',
@@ -95,7 +103,7 @@ final class SNFLA_Schema {
 		$expected_state   = sanitize_key( $expected_state );
 		$expected_version = absint( $expected_version );
 		$current = self::state();
-		if ( self::INVALID_STATE === $current ) {
+		if ( self::INVALID_STATE === $current || self::version() < 1 ) {
 			return new WP_Error( 'snfla_lifecycle_state_invalid', 'The persisted lifecycle state is invalid. Repair is required before continuing.', array( 'status' => 412 ) );
 		}
 		if ( $current !== $expected_state || self::version() !== $expected_version ) {
@@ -113,7 +121,7 @@ final class SNFLA_Schema {
 		try {
 			$current = self::state();
 			$version = self::version();
-			if ( self::INVALID_STATE === $current ) {
+			if ( self::INVALID_STATE === $current || $version < 1 ) {
 				return new WP_Error( 'snfla_lifecycle_state_invalid', 'The persisted lifecycle state is invalid. Automatic rollback recovery is blocked.', array( 'status' => 412 ) );
 			}
 			if ( $current !== $expected_state || $version !== $expected_version ) {
@@ -127,7 +135,8 @@ final class SNFLA_Schema {
 			if ( ! $state_ok || ! $version_ok ) {
 				update_option( self::STATE_OPTION, $current, false );
 				update_option( self::STATE_VERSION_OPTION, $version, false );
-				return new WP_Error( 'snfla_lifecycle_persist_failed', 'Rollback recovery state could not be persisted.', array( 'status' => 500 ) );
+				$restored = self::state() === $current && self::version() === $version;
+				return new WP_Error( $restored ? 'snfla_lifecycle_persist_failed' : 'snfla_lifecycle_compensation_failed', $restored ? 'Rollback recovery state could not be persisted.' : 'Rollback recovery persistence failed and the previous lifecycle pair could not be restored exactly.', array( 'status' => 500, 'manual_recovery_required' => ! $restored ) );
 			}
 			$payload = array_merge( array( 'from' => $current, 'to' => 'batch_migration', 'previous_version' => $version, 'new_version' => $version + 1 ), is_array( $context ) ? $context : array() );
 			if ( ! SNFLA_Audit::record( 'lifecycle_recovered_to_batch', $actor_id, $payload ) ) {
@@ -143,6 +152,7 @@ final class SNFLA_Schema {
 
 	public static function public_status() {
 		$state = self::state();
-		return array( 'state' => $state, 'version' => self::version(), 'valid' => in_array( $state, self::states(), true ) );
+		$version = self::version();
+		return array( 'state' => $state, 'version' => $version, 'valid' => in_array( $state, self::states(), true ) && $version >= 1 );
 	}
 }

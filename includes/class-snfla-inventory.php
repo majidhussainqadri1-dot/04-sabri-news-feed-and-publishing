@@ -391,8 +391,8 @@ final class SNFLA_Inventory {
 			}
 			$transition = SNFLA_Schema::transition( 'inventory_locked', $expected_state, $expected_version, $actor_id, array( 'source_signature' => $inventory['source_signature'] ) );
 			if ( is_wp_error( $transition ) ) {
-				update_option( SNFLA_Schema::INVENTORY_OPTION, $previous, false );
-				return $transition;
+				$restored = update_option( SNFLA_Schema::INVENTORY_OPTION, $previous, false ) || get_option( SNFLA_Schema::INVENTORY_OPTION, array() ) === $previous;
+				return $restored ? $transition : new WP_Error( 'snfla_inventory_compensation_failed', 'Lifecycle transition failed and the previous inventory evidence could not be restored exactly.', array( 'status' => 500, 'cause' => $transition->get_error_code() ) );
 			}
 			return array( 'inventory' => $inventory, 'lifecycle' => $transition );
 		} finally {

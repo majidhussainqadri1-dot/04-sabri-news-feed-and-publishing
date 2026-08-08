@@ -270,15 +270,22 @@ final class SNFLA_Plugin {
 		if ( ! SNFLA_Retirement::mutations_allowed() ) { wp_clear_scheduled_hook( 'snfla_daily_integrity_check' ); return; }
 		if ( ! SNFLA_Database::acquire_lock( 'operation', 0 ) ) { return; }
 		try {
-			$evidence = array(
+			$chain = SNFLA_Audit::verify_chain();
+			$source_unchanged = SNFLA_Inventory::unchanged();
+			$reconciliation_ok = SNFLA_Reconciliation::validate_current_report();
+			$audit_written = SNFLA_Audit::record( 'daily_integrity_checked', 0, array( 'source_unchanged' => $source_unchanged, 'audit_valid' => ! empty( $chain['valid'] ), 'reconciliation_ok' => $reconciliation_ok ) );
+			$evidence = SNFLA_Integrity::sign_evidence( array(
 				'checked_at_utc'    => gmdate( 'Y-m-d H:i:s' ),
-				'source_unchanged'  => SNFLA_Inventory::unchanged(),
-				'audit_chain'       => SNFLA_Audit::verify_chain(),
-				'reconciliation_ok' => SNFLA_Reconciliation::validate_current_report(),
-			);
-			$evidence = SNFLA_Integrity::sign_evidence( $evidence );
-			update_option( 'snfla_last_integrity_check', $evidence, false );
-			SNFLA_Audit::record( 'daily_integrity_checked', 0, array( 'source_unchanged' => $evidence['source_unchanged'], 'audit_valid' => ! empty( $evidence['audit_chain']['valid'] ), 'reconciliation_ok' => $evidence['reconciliation_ok'] ) );
+				'source_unchanged'  => $source_unchanged,
+				'audit_chain'       => $chain,
+				'reconciliation_ok' => $reconciliation_ok,
+				'audit_written'     => $audit_written,
+				'ok'                => $source_unchanged && ! empty( $chain['valid'] ) && $reconciliation_ok && $audit_written,
+			) );
+			$persisted = update_option( 'snfla_last_integrity_check', $evidence, false ) || get_option( 'snfla_last_integrity_check', array() ) === $evidence;
+			if ( ! $persisted || ! $audit_written ) {
+				do_action( 'snfla_operational_alert_v1', array( 'code' => 'daily_integrity_evidence_failed', 'severity' => 'critical' ) );
+			}
 		} finally {
 			SNFLA_Database::release_lock( 'operation' );
 		}

@@ -9,7 +9,7 @@ final class SNFLA_REST {
 			'expected_state' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_key', 'validate_callback' => static function ( $value ) { return in_array( sanitize_key( (string) $value ), SNFLA_Schema::states(), true ); } ),
 			'expected_version' => array( 'required' => true, 'type' => 'integer', 'sanitize_callback' => 'absint', 'validate_callback' => static function ( $value ) { return absint( $value ) >= 1; } ),
 		);
-		$ids_arg = array( 'legacy_ids' => array( 'required' => true, 'type' => 'array', 'items' => array( 'type' => 'integer' ), 'validate_callback' => static function ( $value ) { return is_array( $value ) && count( $value ) >= 1 && count( $value ) <= SNFLA_Migration::MAX_BATCH; } ) );
+		$ids_arg = array( 'legacy_ids' => array( 'required' => true, 'type' => 'array', 'items' => array( 'type' => 'integer' ), 'validate_callback' => static function ( $value ) { if ( ! is_array( $value ) || count( $value ) < 1 || count( $value ) > SNFLA_Migration::MAX_BATCH ) return false; $ids = array(); foreach ( $value as $id ) { if ( ! is_int( $id ) && ! ( is_string( $id ) && preg_match( '/^[1-9][0-9]*$/D', $id ) ) ) return false; $id = (int) $id; if ( $id <= 0 || isset( $ids[ $id ] ) ) return false; $ids[ $id ] = true; } return true; } ) );
 		self::route( '/status', WP_REST_Server::READABLE, 'status', array(), false );
 		self::route( '/inventory', WP_REST_Server::CREATABLE, 'inventory', $state_args );
 		self::route( '/dry-run', WP_REST_Server::CREATABLE, 'dry_run', array_merge( $state_args, array( 'limit' => array( 'type' => 'integer', 'default' => 500, 'minimum' => 50, 'maximum' => 1000, 'sanitize_callback' => 'absint' ) ) ) );
@@ -19,13 +19,13 @@ final class SNFLA_REST {
 			'restored_source_signature' => self::sha_arg(), 'restored_post_count' => array( 'required' => true, 'type' => 'integer', 'minimum' => 0 ),
 			'restored_comment_count' => array( 'required' => true, 'type' => 'integer', 'minimum' => 0 ), 'restored_table_counts' => array( 'required' => true, 'type' => 'object' ),
 		) );
-		self::route( '/migrate', WP_REST_Server::CREATABLE, 'migrate', array_merge( $state_args, $ids_arg, array( 'idempotency_key' => self::bounded_string_arg( false, 16, 190 ) ) ) );
+		self::route( '/migrate', WP_REST_Server::CREATABLE, 'migrate', array_merge( $state_args, $ids_arg, array( 'idempotency_key' => self::opaque_idempotency_arg() ) ) );
 		self::route( '/quarantine', WP_REST_Server::CREATABLE, 'quarantine', array_merge( $state_args, $ids_arg, array( 'reason_code' => self::bounded_string_arg( true, 3, 96 ), 'decision_reference' => self::bounded_string_arg( true, 8, 190 ) ) ) );
 		self::route( '/interactions/resume', WP_REST_Server::CREATABLE, 'resume_interactions', array( 'legacy_id' => array( 'required' => true, 'type' => 'integer', 'minimum' => 1, 'sanitize_callback' => 'absint' ), 'max_records' => array( 'type' => 'integer', 'default' => SNFLA_Interaction_Provider::DEFAULT_RECORD_BUDGET, 'minimum' => SNFLA_Interaction_Provider::PAGE_SIZE, 'maximum' => SNFLA_Interaction_Provider::MAX_RECORD_BUDGET, 'sanitize_callback' => 'absint' ) ) );
 		self::route( '/reconcile', WP_REST_Server::CREATABLE, 'reconcile', $state_args );
 		self::route( '/cutover', WP_REST_Server::CREATABLE, 'cutover', $state_args );
 		self::route( '/fallback', WP_REST_Server::CREATABLE, 'fallback', array_merge( $state_args, array( 'hours' => array( 'type' => 'integer', 'default' => 24, 'minimum' => 1, 'maximum' => 168, 'sanitize_callback' => 'absint' ) ) ) );
-		self::route( '/rollback', WP_REST_Server::CREATABLE, 'rollback', array_merge( $state_args, $ids_arg, array( 'idempotency_key' => self::bounded_string_arg( false, 16, 190 ), 'restore_handover' => array( 'type' => 'boolean', 'default' => false ), 'handover_confirmation' => self::bounded_string_arg( false, 0, 190 ) ) ) );
+		self::route( '/rollback', WP_REST_Server::CREATABLE, 'rollback', array_merge( $state_args, $ids_arg, array( 'idempotency_key' => self::opaque_idempotency_arg(), 'restore_handover' => array( 'type' => 'boolean', 'default' => false ), 'handover_confirmation' => self::bounded_string_arg( false, 0, 190 ) ) ) );
 		self::route( '/retire', WP_REST_Server::CREATABLE, 'retire', array_merge( $state_args, array( 'confirmation' => self::bounded_string_arg( true, 10, 190 ) ) ) );
 		self::route( '/conflicts/resolve', WP_REST_Server::CREATABLE, 'resolve_conflict', array( 'conflict_id' => array( 'required' => true, 'type' => 'integer', 'minimum' => 1, 'sanitize_callback' => 'absint' ), 'resolution_code' => self::bounded_string_arg( true, 3, 96 ) ) );
 	}
@@ -36,6 +36,10 @@ final class SNFLA_REST {
 
 	private static function bounded_string_arg( $required, $minimum, $maximum ) {
 		return array( 'required' => (bool) $required, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field', 'validate_callback' => static function ( $value ) use ( $minimum, $maximum ) { $length = strlen( trim( (string) $value ) ); return $length >= $minimum && $length <= $maximum; } );
+	}
+
+	private static function opaque_idempotency_arg() {
+		return array( 'required' => false, 'type' => 'string', 'validate_callback' => static function ( $value ) { $value = (string) $value; $length = strlen( $value ); return 0 === $length || ( $length >= 16 && $length <= 190 && 1 === preg_match( '/^[!-~]+$/D', $value ) ); } );
 	}
 
 	private static function sha_arg() {
@@ -178,8 +182,8 @@ final class SNFLA_REST {
 		// them can normalize distinct raw keys into one value and make unrelated
 		// requests share an operation ledger entry. Accept exact printable ASCII
 		// bytes only, compare them byte-for-byte, and hash that exact accepted key.
-		$header = trim( (string) $request->get_header( 'Idempotency-Key' ) );
-		$body   = trim( (string) $request->get_param( 'idempotency_key' ) );
+		$header = (string) $request->get_header( 'Idempotency-Key' );
+		$body   = (string) $request->get_param( 'idempotency_key' );
 		if ( '' !== $header && '' !== $body && ! hash_equals( $header, $body ) ) {
 			return new WP_Error( 'snfla_idempotency_key_mismatch', 'The Idempotency-Key header and request field do not match.', array( 'status' => 400 ) );
 		}
@@ -224,12 +228,14 @@ final class SNFLA_REST {
 
 	private static function fallback_status() {
 		$window = get_option( SNFLA_Schema::FALLBACK_OPTION, array() );
-		return array( 'active' => SNFLA_Redirects::fallback_active(), 'opened_at_utc' => is_array( $window ) ? sanitize_text_field( (string) ( $window['opened_at_utc'] ?? '' ) ) : '', 'expires_at_utc' => is_array( $window ) ? sanitize_text_field( (string) ( $window['expires_at_utc'] ?? '' ) ) : '', 'read_only' => is_array( $window ) && ! empty( $window['read_only'] ) );
+		$trusted = SNFLA_Integrity::evidence_valid( $window );
+		return array( 'evidence_valid' => $trusted, 'active' => $trusted && SNFLA_Redirects::fallback_active(), 'opened_at_utc' => $trusted ? sanitize_text_field( (string) ( $window['opened_at_utc'] ?? '' ) ) : '', 'expires_at_utc' => $trusted ? sanitize_text_field( (string) ( $window['expires_at_utc'] ?? '' ) ) : '', 'read_only' => $trusted && ! empty( $window['read_only'] ) );
 	}
 
 	private static function retirement_status() {
 		$evidence = get_option( SNFLA_Schema::RETIREMENT_OPTION, array() );
-		return array( 'recorded' => SNFLA_Integrity::evidence_valid( $evidence ), 'retired_at_utc' => is_array( $evidence ) ? sanitize_text_field( (string) ( $evidence['retired_at_utc'] ?? '' ) ) : '', 'source_retained' => is_array( $evidence ) && ! empty( $evidence['source_retained'] ), 'redirect_handoff_count' => is_array( $evidence ) ? absint( $evidence['redirect_handoff_count'] ?? 0 ) : 0 );
+		$trusted = SNFLA_Integrity::evidence_valid( $evidence );
+		return array( 'recorded' => $trusted, 'retired_at_utc' => $trusted ? sanitize_text_field( (string) ( $evidence['retired_at_utc'] ?? '' ) ) : '', 'source_retained' => $trusted && ! empty( $evidence['source_retained'] ), 'redirect_handoff_count' => $trusted ? absint( $evidence['redirect_handoff_count'] ?? 0 ) : 0 );
 	}
 
 	private static function integrity_status() {
@@ -260,6 +266,7 @@ final class SNFLA_REST {
 	private static function failure( WP_Error $error ) {
 		$data = $error->get_error_data();
 		$status = is_array( $data ) && isset( $data['status'] ) ? absint( $data['status'] ) : 400;
+		if ( $status < 400 || $status > 599 ) { $status = 500; }
 		$public_data = is_array( $data ) ? SNFLA_Audit::redact( $data ) : array();
 		unset( $public_data['status'] );
 		$response = new WP_REST_Response( array( 'ok' => false, 'code' => sanitize_key( $error->get_error_code() ), 'trace_id' => wp_generate_uuid4(), 'message' => sanitize_text_field( $error->get_error_message() ), 'data' => $public_data ), $status );

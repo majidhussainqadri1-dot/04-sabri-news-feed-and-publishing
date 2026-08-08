@@ -50,15 +50,18 @@ final class SNFLA_Integrity {
 		}
 		$checkpoint = isset( $run['checkpoint'] ) && is_array( $run['checkpoint'] ) ? $run['checkpoint'] : array();
 		$stored_ids = self::normalized_ids( (array) ( $checkpoint['legacy_ids'] ?? array() ) );
-		return hash_equals( (string) ( $run['source_signature'] ?? '' ), (string) $source_signature )
+		$stored_signature = strtolower( (string) ( $run['source_signature'] ?? '' ) );
+		$source_signature = strtolower( (string) $source_signature );
+		return 1 === preg_match( '/^[a-f0-9]{64}$/D', $stored_signature )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $source_signature )
+			&& hash_equals( $stored_signature, $source_signature )
 			&& $stored_ids === self::normalized_ids( $legacy_ids );
 	}
 
 	public static function run_is_stale( $run ) {
-		if ( ! is_array( $run ) || 'running' !== ( $run['status'] ?? '' ) || empty( $run['started_at'] ) ) {
-			return false;
-		}
+		if ( ! is_array( $run ) || 'running' !== ( $run['status'] ?? '' ) ) { return false; }
+		if ( empty( $run['started_at'] ) ) { return true; }
 		$started = strtotime( (string) $run['started_at'] . ' UTC' );
-		return false !== $started && $started < time() - self::STALE_RUN_SECONDS;
+		return false === $started || $started < time() - self::STALE_RUN_SECONDS || $started > time() + 300;
 	}
 }

@@ -276,7 +276,10 @@ final class SNFLA_Migration {
 		if ( $expected_post_count !== $restored_post_count || $expected_comment_count !== $restored_comment_count ) {
 			return new WP_Error( 'snfla_restore_count_mismatch', 'Restored publication or comment counts do not match the locked inventory.', array( 'status' => 412 ) );
 		}
-		$restored_table_counts = isset( $evidence['restored_table_counts'] ) && is_array( $evidence['restored_table_counts'] ) ? array_map( 'absint', $evidence['restored_table_counts'] ) : array();
+		$restored_table_counts = isset( $evidence['restored_table_counts'] ) && is_array( $evidence['restored_table_counts'] ) ? $evidence['restored_table_counts'] : array();
+		$expected_table_keys = array_keys( (array) ( $locked['table_counts'] ?? array() ) );
+		if ( array_values( array_diff( array_keys( $restored_table_counts ), $expected_table_keys ) ) ) { return new WP_Error( 'snfla_restore_table_counts_invalid', 'Restore table-count evidence contains unexpected table keys.', array( 'status' => 400 ) ); }
+		foreach ( $restored_table_counts as $key => $value ) { if ( false === filter_var( $value, FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 0 ) ) ) ) return new WP_Error( 'snfla_restore_table_counts_invalid', 'Restore table counts must be non-negative integers.', array( 'status' => 400, 'table' => sanitize_key( $key ) ) ); $restored_table_counts[ $key ] = (int) $value; }
 		foreach ( (array) ( $locked['table_counts'] ?? array() ) as $key => $count ) {
 			if ( ! array_key_exists( $key, $restored_table_counts ) || absint( $restored_table_counts[ $key ] ) !== absint( $count ) ) {
 				return new WP_Error( 'snfla_restore_table_count_mismatch', 'Restored legacy table counts do not match the locked inventory.', array( 'status' => 412, 'table' => sanitize_key( $key ) ) );
@@ -327,8 +330,8 @@ final class SNFLA_Migration {
 			return new WP_Error( 'snfla_backup_proof_persist_failed', 'Backup and restore proof could not be persisted.', array( 'status' => 500 ) );
 		}
 		if ( ! SNFLA_Audit::record( 'backup_restore_proof_recorded', $actor_id, array( 'backup_checksum' => $checksum, 'restore_checksum' => $restore_checksum, 'source_signature' => $source_signature, 'verifier_id' => $proof['verifier_id'], 'restored_at_utc' => $proof['restored_at_utc'] ), 'backup:' . $source_signature ) ) {
-			update_option( SNFLA_Schema::BACKUP_PROOF_OPTION, $previous, false );
-			return new WP_Error( 'snfla_backup_proof_audit_failed', 'Backup/restore proof was reverted because its audit evidence could not be written.', array( 'status' => 500 ) );
+			$restored_previous = update_option( SNFLA_Schema::BACKUP_PROOF_OPTION, $previous, false ) || get_option( SNFLA_Schema::BACKUP_PROOF_OPTION, array() ) === $previous;
+			return new WP_Error( $restored_previous ? 'snfla_backup_proof_audit_failed' : 'snfla_backup_proof_compensation_failed', $restored_previous ? 'Backup/restore proof was reverted because its audit evidence could not be written.' : 'Backup/restore audit failed and previous proof could not be restored exactly.', array( 'status' => 500, 'manual_recovery_required' => ! $restored_previous ) );
 		}
 		return $proof;
 	}
@@ -520,8 +523,8 @@ final class SNFLA_Migration {
 				return new WP_Error( 'snfla_candidate_conflicted', 'A selected dry-run candidate has unresolved blockers.', array( 'status' => 409, 'legacy_id' => $legacy_id, 'conflict_codes' => $candidate['conflict_codes'] ?? array() ) );
 			}
 		}
-		$idempotency_key = trim( (string) $idempotency_key );
-		if ( strlen( $idempotency_key ) < 16 || strlen( $idempotency_key ) > 190 ) { return new WP_Error( 'snfla_invalid_idempotency_key', 'A stable idempotency key of 16–190 characters is required.', array( 'status' => 400 ) ); }
+		$idempotency_key = (string) $idempotency_key;
+		if ( strlen( $idempotency_key ) < 16 || strlen( $idempotency_key ) > 190 || 1 !== preg_match( '/^[!-~]+$/D', $idempotency_key ) ) { return new WP_Error( 'snfla_invalid_idempotency_key', 'A stable exact ASCII idempotency key of 16–190 non-space characters is required.', array( 'status' => 400 ) ); }
 		$idempotency_hash = hash_hmac( 'sha256', $idempotency_key, wp_salt( 'auth' ) );
 		$existing = self::existing_run( 'migrate', $idempotency_hash );
 		if ( is_wp_error( $existing ) ) { return $existing; }

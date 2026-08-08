@@ -221,7 +221,6 @@ final class SNFLA_Interaction_Provider {
 						break;
 					}
 					$outcome = self::migrate_source_row( $kind, $legacy_id, $target_id, $source_row_id, $row, 'legacy_table' );
-					$cursor = $source_row_id;
 					$report['migrated'] += absint( $outcome['migrated'] ?? 0 );
 					$report['skipped']  += absint( $outcome['skipped'] ?? 0 );
 					if ( ! empty( $outcome['error'] ) ) {
@@ -229,6 +228,7 @@ final class SNFLA_Interaction_Provider {
 						$fatal = true;
 						break;
 					}
+					$cursor = $source_row_id;
 				}
 				if ( count( $rows ) < $limit ) {
 					break;
