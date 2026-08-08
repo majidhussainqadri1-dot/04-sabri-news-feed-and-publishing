@@ -16,9 +16,9 @@
 | 7 | Redirect loop integrity | **Defect.** Full-URL comparison could accept the same legacy path when only query/fragment differed. Redirect targets now require the same origin and a different normalized path. |
 | 8 | Mapping/interactions evidence serialization | **Defect.** `wp_json_encode()` failure could persist blank/malformed ledger evidence while the write reported success. Mapping and interaction evidence now fail closed before DB writes. |
 | 9 | Version/release/QA integration | **Defect.** Material third-audit changes were still represented as v2.0.2 and no deterministic third-audit gate existed. Runtime/docs/tests/builder/CI are aligned to v2.0.3 and the third-audit gate is first-class release evidence. |
-| 10 | Final fresh adversarial regression after Round 9 | **PENDING — not pre-certified.** |
+| 10 | Final fresh adversarial regression after Round 9 | **Defect.** `target_for()==0` was ambiguous: it could mean a genuine File21 outage or a healthy File21 with missing/inconsistent canonical mapping. The Round-1 fallback could therefore expose an unmigrated/inconsistent legacy record. Fallback now requires an actual File21 outage, local status `migrated`, a prior nonzero canonical target ID, an unchanged source checksum, and zero open/conflict-ledger errors. Healthy-File21 mapping inconsistency fails closed. |
 
-**Round 10 status: PENDING.** It must be executed freshly after all Round-9 release/QA corrections and temporary diagnostic helpers are removed; it is not pre-certified by prior green runs.
+**Round 10 status: DEFECT FOUND AND CORRECTED.** The correction preserves File21 canonical ownership and limits public legacy fallback to a bounded outage bridge for records already proven to have migrated. Exact-head CI and deterministic packaging remain the final repository-level regression gate before merge.
 
 ## Evidence boundary
 
