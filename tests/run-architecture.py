@@ -19,8 +19,9 @@ redirects=PHP['includes/class-snfla-redirects.php']
 retirement=PHP['includes/class-snfla-retirement.php']
 rest=PHP['includes/class-snfla-rest.php']
 mapping=PHP['includes/class-snfla-mapping.php']
+central=PHP['includes/class-snfla-central-plan.php']
 
-require('Version: 1.2.0' in main and "SNFLA_VERSION', '1.2.0'" in main and "SNFLA_SCHEMA_VERSION', '1.2.0'" in main, 'Runtime/header/schema versions must be 1.2.0.')
+require('Version: 1.3.0' in main and "SNFLA_VERSION', '1.3.0'" in main and "SNFLA_SCHEMA_VERSION', '1.3.0'" in main, 'Runtime/header/schema versions must be 1.3.0.')
 require("SNFLA_FILE21_MIN_PACKAGE', '1.0.3.2'" in main and "SNFLA_FILE21_MIN_RUNTIME', '1.0.3'" in main, 'File 21 package/runtime compatibility gates must match current canonical contract.')
 for pat in [r'\bOFFSET\b', r'\bTRUNCATE\b', r'maybe_unserialize', r'(?<![A-Za-z_])unserialize\s*\(', r'wp_cache_flush\s*\(']:
     require(not re.search(pat, ALL_PHP, re.I), f'Forbidden pattern found: {pat}')
@@ -47,10 +48,20 @@ require('capture_table_baseline' in PHP['includes/class-snfla-database.php'] and
 require('safe_count_query' in PHP['includes/class-snfla-migration.php'], 'Legacy count queries must fail closed rather than convert database errors to zero.')
 require('snfla_reconciliation_mapping_count_failed' in PHP['includes/class-snfla-reconciliation.php'], 'Reconciliation disposition count reads must fail closed.')
 require('rollback_checkpoint_persist_failed' in PHP['includes/class-snfla-rollback.php'] and 'interaction rollback was not started' in PHP['includes/class-snfla-rollback.php'], 'Rollback must checkpoint local evidence before interaction reversal.')
-require('PACKAGE-MANIFEST.json' not in PHP, 'Runtime PHP must not depend on source/package evidence files.')
+require('PACKAGE-MANIFEST.json' not in ALL_PHP, 'Runtime PHP must not depend on source/package evidence files.')
+
+# Modern central-plan reconciliation: map all applicable requirements without recreating owner backends.
+require("array( 37, 49 )" in central and "array( 74, 84 )" in central and "array( 239, 285 )" in central, 'Central-plan registry must contain the exact 71 applicable CV ranges.')
+require("'F04-CEN-01'" in central and "'F04-CEN-02'" in central, 'File-specific central requirements must be registered.')
+require("'AJ-07'" not in central or 'aj_ids' in central, 'Acceptance-journey registry must exist.')
+require('sabri_file26_legacy_resolution_v1' in central and "'File 26'" in central, 'File 26 legacy-resolution compatibility contract must be explicit.')
+require('integration_regression_only' in central and 'duplicate truth store' in central, 'Externally owned modern features must remain integration regressions, not duplicate File 04 backends.')
+require('source_trace_complete' in central and 'production_ready' in central, 'Source completion and production readiness must remain truthfully separate.')
+require('wp_insert_post(' not in central and '$wpdb->posts' not in central, 'Central-plan layer must not add direct publication writes.')
+require("'class-snfla-central-plan.php'" in main and 'SNFLA_Central_Plan::boot' in main, 'Central-plan reconciliation class must be loaded and booted.')
 
 if errors:
     print('Architecture checks failed:')
     for e in errors: print('-',e)
     sys.exit(1)
-print(f'Architecture and ownership checks passed ({30} assertions across {len(PHP)} PHP files).')
+print(f'Architecture and ownership checks passed ({38} assertions across {len(PHP)} PHP files).')
