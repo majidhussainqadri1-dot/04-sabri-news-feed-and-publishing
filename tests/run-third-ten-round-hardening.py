@@ -21,10 +21,16 @@ need('$interaction_json = wp_json_encode' in mapping and 'if ( ! is_string( $int
 need('run-third-ten-round-hardening.py' in workflow and 'run-third-ten-round-hardening.py' in build,'Round9 third audit gate must run in CI and builder',f)
 need("VERSION='2.0.3'" in build and 'THIRD_TEN_ROUND_REVIEW_ROUNDS=10' in build,'Round9 builder metadata missing',f)
 need("'audit-file-04-*'" in workflow,'Current third-audit branch family must be covered by push CI',f)
+# Round 10: fallback may only bridge a real File21 outage for an unchanged record
+# that the local ledger proves was already migrated to a canonical target.
+need('$file21_ready = SNFLA_Capabilities::file21_ready()' in redirects and '&& ! $file21_ready' in redirects,'Round10 fallback must require an actual File21 provider outage',f)
+need("'migrated' !== sanitize_key" in redirects and "absint( $mapping['target_id'] ?? 0 ) <= 0" in redirects,'Round10 fallback must reject missing/unmigrated local mappings',f)
+need("SNFLA_Checksum::post( $legacy_id )" in redirects and "hash_equals( (string) $mapping['source_checksum'], $current_checksum )" in redirects,'Round10 fallback must prove the legacy source is unchanged',f)
+need('SNFLA_Mapping::open_conflict_codes( $legacy_id )' in redirects,'Round10 fallback must fail closed on mapping conflicts or conflict-ledger read failure',f)
 need('Round 10' in record and ('PENDING' in record or 'No new defect' in record or 'Defect.' in record),'Round10 state must be explicit',f)
 need('wp_insert_post(' not in redirects and 'SNFLA_Migration::migrate(' not in redirects,'Third audit must not add a publication/migration backend',f)
 if f:
  print('Third ten-round hardening gate failed:',file=sys.stderr)
- [print('-',x,file=sys.stderr) for x in f]
+ for item in f: print('-',item,file=sys.stderr)
  sys.exit(1)
-print('Third ten-round hardening source gate passed for implemented controls and audit trace.')
+print('Third ten-round hardening source gate passed for all ten implemented review controls and audit trace.')
