@@ -18,13 +18,34 @@ jobs:
           ref: audit-file-04-eighty-round-hardening
           persist-credentials: true
       - name: Apply sequential corrective source patch
-        run: python3 tools/apply-eighty-round-hardening.py
+        id: patch
+        shell: bash
+        run: |
+          set +e
+          python3 tools/apply-eighty-round-hardening.py > /tmp/eighty-patch.log 2>&1
+          rc=$?
+          cat /tmp/eighty-patch.log
+          if [ "$rc" -ne 0 ]; then
+            cp /tmp/eighty-patch.log EIGHTY-PATCH-DIAGNOSTIC.txt
+            git checkout -- includes sabri-news-feed-legacy-adapter.php
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+          else
+            rm -f EIGHTY-PATCH-DIAGNOSTIC.txt
+            echo "failed=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
       - name: Syntax after correction
+        if: steps.patch.outputs.failed == 'false'
         run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
-      - name: Commit corrected source
+      - name: Commit patch result
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add includes sabri-news-feed-legacy-adapter.php
-          git commit -m 'File 04 v2.0.4: correct defects from 80-round audit R01-R33'
+          if [ "${{ steps.patch.outputs.failed }}" = "true" ]; then
+            git add EIGHTY-PATCH-DIAGNOSTIC.txt
+            git commit -m '80-round audit: record corrective patch diagnostic'
+          else
+            git add -A includes sabri-news-feed-legacy-adapter.php EIGHTY-PATCH-DIAGNOSTIC.txt
+            git commit -m 'File 04 v2.0.4: correct defects from 80-round audit R01-R33'
+          fi
           git push origin HEAD:audit-file-04-eighty-round-hardening
