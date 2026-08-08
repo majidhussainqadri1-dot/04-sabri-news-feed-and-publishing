@@ -18,6 +18,8 @@
 | 9 | Release/version/QA integration | **Defect.** Material corrections still identified as v2.0.1 and had no deterministic second-audit gate; aligned v2.0.2 runtime/docs/builder/CI/tests. |
 | 10 | Final fresh adversarial regression after Round 9 | **PENDING — not pre-certified.** |
 
+**Round 10 status: PENDING.** It must be executed freshly on the fully corrected Round-9 source; it is not counted as passed merely because earlier regression gates are green.
+
 ## Evidence boundary
 
 This is source/repository evidence only. It does not prove Hostinger staging, real File00/File21/File26 providers/data, real-device accessibility, isolated restore, rollback rehearsal, Founder approval, live deployment or operations.
