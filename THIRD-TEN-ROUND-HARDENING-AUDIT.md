@@ -18,6 +18,8 @@
 | 9 | Version/release/QA integration | **Defect.** Material third-audit changes were still represented as v2.0.2 and no deterministic third-audit gate existed. Runtime/docs/tests/builder/CI are aligned to v2.0.3 and the third-audit gate is first-class release evidence. |
 | 10 | Final fresh adversarial regression after Round 9 | **PENDING — not pre-certified.** |
 
+**Round 10 status: PENDING.** It must be executed freshly after all Round-9 release/QA corrections and temporary diagnostic helpers are removed; it is not pre-certified by prior green runs.
+
 ## Evidence boundary
 
 This audit proves repository/source behavior only. Hostinger staging, real File00/File21/File26 providers and data, browser/device accessibility, isolated restore, rollback/DR rehearsal, Founder approval, live deployment and measured operations remain separate release gates.
