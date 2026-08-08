@@ -4,7 +4,7 @@ import argparse, hashlib, json, shutil, subprocess, sys, tempfile, uuid, zipfile
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-VERSION='1.3.0'
+VERSION='2.0.0'
 PACKAGE_ROOT='04-sabri-news-feed-legacy-adapter'
 FIXED_DT=(2026,8,8,0,0,0)
 GENERATED_NAMES={'SOURCE-INVENTORY.tsv','CHECKSUMS.sha256','RELEASE-LOCK.json','PACKAGE-MANIFEST.json','PACKAGE-CHECKSUMS.sha256'}
@@ -16,7 +16,9 @@ FILE_PLAN_ID='SSH-F04-PLAN-2026-v1.0'
 CENTRAL_CV_COUNT=71
 FILE_CEN_COUNT=2
 AJ_COUNT=15
+FUTURE18_COUNT=18
 CENTRAL_PLAN_REVIEW_ROUNDS=2
+FUTURE18_REVIEW_ROUNDS=2
 HISTORICAL_REVIEW_ROUNDS=40
 
 def sha256_bytes(data:bytes)->str:return hashlib.sha256(data).hexdigest()
@@ -64,7 +66,10 @@ def run_source_gates():
     subprocess.run(['php',str(ROOT/'tests/run-unit.php')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run(['php',str(ROOT/'tests/run-central-plan.php')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-architecture.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
+    subprocess.run([sys.executable,str(ROOT/'tests/run-file04-own-plan.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
+    subprocess.run([sys.executable,str(ROOT/'tests/run-future18.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-central-reviews.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
+    subprocess.run([sys.executable,str(ROOT/'tests/run-future18-reviews.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
 
 def build(output:Path,source_output:Path):
     run_source_gates()
@@ -91,6 +96,7 @@ def build(output:Path,source_output:Path):
           'package_root':PACKAGE_ROOT,
           'governing_plans':[CENTRAL_PLAN_ID,FILE_PLAN_ID],
           'central_plan':{'applicable_cv_count':CENTRAL_CV_COUNT,'file_specific_cen_count':FILE_CEN_COUNT,'acceptance_journey_count':AJ_COUNT},
+          'future18':{'count':FUTURE18_COUNT,'requirement_range':'F04-FUT-001..018','traceability':'FUTURE18-TRACEABILITY.md','review_rounds':FUTURE18_REVIEW_ROUNDS,'canonical_owner_policy':'adapter-only; no duplicate publication/search/feed truth'},
           'canonical_owners':{'publications_home_news_feed':'File 21','search_discovery':'File 26','shell':'File 20','visual_system':'File 25','assurance':'File 24'},
           'legacy_source_retained':True,
           'non_destructive':True,
@@ -143,7 +149,9 @@ def build(output:Path,source_output:Path):
           'central_plan_cv_count':CENTRAL_CV_COUNT,
           'file_specific_cen_count':FILE_CEN_COUNT,
           'acceptance_journey_count':AJ_COUNT,
+          'future18_count':FUTURE18_COUNT,
           'central_plan_review_rounds':CENTRAL_PLAN_REVIEW_ROUNDS,
+          'future18_review_rounds':FUTURE18_REVIEW_ROUNDS,
           'historical_v120_review_rounds':HISTORICAL_REVIEW_ROUNDS,
           'known_unresolved_source_scope_blockers':0,
           'truthful_status':{
@@ -183,7 +191,9 @@ def build(output:Path,source_output:Path):
       'central_plan_cv_count':CENTRAL_CV_COUNT,
       'file_specific_cen_count':FILE_CEN_COUNT,
       'acceptance_journey_count':AJ_COUNT,
+      'future18_count':FUTURE18_COUNT,
       'central_plan_review_rounds':CENTRAL_PLAN_REVIEW_ROUNDS,
+      'future18_review_rounds':FUTURE18_REVIEW_ROUNDS,
       'known_unresolved_source_scope_blockers':0,
       'installable_zip':str(output),'installable_zip_sha256':install_sha,
       'complete_source_zip':str(source_output),'complete_source_zip_sha256':source_zip_sha,
@@ -205,12 +215,14 @@ def verify_only():
           'complete_source_zip_sha256':sha256_file(sa),
           'central_plan_cv_count':CENTRAL_CV_COUNT,
           'central_plan_review_rounds':CENTRAL_PLAN_REVIEW_ROUNDS,
+          'future18_count':FUTURE18_COUNT,
+          'future18_review_rounds':FUTURE18_REVIEW_ROUNDS,
         },sort_keys=True))
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-1.3.0.zip'))
-    ap.add_argument('--source-output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-1.3.0-complete-source.zip'))
+    ap.add_argument('--output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.0.zip'))
+    ap.add_argument('--source-output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.0-complete-source.zip'))
     ap.add_argument('--verify-only',action='store_true')
     args=ap.parse_args()
     if args.verify_only: verify_only(); return
