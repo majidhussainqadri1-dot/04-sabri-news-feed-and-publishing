@@ -17,6 +17,7 @@ final class SNFLA_Post_Audit_Hardening {
 		add_filter( 'rest_post_dispatch', array( __CLASS__, 'harden_future_response' ), 10, 3 );
 		add_filter( 'snfla_visual_migration_diff_provider_v1', array( __CLASS__, 'validate_visual_diff_evidence' ), 999, 2 );
 		add_filter( 'snfla_redirect_citation_observatory_v1', array( __CLASS__, 'validate_redirect_observatory_evidence' ), 999, 2 );
+		add_filter( 'snfla_disaster_recovery_gameday_v1', array( __CLASS__, 'validate_gameday_evidence' ), 999, 2 );
 		add_filter( 'snfla_release_readiness_v1', array( __CLASS__, 'harden_release_readiness' ), 50, 1 );
 	}
 
@@ -138,6 +139,39 @@ final class SNFLA_Post_Audit_Hardening {
 			'contains_raw_pii'  => false,
 		);
 		update_option( self::REDIRECT_EVIDENCE_OPTION, SNFLA_Integrity::sign_evidence( $summary ), false );
+		return $evidence;
+	}
+
+	/**
+	 * A DR provider cannot self-attest success with one boolean. Every exercise
+	 * requested by File 04 must have an explicit passing result and the provider
+	 * must attest that no production environment was used.
+	 */
+	public static function validate_gameday_evidence( $evidence, $request ) {
+		$evidence = is_array( $evidence ) ? $evidence : array();
+		$request  = is_array( $request ) ? $request : array();
+		$required = array_values( array_unique( array_map( 'sanitize_key', (array) ( $request['required_exercises'] ?? array() ) ) ) );
+		$matrix   = array();
+		foreach ( array( 'exercises', 'results', 'checks' ) as $key ) {
+			if ( isset( $evidence[ $key ] ) && is_array( $evidence[ $key ] ) ) { $matrix = $evidence[ $key ]; break; }
+		}
+		$missing = self::missing_or_failed( $required, $matrix );
+		$production_safe = empty( $evidence['production_environment'] )
+			&& empty( $evidence['production_used'] )
+			&& empty( $evidence['production_chaos_performed'] );
+		$valid = ! empty( $evidence['verified'] )
+			&& ! empty( $evidence['provider_id'] )
+			&& 'disposable_staging' === sanitize_key( (string) ( $request['environment'] ?? '' ) )
+			&& false === (bool) ( $request['production_chaos_allowed'] ?? true )
+			&& ! empty( $required )
+			&& empty( $missing )
+			&& $production_safe;
+		$evidence['verified'] = $valid;
+		$evidence['hardening_validation'] = array(
+			'all_required_exercises_passed' => ! empty( $required ) && empty( $missing ),
+			'missing_or_failed_exercises'   => $missing,
+			'production_environment_refused'=> $production_safe,
+		);
 		return $evidence;
 	}
 
