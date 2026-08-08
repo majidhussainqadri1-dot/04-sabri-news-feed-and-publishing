@@ -58,6 +58,8 @@ final class SNFLA_Migration {
 				$batch_size
 			);
 			if ( is_wp_error( $streamed ) ) { SNFLA_Mapping::clear_dry_run_rows( $run_uuid ); return $streamed; }
+			$planning = SNFLA_Plan_Completion::dry_run_estimates( $sample, $totals );
+			if ( is_wp_error( $planning ) ) { SNFLA_Mapping::clear_dry_run_rows( $run_uuid ); return $planning; }
 			$report = array(
 				'schema'               => 3,
 				'run_uuid'             => $run_uuid,
@@ -74,6 +76,10 @@ final class SNFLA_Migration {
 				'destructive'          => false,
 				'canonical_owner'      => 'File 21',
 				'interaction_provider' => SNFLA_File21_Adapter::INTERACTION_PROVIDER,
+				'estimated_dispositions' => $planning['estimated_dispositions'],
+				'storage_estimate'       => $planning['storage_estimate'],
+				'time_estimate'          => $planning['time_estimate'],
+				'sample_diffs'           => $planning['sample_diffs'],
 			);
 			$report['report_checksum'] = SNFLA_Checksum::hash( $report );
 			$previous = get_option( SNFLA_Schema::DRY_RUN_OPTION, array() );
@@ -114,9 +120,10 @@ final class SNFLA_Migration {
 		if ( ! $post instanceof WP_Post || SNFLA_Inventory::LEGACY_POST_TYPE !== $post->post_type ) { return array( 'invalid_legacy_publication' ); }
 		if ( '' === trim( (string) $post->post_title ) || '' === trim( wp_strip_all_tags( (string) $post->post_content ) ) ) { $codes[] = 'missing_required_content'; }
 		$author_id = absint( $post->post_author );
-		if ( $author_id <= 0 || ! get_userdata( $author_id ) ) {
-			$codes[] = 'author_missing';
-		} elseif ( in_array( sanitize_key( (string) $post->post_status ), array( 'publish', 'future' ), true ) && ! SNFLA_File21_Adapter::public_author_eligible( $author_id ) ) {
+		$author_preflight = SNFLA_Plan_Completion::authorship_preflight( $legacy_id, $author_id );
+		if ( is_wp_error( $author_preflight ) ) {
+			$codes[] = $author_preflight->get_error_code();
+		} elseif ( in_array( sanitize_key( (string) $post->post_status ), array( 'publish', 'future' ), true ) && ! SNFLA_File21_Adapter::public_author_eligible( absint( $author_preflight['user_id'] ?? 0 ) ) ) {
 			$codes[] = 'public_author_no_longer_eligible';
 		}
 		if ( SNFLA_File21_Adapter::target_for( $legacy_id ) > 0 ) { $codes[] = 'already_migrated'; }
@@ -140,21 +147,18 @@ final class SNFLA_Migration {
 		// never guesses writes into File 21-owned metadata. Fields for which the
 		// accepted File 21 migration contract has no canonical command remain
 		// source-only and block migration until an approved contract is available.
+		$media_preflight = SNFLA_Plan_Completion::media_preflight( $legacy_id );
+		if ( is_wp_error( $media_preflight ) ) { $codes[] = $media_preflight->get_error_code(); }
 		$governed_meta = array(
-			'_snp_video_url'      => 'legacy_video_url_requires_canonical_media_mapping',
 			'_snp_tags'           => 'legacy_tag_metadata_requires_canonical_mapping',
 			'_snp_language'       => 'legacy_language_requires_canonical_mapping',
 			'_snp_featured'       => 'legacy_featured_flag_requires_canonical_policy',
 			'_snp_pinned'         => 'legacy_pinned_flag_requires_canonical_policy',
-			'_snp_media_manifest' => 'legacy_media_manifest_requires_canonical_mapping',
-			'_snp_source_ledger'  => 'legacy_source_ledger_requires_canonical_mapping',
 		);
 		foreach ( $governed_meta as $meta_key => $conflict_code ) {
 			$value   = get_post_meta( $legacy_id, $meta_key, true );
 			$present = is_array( $value ) ? ! empty( $value ) : ( is_object( $value ) || '' !== trim( (string) $value ) );
-			if ( $present ) {
-				$codes[] = $conflict_code;
-			}
+			if ( $present ) { $codes[] = $conflict_code; }
 		}
 		$view_extra = SNFLA_Interaction_Provider::legacy_view_meta_extra( $legacy_id );
 		if ( is_wp_error( $view_extra ) ) {
@@ -174,7 +178,7 @@ final class SNFLA_Migration {
 		$unknown_snp_meta = self::safe_count_query( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE post_id=%d AND meta_key LIKE %s AND meta_key NOT IN ({$quoted_known})", $legacy_id, $wpdb->esc_like( '_snp_' ) . '%' ), 'legacy_meta_count_failed' );
 		if ( is_wp_error( $unknown_snp_meta ) ) { $codes[] = $unknown_snp_meta->get_error_code(); } elseif ( $unknown_snp_meta > 0 ) { $codes[] = 'unmapped_snp_metadata'; }
 		$attachments = self::safe_count_query( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type='attachment' AND post_parent=%d", $legacy_id ), 'legacy_attachment_count_failed' );
-		if ( is_wp_error( $attachments ) ) { $codes[] = $attachments->get_error_code(); } elseif ( $attachments > 0 ) { $codes[] = 'unmapped_attachment_relationships'; }
+		if ( is_wp_error( $attachments ) ) { $codes[] = $attachments->get_error_code(); } elseif ( $attachments > 0 && is_wp_error( $media_preflight ) ) { $codes[] = 'unmapped_attachment_relationships'; }
 		$nonapproved_comments = self::safe_count_query( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->comments} WHERE comment_post_ID=%d AND comment_approved NOT IN ('1',1)", $legacy_id ), 'legacy_comment_state_count_failed' );
 		if ( is_wp_error( $nonapproved_comments ) ) { $codes[] = $nonapproved_comments->get_error_code(); } elseif ( $nonapproved_comments > 0 ) { $codes[] = 'nonapproved_comments_require_policy'; }
 		$comment_meta = self::safe_count_query( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->commentmeta} cm INNER JOIN {$wpdb->comments} c ON c.comment_ID=cm.comment_id WHERE c.comment_post_ID=%d", $legacy_id ), 'legacy_comment_meta_count_failed' );

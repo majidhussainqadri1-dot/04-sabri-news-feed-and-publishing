@@ -301,15 +301,14 @@ final class SNFLA_Plan_Completion {
 			}
 			$parts[ $key ] = max( 0, (int) $value );
 		}
-		$attachment_bytes = 0;
-		$attachments = get_posts( array( 'post_type' => 'attachment', 'post_status' => 'inherit', 'posts_per_page' => -1, 'fields' => 'ids', 'meta_query' => array(), 'no_found_rows' => true ) );
-		foreach ( array_map( 'absint', (array) $attachments ) as $attachment_id ) {
-			$parent = absint( wp_get_post_parent_id( $attachment_id ) );
-			if ( $parent <= 0 || SNFLA_Inventory::LEGACY_POST_TYPE !== get_post_type( $parent ) ) { continue; }
-			$file = get_attached_file( $attachment_id, true );
-			if ( is_string( $file ) && is_file( $file ) ) { $attachment_bytes += max( 0, (int) filesize( $file ) ); }
-		}
-		$parts['attachment_bytes'] = $attachment_bytes;
+		$wpdb->last_error = '';
+		$attachment_count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} a INNER JOIN {$wpdb->posts} p ON p.ID=a.post_parent WHERE a.post_type='attachment' AND p.post_type=%s", SNFLA_Inventory::LEGACY_POST_TYPE ) );
+		if ( ! empty( $wpdb->last_error ) || ! is_numeric( $attachment_count ) ) { return new WP_Error( 'snfla_dry_run_attachment_count_failed', 'Legacy attachment counts could not be measured safely.', array( 'status' => 500 ) ); }
+		$attachment_count = max( 0, (int) $attachment_count );
+		$attachment_bytes = apply_filters( 'snfla_storage_estimate_media_bytes_v1', null, $attachment_count, SNFLA_Inventory::locked() );
+		if ( $attachment_count > 0 && ! is_numeric( $attachment_bytes ) ) { return new WP_Error( 'snfla_media_storage_estimate_provider_required', 'A bounded storage provider estimate is required for legacy attachments; File 04 will not perform an unbounded filesystem scan.', array( 'status' => 412, 'attachment_count' => $attachment_count ) ); }
+		$parts['attachment_bytes'] = max( 0, (int) $attachment_bytes );
+		$parts['attachment_count'] = $attachment_count;
 		$source_bytes = array_sum( $parts );
 		$items = absint( $totals['candidate_count'] ?? 0 );
 		$throughput = (float) apply_filters( 'snfla_migration_estimated_items_per_second', 5.0, $items, $source_bytes );
@@ -384,9 +383,11 @@ final class SNFLA_Plan_Completion {
 	public static function current_dry_run_analysis() {
 		$analysis = get_option( self::ANALYSIS_OPTION, array() );
 		$dry = get_option( SNFLA_Schema::DRY_RUN_OPTION, array() );
-		if ( ! is_array( $analysis ) || ! SNFLA_Integrity::report_checksum_valid( array_merge( $analysis, array( 'report_checksum' => $analysis['analysis_checksum'] ?? '' ) ) ) ) {
-			return array();
-		}
+		if ( ! is_array( $analysis ) || empty( $analysis['analysis_checksum'] ) ) { return array(); }
+		$expected_checksum = strtolower( (string) $analysis['analysis_checksum'] );
+		$checksum_payload = $analysis;
+		unset( $checksum_payload['analysis_checksum'] );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_checksum ) || ! hash_equals( $expected_checksum, SNFLA_Checksum::hash( $checksum_payload ) ) ) { return array(); }
 		if ( empty( $dry['run_uuid'] ) || empty( $analysis['run_uuid'] ) || ! hash_equals( (string) $dry['run_uuid'], (string) $analysis['run_uuid'] ) || empty( $dry['source_signature'] ) || ! hash_equals( (string) $dry['source_signature'], (string) ( $analysis['source_signature'] ?? '' ) ) ) {
 			return array();
 		}
@@ -429,7 +430,12 @@ final class SNFLA_Plan_Completion {
 		$start = self::$request_started[ $key ] ?? microtime( true );
 		unset( self::$request_started[ $key ] );
 		$duration_ms = max( 0.0, ( microtime( true ) - $start ) * 1000 );
-		$status = is_wp_error( $response ) ? (int) ( $response->get_error_data()['status'] ?? 500 ) : ( $response instanceof WP_REST_Response ? $response->get_status() : 200 );
+		if ( is_wp_error( $response ) ) {
+			$error_data = $response->get_error_data();
+			$status = is_array( $error_data ) ? (int) ( $error_data['status'] ?? 500 ) : 500;
+		} else {
+			$status = $response instanceof WP_REST_Response ? $response->get_status() : 200;
+		}
 		self::record_metric( (string) $request->get_route(), $duration_ms, $status );
 		return $response;
 	}
