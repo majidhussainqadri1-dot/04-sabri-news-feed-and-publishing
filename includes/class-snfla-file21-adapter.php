@@ -25,16 +25,36 @@ final class SNFLA_File21_Adapter {
 		if ( ! SNFLA_Capabilities::file21_ready() ) {
 			return new WP_Error( 'snfla_file21_unavailable', 'Canonical File 21 migration services are unavailable.' );
 		}
-		return \Sabri\HomeNewsFeed\LegacyPublicationMigration::migrate_selected(
+		$preflight = SNFLA_Plan_Completion::migration_preflight( $legacy_ids );
+		if ( is_wp_error( $preflight ) ) { return $preflight; }
+		$author_context = array();
+		$media_context  = array();
+		foreach ( (array) ( $preflight['records'] ?? array() ) as $legacy_id => $row ) {
+			$author_context[ absint( $legacy_id ) ] = array(
+				'user_id'       => absint( $row['author']['user_id'] ?? 0 ),
+				'platform_uuid' => sanitize_text_field( (string) ( $row['author']['platform_uuid'] ?? '' ) ),
+				'placeholder'   => ! empty( $row['author']['placeholder'] ),
+			);
+			$media_context[ absint( $legacy_id ) ] = array(
+				'provider_id'     => sanitize_key( (string) ( $row['media']['provider_id'] ?? '' ) ),
+				'reference_count' => absint( $row['media']['reference_count'] ?? 0 ),
+			);
+		}
+		$result = \Sabri\HomeNewsFeed\LegacyPublicationMigration::migrate_selected(
 			$legacy_ids,
 			absint( $actor_id ),
 			array(
 				'copy_comments'         => true,
+				'copy_media'            => true,
+				'copy_references'       => true,
 				'target'                => 'auto',
 				'migrate_interactions'  => (bool) $with_interactions,
 				'interaction_provider'  => self::INTERACTION_PROVIDER,
+				'author_identity_context'=> $author_context,
+				'media_preflight_context'=> $media_context,
 			)
 		);
+		return SNFLA_Plan_Completion::verify_file21_result( $legacy_ids, $result, absint( $actor_id ) );
 	}
 
 	public static function rollback( array $legacy_ids, $actor_id ) {
