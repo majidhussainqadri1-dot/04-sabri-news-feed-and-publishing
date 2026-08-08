@@ -143,6 +143,7 @@ final class SNFLA_Post_Audit_Hardening {
 		$required = array_values( array_unique( array_map( 'sanitize_key', (array) ( $request['required'] ?? array() ) ) ) );
 		$matrix   = self::evidence_matrix( $evidence );
 		$missing  = self::missing_or_failed( $required, $matrix );
+		$source_bound = self::provider_request_bound( $evidence, $request );
 		$counts_valid = isset( $evidence['diff_count'], $evidence['critical_diff_count'] )
 			&& is_numeric( $evidence['diff_count'] )
 			&& is_numeric( $evidence['critical_diff_count'] )
@@ -152,6 +153,7 @@ final class SNFLA_Post_Audit_Hardening {
 			&& ! empty( $evidence['provider_id'] )
 			&& $counts_valid
 			&& 0 === absint( $evidence['critical_diff_count'] )
+			&& $source_bound
 			&& empty( $missing );
 		$evidence['verified'] = $valid;
 		$evidence['hardening_validation'] = array(
@@ -159,6 +161,7 @@ final class SNFLA_Post_Audit_Hardening {
 			'missing_or_failed_checks'     => $missing,
 			'counts_valid'                 => $counts_valid,
 			'critical_diff_count_zero'     => $counts_valid && 0 === absint( $evidence['critical_diff_count'] ),
+			'provider_request_source_bound' => $source_bound,
 		);
 		return $evidence;
 	}
@@ -175,18 +178,21 @@ final class SNFLA_Post_Audit_Hardening {
 		$required = array_values( array_unique( array_map( 'sanitize_key', (array) ( $request['checks'] ?? array() ) ) ) );
 		$matrix   = self::evidence_matrix( $evidence );
 		$missing  = self::missing_or_failed( $required, $matrix );
-		$valid    = ! empty( $evidence['verified'] ) && ! empty( $evidence['provider_id'] ) && ! empty( $required ) && empty( $missing );
+		$source_bound = self::provider_request_bound( $evidence, $request );
+		$valid    = ! empty( $evidence['verified'] ) && ! empty( $evidence['provider_id'] ) && ! empty( $required ) && $source_bound && empty( $missing );
 		$evidence['verified'] = $valid;
 		$evidence['hardening_validation'] = array(
 			'all_requested_checks_passed' => empty( $missing ) && ! empty( $required ),
 			'missing_or_failed_checks'    => $missing,
+			'provider_request_source_bound'=> $source_bound,
 		);
 		$locked = SNFLA_Inventory::locked();
 		$summary = array(
 			'schema'            => 2,
 			'feature_id'        => 'F04-FUT-014',
 			'checked_at_utc'    => gmdate( 'Y-m-d H:i:s' ),
-			'source_signature'  => sanitize_text_field( (string) ( $locked['source_signature'] ?? '' ) ),
+			'source_signature'  => sanitize_text_field( (string) ( $request['source_signature'] ?? '' ) ),
+			'request_digest'    => sanitize_text_field( (string) ( $request['request_digest'] ?? '' ) ),
 			'provider_digest'   => ! empty( $evidence['provider_id'] ) ? hash( 'sha256', (string) $evidence['provider_id'] ) : '',
 			'required_checks'   => $required,
 			'failed_checks'     => $missing,
@@ -212,6 +218,7 @@ final class SNFLA_Post_Audit_Hardening {
 			if ( isset( $evidence[ $key ] ) && is_array( $evidence[ $key ] ) ) { $matrix = $evidence[ $key ]; break; }
 		}
 		$missing = self::missing_or_failed( $required, $matrix );
+		$source_bound = self::provider_request_bound( $evidence, $request );
 		$production_safe = empty( $evidence['production_environment'] )
 			&& empty( $evidence['production_used'] )
 			&& empty( $evidence['production_chaos_performed'] );
@@ -221,12 +228,14 @@ final class SNFLA_Post_Audit_Hardening {
 			&& false === (bool) ( $request['production_chaos_allowed'] ?? true )
 			&& ! empty( $required )
 			&& empty( $missing )
+			&& $source_bound
 			&& $production_safe;
 		$evidence['verified'] = $valid;
 		$evidence['hardening_validation'] = array(
 			'all_required_exercises_passed' => ! empty( $required ) && empty( $missing ),
 			'missing_or_failed_exercises'   => $missing,
 			'production_environment_refused'=> $production_safe,
+			'provider_request_source_bound' => $source_bound,
 		);
 		return $evidence;
 	}
@@ -251,6 +260,21 @@ final class SNFLA_Post_Audit_Hardening {
 			$readiness['blockers'] = array_values( array_unique( $blockers ) );
 		}
 		return $readiness;
+	}
+
+
+	private static function provider_request_bound( array $evidence, array $request ) {
+		$source_signature = strtolower( trim( (string) ( $request['source_signature'] ?? '' ) ) );
+		$request_digest   = strtolower( trim( (string) ( $request['request_digest'] ?? '' ) ) );
+		$echo_signature   = strtolower( trim( (string) ( $evidence['source_signature'] ?? '' ) ) );
+		$echo_digest      = strtolower( trim( (string) ( $evidence['request_digest'] ?? '' ) ) );
+		$payload = $request;
+		unset( $payload['request_digest'] );
+		return 1 === preg_match( '/^[a-f0-9]{64}$/', $source_signature )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $request_digest )
+			&& hash_equals( $request_digest, SNFLA_Checksum::hash( $payload ) )
+			&& hash_equals( $source_signature, $echo_signature )
+			&& hash_equals( $request_digest, $echo_digest );
 	}
 
 	private static function evidence_matrix( array $evidence ) {

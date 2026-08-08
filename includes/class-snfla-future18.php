@@ -259,7 +259,9 @@ final class SNFLA_Future18 {
 	public static function visual_diff( $legacy_id, $target_id ) {
 		$legacy_id = absint( $legacy_id ); $target_id = absint( $target_id );
 		if ( ! SNFLA_File21_Adapter::migration_target_valid( $legacy_id, $target_id ) ) { return new WP_Error( 'snfla_visual_target_invalid', 'A verified File 21 target is required.', array( 'status' => 412 ) ); }
-		$request = array( 'feature_id' => 'F04-FUT-004', 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'required' => array( 'desktop', 'mobile', 'rtl', 'keyboard', 'zoom_200', 'reduced_motion', 'dom_semantics', 'accessibility_tree' ) );
+		$source_signature = (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' );
+		$request = array( 'feature_id' => 'F04-FUT-004', 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'required' => array( 'desktop', 'mobile', 'rtl', 'keyboard', 'zoom_200', 'reduced_motion', 'dom_semantics', 'accessibility_tree' ), 'source_signature' => $source_signature );
+		$request['request_digest'] = SNFLA_Checksum::hash( $request );
 		$evidence = apply_filters( 'snfla_visual_migration_diff_provider_v1', array( 'verified' => false, 'owner' => 'File 20/File 25' ), $request );
 		$verified = is_array( $evidence ) && ! empty( $evidence['verified'] ) && ! empty( $evidence['provider_id'] ) && isset( $evidence['diff_count'] );
 		return array( 'feature_id' => 'F04-FUT-004', 'verified' => $verified, 'release_blocking' => ! $verified || absint( $evidence['critical_diff_count'] ?? 0 ) > 0, 'evidence' => SNFLA_Audit::redact( is_array( $evidence ) ? $evidence : array() ) );
@@ -452,7 +454,10 @@ final class SNFLA_Future18 {
 			$target_url = $target_valid ? get_permalink( $target_id ) : false;
 			$rows[] = array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'target_valid' => $target_valid, 'canonical_url_digest' => is_string( $target_url ) && '' !== $target_url ? hash( 'sha256', $target_url ) : '', 'broken' => ! $target_valid || ! is_string( $target_url ) || '' === $target_url );
 		}
-		$provider = apply_filters( 'snfla_redirect_citation_observatory_v1', array( 'verified' => false ), array( 'rows' => $rows, 'checks' => array( '301_or_410', 'redirect_loop', 'redirect_chain', 'query_preservation', 'fragment_preservation', 'external_citation_continuity' ) ) );
+		$source_signature = (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' );
+		$request = array( 'rows' => $rows, 'checks' => array( '301_or_410', 'redirect_loop', 'redirect_chain', 'query_preservation', 'fragment_preservation', 'external_citation_continuity' ), 'source_signature' => $source_signature );
+		$request['request_digest'] = SNFLA_Checksum::hash( $request );
+		$provider = apply_filters( 'snfla_redirect_citation_observatory_v1', array( 'verified' => false ), $request );
 		$broken = count( array_filter( $rows, static function ( $row ) { return ! empty( $row['broken'] ); } ) );
 		return array( 'feature_id' => 'F04-FUT-014', 'count' => count( $rows ), 'broken_count' => $broken, 'rows' => $rows, 'provider_evidence' => SNFLA_Audit::redact( is_array( $provider ) ? $provider : array() ), 'release_blocking' => $broken > 0 );
 	}
@@ -489,10 +494,12 @@ final class SNFLA_Future18 {
 	public static function gameday( $environment, $actor_id ) {
 		$environment = sanitize_key( $environment );
 		if ( 'disposable_staging' !== $environment ) { return new WP_Error( 'snfla_gameday_environment_forbidden', 'GameDay is allowed only in a disposable staging environment.', array( 'status' => 400 ) ); }
-		$request = array( 'feature_id' => 'F04-FUT-016', 'environment' => $environment, 'required_exercises' => array( 'backup_restore', 'migration', 'provider_outage', 'queue_retry', 'cache_rebuild', 'search_reindex', 'rollback', 'reconciliation' ), 'production_chaos_allowed' => false );
+		$source_signature = (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' );
+		$request = array( 'feature_id' => 'F04-FUT-016', 'environment' => $environment, 'required_exercises' => array( 'backup_restore', 'migration', 'provider_outage', 'queue_retry', 'cache_rebuild', 'search_reindex', 'rollback', 'reconciliation' ), 'production_chaos_allowed' => false, 'source_signature' => $source_signature );
+		$request['request_digest'] = SNFLA_Checksum::hash( $request );
 		$evidence = apply_filters( 'snfla_disaster_recovery_gameday_v1', array( 'verified' => false ), $request );
 		$verified = is_array( $evidence ) && ! empty( $evidence['verified'] ) && ! empty( $evidence['provider_id'] ) && empty( $evidence['production_environment'] );
-		$result = array( 'feature_id' => 'F04-FUT-016', 'verified' => $verified, 'environment' => $environment, 'production_chaos_allowed' => false, 'evidence' => SNFLA_Audit::redact( is_array( $evidence ) ? $evidence : array() ), 'performed_at_utc' => gmdate( 'Y-m-d H:i:s' ) );
+		$result = array( 'feature_id' => 'F04-FUT-016', 'verified' => $verified, 'environment' => $environment, 'production_chaos_allowed' => false, 'source_signature' => $source_signature, 'request_digest' => $request['request_digest'], 'evidence' => SNFLA_Audit::redact( is_array( $evidence ) ? $evidence : array() ), 'performed_at_utc' => gmdate( 'Y-m-d H:i:s' ) );
 		if ( $verified ) { update_option( self::GAMEDAY_OPTION, SNFLA_Integrity::sign_evidence( $result ), false ); SNFLA_Audit::record( 'future18_gameday_verified', $actor_id, array( 'provider_id_digest' => hash( 'sha256', (string) $evidence['provider_id'] ) ), 'future18-gameday:' . gmdate( 'Ymd' ) ); }
 		return $result;
 	}
@@ -511,7 +518,7 @@ final class SNFLA_Future18 {
 			'contract_drift_clear' => empty( $drift['block_mutation'] ),
 			'file26_integration_accepted' => isset( $system['file26']['status'] ) && 'pass' === $system['file26']['status'],
 			'operational_metrics_present' => isset( $system['metrics']['status'] ) && 'pass' === $system['metrics']['status'],
-			'disaster_recovery_gameday_verified' => is_array( $gameday ) && SNFLA_Integrity::evidence_valid( $gameday ),
+			'disaster_recovery_gameday_verified' => is_array( $gameday ) && SNFLA_Integrity::evidence_valid( $gameday ) && ! empty( $gameday['verified'] ) && ! empty( $gameday['source_signature'] ) && hash_equals( (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' ), (string) $gameday['source_signature'] ),
 			'invariant_guardian_green' => ! empty( $invariants['green'] ),
 		);
 		$passed = count( array_filter( $gates ) ); $score = (int) round( 100 * $passed / self::RETIREMENT_GATE_COUNT );
