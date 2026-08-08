@@ -68,10 +68,12 @@ for needle in ['snfla_verify_cutover_cache_invalidation','snfla_request_search_r
 check('301' in text('includes/class-snfla-redirects.php'),'Permanent canonical redirect evidence missing',fail)
 
 # F04-FR-012 / 013 — rollback and retirement.
-for needle in ['checkpoint','target-change','post-cutover']:
-    check(needle.lower() in rollback.lower(),'Rollback protection missing concept: '+needle,fail)
-for needle in ['fallback','self-deactivation','route']:
-    check(needle.lower() in retirement.lower(),'Retirement evidence missing concept: '+needle,fail)
+check('rollback_checkpoint_persist_failed' in rollback,'Rollback checkpoint protection missing',fail)
+check('unavailable, changed, or have inconsistent File 21 mapping state' in rollback,'Changed-target rollback blocking evidence missing',fail)
+check('interaction rollback was not started' in rollback,'Rollback must checkpoint before canonical interaction reversal',fail)
+check('fallback_window_required' in retirement,'Retirement must require expired read-only fallback window',fail)
+check('handoff_routes' in retirement and 'redirect_handoff' in retirement,'Retirement route/search handoff evidence missing',fail)
+check('deactivate_retired_plugin' in retirement and 'plugin_deactivated' in retirement,'Verified self-deactivation evidence missing',fail)
 
 # NFR authorization/security/privacy/reliability.
 check('revalidate_actor' in migration,'Mutation path must revalidate File 00 actor',fail)
