@@ -461,10 +461,16 @@ final class SNFLA_Future18 {
 		);
 		$receipt['receipt_checksum'] = SNFLA_Checksum::hash( $receipt );
 		$receipt = SNFLA_Integrity::sign_evidence( $receipt );
-		$all = get_option( self::RECEIPTS_OPTION, array() ); if ( ! is_array( $all ) ) { $all = array(); }
+		$previous = get_option( self::RECEIPTS_OPTION, array() );
+		$all = is_array( $previous ) ? $previous : array();
 		$all[] = $receipt; if ( count( $all ) > self::MAX_RECEIPTS ) { $all = array_slice( $all, -self::MAX_RECEIPTS ); }
-		update_option( self::RECEIPTS_OPTION, $all, false );
-		SNFLA_Audit::record( 'future18_receipt_created', $actor_id, array( 'receipt_id' => $receipt['receipt_id'], 'receipt_checksum' => $receipt['receipt_checksum'], 'operation' => $operation ), 'future18-receipt:' . $receipt['receipt_id'] );
+		if ( ! update_option( self::RECEIPTS_OPTION, $all, false ) && get_option( self::RECEIPTS_OPTION, array() ) !== $all ) {
+			return new WP_Error( 'snfla_receipt_persist_failed', 'The cryptographic receipt could not be persisted; no success is reported.', array( 'status' => 500 ) );
+		}
+		if ( ! SNFLA_Audit::record( 'future18_receipt_created', $actor_id, array( 'receipt_id' => $receipt['receipt_id'], 'receipt_checksum' => $receipt['receipt_checksum'], 'operation' => $operation ), 'future18-receipt:' . $receipt['receipt_id'] ) ) {
+			update_option( self::RECEIPTS_OPTION, $previous, false );
+			return new WP_Error( 'snfla_receipt_audit_failed', 'The cryptographic receipt was reverted because its audit event could not be persisted.', array( 'status' => 500 ) );
+		}
 		return $receipt;
 	}
 
