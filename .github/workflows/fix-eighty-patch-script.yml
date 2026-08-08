@@ -1,0 +1,39 @@
+name: Fix eighty-round corrective driver syntax
+
+on:
+  push:
+    branches:
+      - audit-file-04-eighty-round-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: audit-file-04-eighty-round-hardening
+          persist-credentials: true
+      - name: Repair Python triple-quote boundary
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tools/apply-eighty-round-hardening.py')
+          s=p.read_text()
+          old="\\tprivate static function capture_activation_handover\", \"\"\""
+          new="\\tprivate static function capture_activation_handover\"\"\", \"\"\""
+          if s.count(old)!=1:
+              raise SystemExit(f'expected one syntax marker, got {s.count(old)}')
+          p.write_text(s.replace(old,new,1))
+          PY
+          python3 -m py_compile tools/apply-eighty-round-hardening.py
+      - name: Commit syntax repair
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/apply-eighty-round-hardening.py
+          git commit -m '80-round audit: repair corrective driver syntax'
+          git push origin HEAD:audit-file-04-eighty-round-hardening
