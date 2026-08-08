@@ -22,12 +22,12 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           p=Path('tools/apply-eighty-round-hardening.py')
-          s=p.read_text()
-          old="\\tprivate static function capture_activation_handover\", \"\"\""
-          new="\\tprivate static function capture_activation_handover\"\"\", \"\"\""
+          s=p.read_text(encoding='utf-8')
+          old='capture_activation_handover", """'
+          new='capture_activation_handover""", """'
           if s.count(old)!=1:
               raise SystemExit(f'expected one syntax marker, got {s.count(old)}')
-          p.write_text(s.replace(old,new,1))
+          p.write_text(s.replace(old,new,1), encoding='utf-8')
           PY
           python3 -m py_compile tools/apply-eighty-round-hardening.py
       - name: Commit syntax repair
