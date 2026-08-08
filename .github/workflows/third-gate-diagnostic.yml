@@ -1,0 +1,32 @@
+name: File04 third gate diagnostic
+on:
+  push:
+    branches:
+      - audit-file-04-third-ten-round-hardening
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: audit-file-04-third-ten-round-hardening
+          fetch-depth: 0
+      - shell: bash
+        run: |
+          set +e
+          python3 tests/run-third-ten-round-hardening.py > THIRD-GATE-DIAGNOSTIC.txt 2>&1
+          code=$?
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$code" -ne 0 ]; then
+            git add THIRD-GATE-DIAGNOSTIC.txt
+            git commit -m "Round 9 diagnostic: record third-gate failures"
+            git push origin HEAD:audit-file-04-third-ten-round-hardening
+            exit "$code"
+          fi
+          rm -f THIRD-GATE-DIAGNOSTIC.txt
+          echo "Third gate passed; no diagnostic file committed."
