@@ -1,0 +1,1 @@
+Source change window closed for File 04 Future18 v2.0.0. No further source mutations are authorized before PR merge except defect correction if CI fails. Staging/live/operational evidence remains external.
