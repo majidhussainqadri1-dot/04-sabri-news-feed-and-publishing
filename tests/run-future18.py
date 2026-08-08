@@ -32,7 +32,6 @@ for method in [
 ]:
     check(f'function {method}' in future, f'Missing Future18 method: {method}', fail)
 
-# Canonical ownership and no duplicate publishing/search backend.
 for token in ['File 21', 'File 26', 'File 20', 'File 25', 'File 24']:
     check(token in future, f'Canonical owner boundary missing: {token}', fail)
 check('wp_insert_post(' not in future, 'Future18 must not directly create canonical posts.', fail)
@@ -40,7 +39,6 @@ check('$wpdb->posts' not in future, 'Future18 must not directly write/read File 
 check('dual_write' in future and 'false' in future, 'Shadow-read contract must explicitly preserve dual_write=false.', fail)
 check('SNFLA_Migration::migrate(' not in future, 'Canary controller must never invoke migration automatically.', fail)
 
-# Safety/integrity contracts.
 for token in [
     'sabri_file00_contract_descriptor_v1', 'sabri_file21_contract_descriptor_v1', 'sabri_file26_contract_descriptor_v1',
     'snfla_semantic_fidelity_provider_v1', 'snfla_visual_migration_diff_provider_v1', 'snfla_ai_quarantine_advisor_v1',
@@ -55,12 +53,13 @@ check('MAX_RECEIPTS' in future and 'MAX_CHECKPOINTS' in future, 'Evidence option
 check('Cache-Control' in future and 'no-store, no-cache, must-revalidate, private' in future, 'Future18 REST responses must be private/no-store.', fail)
 check('X-Robots-Tag' in future, 'Future18 REST responses must be noindex.', fail)
 
-# Version/bootstrap/release integration.
-check('Version: 2.0.0' in main and "SNFLA_VERSION', '2.0.0'" in main, 'Runtime must be promoted to 2.0.0.', fail)
-check("SNFLA_SCHEMA_VERSION', '1.3.0'" in main, 'Future18 must not fabricate an unnecessary storage-schema bump.', fail)
+# Plugin patch release is 2.0.1; the Future18 feature contract itself remains 2.0.0.
+check('Version: 2.0.1' in main and "SNFLA_VERSION', '2.0.1'" in main, 'Runtime must be promoted to hardened patch 2.0.1.', fail)
+check("SNFLA_SCHEMA_VERSION', '1.3.0'" in main, 'Hardening must not fabricate an unnecessary storage-schema bump.', fail)
 check('class-snfla-future18.php' in main and 'SNFLA_Future18::boot' in main, 'Future18 runtime must load and boot.', fail)
+check('class-snfla-post-audit-hardening.php' in main and 'SNFLA_Post_Audit_Hardening::boot' in main, 'Post-audit hardening runtime must load and boot.', fail)
 check('run-future18.py' in workflow, 'Exact-head CI must execute Future18 QA.', fail)
-check("VERSION='2.0.0'" in build and 'FUTURE18_COUNT=18' in build, 'Deterministic release builder must identify v2.0.0 and 18 enhancements.', fail)
+check("VERSION='2.0.1'" in build and 'FUTURE18_COUNT=18' in build, 'Deterministic release builder must identify v2.0.1 and 18 enhancements.', fail)
 check('future18' in build, 'Release manifest/lock must contain Future18 evidence.', fail)
 
 if fail:
@@ -69,4 +68,4 @@ if fail:
         print('-', item, file=sys.stderr)
     sys.exit(1)
 
-print('Future18 source checks passed: 18/18 capabilities, ownership boundaries, safety invariants, runtime wiring, traceability and deterministic-release integration.')
+print('Future18 source checks passed: 18/18 capabilities, ownership boundaries, safety invariants, hardened v2.0.1 wiring, traceability and deterministic-release integration.')

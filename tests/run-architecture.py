@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import re, sys, json
+import re, sys
 
 ROOT = Path(__file__).resolve().parents[1]
 PHP = {p.relative_to(ROOT).as_posix(): p.read_text(encoding='utf-8') for p in ROOT.rglob('*.php') if '.git' not in p.parts and 'tests' not in p.parts}
@@ -9,7 +9,6 @@ errors=[]
 
 def require(cond, message):
     if not cond: errors.append(message)
-
 def text(path): return (ROOT/path).read_text(encoding='utf-8')
 
 main=text('sabri-news-feed-legacy-adapter.php')
@@ -20,14 +19,15 @@ retirement=PHP['includes/class-snfla-retirement.php']
 rest=PHP['includes/class-snfla-rest.php']
 mapping=PHP['includes/class-snfla-mapping.php']
 central=PHP['includes/class-snfla-central-plan.php']
+hard=PHP['includes/class-snfla-post-audit-hardening.php']
 
-require('Version: 2.0.0' in main and "SNFLA_VERSION', '2.0.0'" in main and "SNFLA_SCHEMA_VERSION', '1.3.0'" in main, 'Runtime/header must be 2.0.0 while the unchanged storage schema remains 1.3.0.')
+require('Version: 2.0.1' in main and "SNFLA_VERSION', '2.0.1'" in main and "SNFLA_SCHEMA_VERSION', '1.3.0'" in main, 'Runtime/header must be hardened 2.0.1 while unchanged storage schema remains 1.3.0.')
 require("SNFLA_FILE21_MIN_PACKAGE', '1.0.3.2'" in main and "SNFLA_FILE21_MIN_RUNTIME', '1.0.3'" in main, 'File 21 package/runtime compatibility gates must match current canonical contract.')
 for pat in [r'\bOFFSET\b', r'\bTRUNCATE\b', r'maybe_unserialize', r'(?<![A-Za-z_])unserialize\s*\(', r'wp_cache_flush\s*\(']:
     require(not re.search(pat, ALL_PHP, re.I), f'Forbidden pattern found: {pat}')
 require('register_post_type' in plugin and 'SNFLA_Inventory::LEGACY_POST_TYPE' in plugin, 'Only the legacy source schema may be registered.')
 require('create_posts' in plugin and "'do_not_allow'" in plugin, 'Legacy post creation must be denied.')
-require('remove_all_actions( \'wp_ajax_snp_interact\'' in plugin, 'Obsolete interaction endpoints must be neutralized.')
+require("remove_all_actions( 'wp_ajax_snp_interact'" in plugin, 'Obsolete interaction endpoints must be neutralized.')
 require('wp_insert_post' not in file21 and 'wp_update_post' not in file21 and '$wpdb->posts' not in file21, 'File 04 must not mutate File 21 posts/tables directly.')
 require('LegacyPublicationRollback::rollback_selected' in file21, 'Orphan containment/rollback must use File 21 canonical command.')
 require('migration_target_valid' in file21 and '_sabri_hnf_legacy_source_id' in file21 and '_sabri_hnf_legacy_source_type' in file21, 'Canonical target provenance must be fully validated.')
@@ -44,25 +44,27 @@ require("'expected_state'" in rest and "'expected_version'" in rest and "'legacy
 require('deactivation_api_available' in retirement and 'snfla_retirement_deactivation_failed' in retirement, 'Retirement must fail closed if self-deactivation cannot be verified.')
 require('each_route_disposition_batch' in retirement and 'manifest_checksum' in retirement, 'Retirement must hand off every redirect/gone disposition with checksum evidence.')
 require('$network_wide ||' in PHP['includes/class-snfla-database.php'] and 'snfla_network_activation_unsupported' in PHP['includes/class-snfla-database.php'], 'Network-wide activation must be explicitly blocked.')
-require('capture_table_baseline' in PHP['includes/class-snfla-database.php'] and 'remove_new_activation_tables' in PHP['includes/class-snfla-database.php'], 'Activation compensation must remove only adapter tables created by the failed activation.')
+require('capture_table_baseline' in PHP['includes/class-snfla-database.php'] and 'remove_new_activation_tables' in PHP['includes/class-snfla-database.php'], 'Activation compensation must remove only adapter tables created by failed activation.')
 require('safe_count_query' in PHP['includes/class-snfla-migration.php'], 'Legacy count queries must fail closed rather than convert database errors to zero.')
 require('snfla_reconciliation_mapping_count_failed' in PHP['includes/class-snfla-reconciliation.php'], 'Reconciliation disposition count reads must fail closed.')
 require('rollback_checkpoint_persist_failed' in PHP['includes/class-snfla-rollback.php'] and 'interaction rollback was not started' in PHP['includes/class-snfla-rollback.php'], 'Rollback must checkpoint local evidence before interaction reversal.')
 require('PACKAGE-MANIFEST.json' not in ALL_PHP, 'Runtime PHP must not depend on source/package evidence files.')
 
-# Modern central-plan reconciliation: map all applicable requirements without recreating owner backends.
-require("array( 37, 49 )" in central and "array( 74, 84 )" in central and "array( 239, 285 )" in central, 'Central-plan registry must contain the exact 71 applicable CV ranges.')
+require("array( 37, 49 )" in central and "array( 74, 84 )" in central and "array( 239, 285 )" in central, 'Central-plan registry must contain exact 71 applicable CV ranges.')
 require("'F04-CEN-01'" in central and "'F04-CEN-02'" in central, 'File-specific central requirements must be registered.')
-require("'AJ-07'" not in central or 'aj_ids' in central, 'Acceptance-journey registry must exist.')
+require('aj_ids' in central, 'Acceptance-journey registry must exist.')
 require('sabri_file26_legacy_resolution_v1' in central and "'File 26'" in central, 'File 26 legacy-resolution compatibility contract must be explicit.')
-require('integration_regression_only' in central and 'duplicate truth store' in central, 'Externally owned modern features must remain integration regressions, not duplicate File 04 backends.')
-require('source_trace_complete' in central and 'production_ready' in central, 'Source completion and production readiness must remain truthfully separate.')
+require('integration_regression_only' in central and 'duplicate truth store' in central, 'Externally owned features must remain integration regressions, not duplicate File 04 backends.')
+require('source_trace_complete' in central and 'production_ready' in central, 'Source completion and production readiness must remain separate.')
 require('wp_insert_post(' not in central and '$wpdb->posts' not in central, 'Central-plan layer must not add direct publication writes.')
-require("'class-snfla-central-plan.php'" in main and 'SNFLA_Central_Plan::boot' in main, 'Central-plan reconciliation class must be loaded and booted.')
-require("'class-snfla-future18.php'" in main and 'SNFLA_Future18::boot' in main, 'Future18 v2.0.0 class must be loaded and booted without changing canonical ownership.')
+require("'class-snfla-central-plan.php'" in main and 'SNFLA_Central_Plan::boot' in main, 'Central-plan reconciliation class must load and boot.')
+require("'class-snfla-future18.php'" in main and 'SNFLA_Future18::boot' in main, 'Future18 feature class must load and boot.')
+require("'class-snfla-post-audit-hardening.php'" in main and 'SNFLA_Post_Audit_Hardening::boot' in main, 'Post-Future18 hardening class must load and boot.')
+require('wp_insert_post(' not in hard and '$wpdb->posts' not in hard and 'SNFLA_Migration::migrate(' not in hard, 'Hardening must not create or invoke a second publication/migration backend.')
+require('current_actor( SNFLA_Capabilities::CAP_REVIEW )' in hard, 'Future18 action hardening must enforce fresh File 00 current-action authority.')
 
 if errors:
     print('Architecture checks failed:')
     for e in errors: print('-',e)
     sys.exit(1)
-print(f'Architecture and ownership checks passed ({39} assertions across {len(PHP)} PHP files).')
+print(f'Architecture and ownership checks passed across {len(PHP)} PHP files, including v2.0.1 post-audit hardening.')

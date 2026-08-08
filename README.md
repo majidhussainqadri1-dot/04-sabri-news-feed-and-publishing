@@ -1,61 +1,37 @@
-# File 04 — News Feed and Publishing — Legacy Foundation Adapter
+# File 04 — News Feed and Publishing — Legacy Foundation Adapter v2.0.1
 
-File 04 version **1.3.0** is a temporary, write-disabled, auditable and reversible migration/compatibility adapter for historical File 04 records. **File 21 remains the sole canonical owner of publications, Home/News rendering, comments, reactions, saves, views, reports, moderation, ranking and public publication routes. File 26 remains the canonical search/discovery owner.**
+File 04 is a temporary, write-disabled, auditable and reversible migration/compatibility adapter for historical File 04 records. **File 21 remains the sole canonical publication/Home/News/feed truth owner; File 26 remains canonical search/discovery; File 20 owns the shell; File 25 the visual system; File 24 assurance coordination.** File 04 does not create a second composer, feed, ranking service, community backend, moderation database, interaction backend, search engine or permanent runtime dependency.
 
-## Governing basis
+## Governing scope
 
-1. **Modern consolidated governing plan** — `SSH-CENTRAL-CONSOLIDATED-2026-08-07`.
-2. **File 04 — News Feed and Publishing — Legacy Foundation Adapter Complete Master Plan v1.0** — `SSH-F04-PLAN-2026-v1.0`.
-3. Historical v1.2.0 forty-round audit is retained as ancestry evidence, but it is not used to pretend that the later central-plan delta was already tested.
+The current source trace covers the modern consolidated governing plan (`SSH-CENTRAL-CONSOLIDATED-2026-08-07`), the File 04 complete plan (`SSH-F04-PLAN-2026-v1.0`), **71 CV requirements** applicable to File 04 (`CV-037..049`, `CV-074..084`, `CV-239..285`), `F04-CEN-01..02`, 15 relevant acceptance journeys, `F04-FR-001..013`, `F04-NFR-001..010`, and the approved `F04-FUT-001..018` Future18 extension.
 
-## Canonical boundary
+## v2.0.1 post-Future18 hardening
 
-File 04 may inventory, checksum, dry-run, quarantine, migrate through versioned File 21 commands, reconcile, cut over legacy routes, provide a time-bounded read-only tombstone fallback, roll back/replay and retire. It does **not** own a new public feed, composer, ranking service, community backend, moderation database, interaction backend, search engine, public route family or permanent runtime dependency.
+The ten-round adversarial review retained all 18 Future18 capabilities and corrected the gaps found after v2.0.0: Future18 action/evidence routes now require fresh File 00 current-action authority; failed Future18 callbacks receive non-2xx HTTP status; visual-diff verification requires the full requested desktop/mobile/RTL/accessibility matrix and explicit critical-diff counts; redirect/citation provider verification is a production-readiness gate; DR GameDay verification requires every requested disposable-staging exercise to pass; cryptographic receipts cannot be minted unless the underlying migration/reconciliation/rollback/cutover evidence is independently verifiable; and release metadata/CI/package evidence is bound to v2.0.1.
 
-### Modern central-plan reconciliation
-
-The current File 04 plan assigns these exact ranges to the File 04 release trace:
-
-- `CV-037..049` — 13 requirements;
-- `CV-074..084` — 11 requirements;
-- `CV-239..285` — 47 requirements;
-- total: **71 CV requirements**;
-- plus `F04-CEN-01`, `F04-CEN-02`;
-- plus 15 relevant journeys: `AJ-07`, `AJ-10`, `AJ-24`, `AJ-25`, `AJ-28`, `AJ-31..40`.
-
-`SNFLA_Central_Plan::requirements()` expands every CV ID to its canonical owner, File 04 enforcement mode, priority, code/evidence location, contract boundary and deterministic test ID. Externally owned features are **integration regressions only**; this module does not implement duplicate File 21, File 17, File 20, File 25, File 26 or File 24 backends.
-
-## Version 1.3.0 controls
-
-- All v1.2.0 migration integrity, source-lock, mapping, quarantine, reconciliation, rollback and retirement safeguards are retained.
-- New File 04 post/comment/feed truth writes remain hard-disabled.
-- File 21 is the only canonical publication mutation boundary; File 04 does not write File 21 posts/tables directly.
-- A versioned File 26 hook, `sabri_file26_legacy_resolution_v1`, can resolve a migrated legacy ID only to a verified, public File 21 target. The response is non-indexing guidance for the legacy object itself; no File 04 ranking/search truth is created.
-- The central-plan registry makes File 20 shell, File 25 visual ownership and File 24 assurance boundaries explicit.
-- File 04 admin surfaces use the green brand basis and add RTL logical layout, LTR isolation for code/JSON, focus-visible treatment, 44px controls, reduced-motion and forced-colors support.
-- A truthful release-readiness contract blocks any production-ready claim until real staging, restore, accessibility, File 26 integration, degraded-provider and Founder evidence exists.
-- Two new post-central-plan source reviews are enforced: requirements/ownership first, then fresh adversarial/source regression.
-- Deterministic v1.3.0 packaging generates source inventory, checksums, release lock, dependency contract manifest and CycloneDX SBOM inside release artifacts instead of relying on stale committed v1.2.0 generated evidence.
+The storage schema intentionally remains **v1.3.0** because these corrections add no custom-table schema migration.
 
 ## Controlled runtime sequence
 
 1. Install only on staging with compatible File 00 and File 21 builds.
-2. Capture and lock exact legacy source inventory.
-3. Execute the complete dry-run; resolve or explicitly quarantine every exception.
+2. Capture and lock the exact legacy inventory.
+3. Run the complete Digital Twin/dry-run and resolve or explicitly quarantine every exception.
 4. Record independently verified backup and isolated restore evidence.
-5. Migrate bounded batches through File 21; resume all supported interaction cursors.
-6. Reconcile every source record, target projection and interaction contribution.
-7. Prove final delta, cache invalidation, File 26 search reindex/legacy-resolution behavior and downstream correction/notification reconciliation.
-8. Approve cutover only after all blocking evidence is current.
-9. Serve permanent canonical redirects and bounded read-only tombstones.
-10. Rehearse non-destructive rollback and activation-handover restoration.
-11. Hand the redirect/gone manifest to canonical route/search owners.
-12. Retire and self-deactivate only after fallback expiry, rollback proof and Founder approval.
+5. Migrate bounded batches only through File 21; resume supported interaction cursors.
+6. Reconcile every source record, canonical projection and interaction contribution.
+7. Verify visual, Unicode/RTL, redirect/citation, cache/search and degraded-provider evidence.
+8. Use staged canary progression only after invariant/contract gates pass.
+9. Approve cutover only after all blocking evidence is current.
+10. Rehearse non-destructive rollback and disposable-staging DR GameDay.
+11. Keep read-only/redirect fallback bounded and monitored.
+12. Retire only after zero-conflict evidence and Founder approval.
 
 ## Truthful completion status
 
-- **Specified:** current source scope complete and machine-traced.
-- **Coded:** v1.3.0 central-plan candidate implemented on its review branch.
-- **Packaged:** becomes proven only when the new exact-head deterministic CI build succeeds.
-- **Automated-QA Green:** becomes proven only by the new exact-head v1.3.0 CI; historical v1.2.0 green CI is not substituted.
-- **Staging-Accepted / Live-Deployed / Operational:** **not claimed**. Hostinger, real File 00/File 21/File 26 contracts and data, browser/RTL/WCAG, backup/restore, rollback, Founder acceptance, controlled deployment and monitoring remain mandatory external gates.
+- **Specified:** complete for the current reviewable source scope.
+- **Coded:** v2.0.1 post-audit hardened source candidate.
+- **Packaged / Automated-QA Green:** must be proven by exact-head deterministic CI for the final v2.0.1 PR head.
+- **Staging-Accepted / Live-Deployed / Operational:** **not claimed by source code**. Real Hostinger staging, File 00/21/26 providers, real legacy data, browser/device/WCAG/RTL, visual corpus, backup/restore, DR, rollback, monitoring and Founder acceptance remain mandatory external gates.
+
+See `TEN-ROUND-POST-FUTURE18-AUDIT.md` for the ten review rounds and `FUTURE18-TRACEABILITY.md` / `REQUIREMENTS-TRACEABILITY.md` for requirement ownership and traceability.
