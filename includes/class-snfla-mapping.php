@@ -27,6 +27,11 @@ final class SNFLA_Mapping {
 		$now = gmdate( 'Y-m-d H:i:s' );
 		$source_checksum = array_key_exists( 'source_checksum', $data ) ? (string) $data['source_checksum'] : (string) ( $current['source_checksum'] ?? '' );
 		$target_checksum = array_key_exists( 'target_checksum', $data ) ? (string) $data['target_checksum'] : (string) ( $current['target_checksum'] ?? '' );
+		$interaction_json = $current['interaction_ledger_json'] ?? '{}';
+		if ( isset( $data['interaction_ledger'] ) ) {
+			$interaction_json = wp_json_encode( SNFLA_Audit::redact( (array) $data['interaction_ledger'] ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+			if ( ! is_string( $interaction_json ) ) { return false; }
+		}
 		$row = array(
 			'target_id'               => absint( array_key_exists( 'target_id', $data ) ? $data['target_id'] : ( $current['target_id'] ?? 0 ) ),
 			'target_type'             => sanitize_key( array_key_exists( 'target_type', $data ) ? $data['target_type'] : ( $current['target_type'] ?? '' ) ),
@@ -34,7 +39,7 @@ final class SNFLA_Mapping {
 			'source_checksum'         => preg_match( '/^[a-f0-9]{64}$/', $source_checksum ) ? $source_checksum : '',
 			'target_checksum'         => preg_match( '/^[a-f0-9]{64}$/', $target_checksum ) ? $target_checksum : '',
 			'run_uuid'                => sanitize_text_field( array_key_exists( 'run_uuid', $data ) ? $data['run_uuid'] : ( $current['run_uuid'] ?? '' ) ),
-			'interaction_ledger_json' => isset( $data['interaction_ledger'] ) ? wp_json_encode( SNFLA_Audit::redact( $data['interaction_ledger'] ) ) : ( $current['interaction_ledger_json'] ?? '{}' ),
+			'interaction_ledger_json' => $interaction_json,
 			'last_error_code'         => sanitize_key( array_key_exists( 'last_error_code', $data ) ? $data['last_error_code'] : ( $current['last_error_code'] ?? '' ) ),
 			'updated_at'              => $now,
 		);
@@ -116,6 +121,8 @@ final class SNFLA_Mapping {
 		$created_by_migration = ! empty( $original['created_by_migration'] );
 		$contribution_count = max( 0, absint( $original['source_contribution'] ?? 0 ) );
 		$original = SNFLA_Audit::redact( $original );
+		$original_json = wp_json_encode( $original, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+		if ( ! is_string( $original_json ) ) { return false; }
 		$now = gmdate( 'Y-m-d H:i:s' );
 		$sql = $wpdb->prepare(
 			"INSERT INTO {$t['interaction_ledger']} (legacy_id,target_id,kind,source_row_id,canonical_row_id,contribution_count,original_json,created_by_migration,status,created_at,updated_at) VALUES (%d,%d,%s,%d,%d,%d,%s,%d,'active',%s,%s) ON DUPLICATE KEY UPDATE target_id=VALUES(target_id),canonical_row_id=VALUES(canonical_row_id),contribution_count=VALUES(contribution_count),original_json=VALUES(original_json),created_by_migration=VALUES(created_by_migration),status='active',updated_at=VALUES(updated_at)",
@@ -125,7 +132,7 @@ final class SNFLA_Mapping {
 			$source_row_id,
 			$canonical_row_id,
 			$contribution_count,
-			wp_json_encode( $original ),
+			$original_json,
 			$created_by_migration ? 1 : 0,
 			$now,
 			$now
