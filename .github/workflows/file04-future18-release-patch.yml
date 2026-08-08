@@ -1,0 +1,77 @@
+name: File04 Future18 one-time deterministic release patch
+
+on:
+  push:
+    branches: ['codex/file-04-future18-v200']
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: codex/file-04-future18-v200
+          persist-credentials: true
+      - name: Reconcile release builder and historical review gate to Future18
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new, label):
+              p=Path(path); s=p.read_text(encoding='utf-8')
+              if old not in s:
+                  raise SystemExit(f'Missing patch anchor: {label}')
+              if s.count(old) != 1:
+                  raise SystemExit(f'Non-unique patch anchor: {label} count={s.count(old)}')
+              p.write_text(s.replace(old,new,1),encoding='utf-8')
+
+          p=Path('tools/build-release.py')
+          s=p.read_text(encoding='utf-8').replace("VERSION='1.3.0'","VERSION='2.0.0'")
+          s=s.replace("1.3.0.zip","2.0.0.zip").replace("1.3.0-complete-source.zip","2.0.0-complete-source.zip")
+          p.write_text(s,encoding='utf-8')
+
+          replace_once('tools/build-release.py',
+              "AJ_COUNT=15\nCENTRAL_PLAN_REVIEW_ROUNDS=2\n",
+              "AJ_COUNT=15\nFUTURE18_COUNT=18\nCENTRAL_PLAN_REVIEW_ROUNDS=2\nFUTURE18_REVIEW_ROUNDS=2\n",
+              'Future18 release constants')
+
+          replace_once('tools/build-release.py',
+              "    subprocess.run([sys.executable,str(ROOT/'tests/run-architecture.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)\n    subprocess.run([sys.executable,str(ROOT/'tests/run-central-reviews.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)\n",
+              "    subprocess.run([sys.executable,str(ROOT/'tests/run-architecture.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)\n    subprocess.run([sys.executable,str(ROOT/'tests/run-file04-own-plan.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)\n    subprocess.run([sys.executable,str(ROOT/'tests/run-future18.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)\n    subprocess.run([sys.executable,str(ROOT/'tests/run-central-reviews.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)\n    subprocess.run([sys.executable,str(ROOT/'tests/run-future18-reviews.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)\n",
+              'release source gates')
+
+          replace_once('tools/build-release.py',
+              "          'central_plan':{'applicable_cv_count':CENTRAL_CV_COUNT,'file_specific_cen_count':FILE_CEN_COUNT,'acceptance_journey_count':AJ_COUNT},\n",
+              "          'central_plan':{'applicable_cv_count':CENTRAL_CV_COUNT,'file_specific_cen_count':FILE_CEN_COUNT,'acceptance_journey_count':AJ_COUNT},\n          'future18':{'count':FUTURE18_COUNT,'requirement_range':'F04-FUT-001..018','traceability':'FUTURE18-TRACEABILITY.md','review_rounds':FUTURE18_REVIEW_ROUNDS,'canonical_owner_policy':'adapter-only; no duplicate publication/search/feed truth'},\n",
+              'package manifest Future18')
+
+          replace_once('tools/build-release.py',
+              "          'acceptance_journey_count':AJ_COUNT,\n          'central_plan_review_rounds':CENTRAL_PLAN_REVIEW_ROUNDS,\n",
+              "          'acceptance_journey_count':AJ_COUNT,\n          'future18_count':FUTURE18_COUNT,\n          'central_plan_review_rounds':CENTRAL_PLAN_REVIEW_ROUNDS,\n          'future18_review_rounds':FUTURE18_REVIEW_ROUNDS,\n",
+              'release lock Future18')
+
+          replace_once('tools/build-release.py',
+              "      'acceptance_journey_count':AJ_COUNT,\n      'central_plan_review_rounds':CENTRAL_PLAN_REVIEW_ROUNDS,\n",
+              "      'acceptance_journey_count':AJ_COUNT,\n      'future18_count':FUTURE18_COUNT,\n      'central_plan_review_rounds':CENTRAL_PLAN_REVIEW_ROUNDS,\n      'future18_review_rounds':FUTURE18_REVIEW_ROUNDS,\n",
+              'build result Future18')
+
+          replace_once('tools/build-release.py',
+              "          'central_plan_review_rounds':CENTRAL_PLAN_REVIEW_ROUNDS,\n        },sort_keys=True))\n",
+              "          'central_plan_review_rounds':CENTRAL_PLAN_REVIEW_ROUNDS,\n          'future18_count':FUTURE18_COUNT,\n          'future18_review_rounds':FUTURE18_REVIEW_ROUNDS,\n        },sort_keys=True))\n",
+              'verify output Future18')
+
+          p=Path('tests/run-central-reviews.py')
+          p.write_text(p.read_text(encoding='utf-8').replace('1.3.0','2.0.0'),encoding='utf-8')
+          PY
+      - name: Remove one-time patch workflow and commit
+        run: |
+          rm -f .github/workflows/file04-future18-release-patch.yml
+          git config user.name "Sabri File 04 Future18 Reconciler"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Bind File 04 v2.0.0 Future18 to deterministic release gates"
+          git push origin HEAD:codex/file-04-future18-v200
