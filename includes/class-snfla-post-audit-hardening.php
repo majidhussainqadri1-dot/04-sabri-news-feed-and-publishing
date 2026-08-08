@@ -14,6 +14,7 @@ final class SNFLA_Post_Audit_Hardening {
 	public static function boot() {
 		add_filter( 'rest_request_before_callbacks', array( __CLASS__, 'enforce_future_action_authority' ), 10, 3 );
 		add_filter( 'rest_post_dispatch', array( __CLASS__, 'harden_future_error_status' ), 10, 3 );
+		add_filter( 'snfla_visual_migration_diff_provider_v1', array( __CLASS__, 'validate_visual_diff_evidence' ), 999, 2 );
 	}
 
 	private static function is_future_route( $request ) {
@@ -62,6 +63,57 @@ final class SNFLA_Post_Audit_Hardening {
 			$response->header( 'X-SNFLA-Error-Code', $code );
 		}
 		return $response;
+	}
+
+	/**
+	 * File 20/File 25 visual-diff evidence must demonstrate the full requested
+	 * matrix. A provider-level "verified" flag without critical-diff counts and
+	 * explicit desktop/mobile/RTL/a11y coverage is not release evidence.
+	 */
+	public static function validate_visual_diff_evidence( $evidence, $request ) {
+		$evidence = is_array( $evidence ) ? $evidence : array();
+		$request  = is_array( $request ) ? $request : array();
+		$required = array_values( array_unique( array_map( 'sanitize_key', (array) ( $request['required'] ?? array() ) ) ) );
+		$matrix   = array();
+		foreach ( array( 'checks', 'coverage', 'matrix' ) as $key ) {
+			if ( isset( $evidence[ $key ] ) && is_array( $evidence[ $key ] ) ) {
+				$matrix = $evidence[ $key ];
+				break;
+			}
+		}
+		$missing = array();
+		foreach ( $required as $key ) {
+			if ( ! array_key_exists( $key, $matrix ) || ! self::evidence_item_passed( $matrix[ $key ] ) ) {
+				$missing[] = $key;
+			}
+		}
+		$counts_valid = isset( $evidence['diff_count'], $evidence['critical_diff_count'] )
+			&& is_numeric( $evidence['diff_count'] )
+			&& is_numeric( $evidence['critical_diff_count'] )
+			&& (float) $evidence['diff_count'] >= 0
+			&& (float) $evidence['critical_diff_count'] >= 0;
+		$valid = ! empty( $evidence['verified'] )
+			&& ! empty( $evidence['provider_id'] )
+			&& $counts_valid
+			&& 0 === absint( $evidence['critical_diff_count'] )
+			&& empty( $missing );
+		$evidence['verified'] = $valid;
+		$evidence['hardening_validation'] = array(
+			'full_requested_matrix_passed' => empty( $missing ),
+			'missing_or_failed_checks'     => $missing,
+			'counts_valid'                 => $counts_valid,
+			'critical_diff_count_zero'     => $counts_valid && 0 === absint( $evidence['critical_diff_count'] ),
+		);
+		return $evidence;
+	}
+
+	private static function evidence_item_passed( $value ) {
+		if ( true === $value || 1 === $value || '1' === $value ) { return true; }
+		if ( is_string( $value ) ) { return in_array( strtolower( trim( $value ) ), array( 'pass', 'passed', 'ok', 'verified', 'green' ), true ); }
+		if ( ! is_array( $value ) ) { return false; }
+		if ( ! empty( $value['passed'] ) || ! empty( $value['verified'] ) || ! empty( $value['ok'] ) ) { return true; }
+		$status = strtolower( trim( (string) ( $value['status'] ?? '' ) ) );
+		return in_array( $status, array( 'pass', 'passed', 'ok', 'verified', 'green' ), true );
 	}
 
 	private static function status_for_error_code( $code ) {
