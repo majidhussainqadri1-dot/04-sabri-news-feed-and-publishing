@@ -14,12 +14,23 @@ jobs:
         with:
           ref: audit/file-04-second-ten-round-hardening
           fetch-depth: 0
-      - shell: bash
+      - name: Apply patch and persist diagnostic if needed
+        shell: bash
         run: |
           if [ ! -f tools/round9-selfpatch.py ]; then exit 0; fi
-          python3 tools/round9-selfpatch.py
+          set +e
+          python3 tools/round9-selfpatch.py > round9-patch.log 2>&1
+          code=$?
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$code" -ne 0 ]; then
+            git add round9-patch.log
+            git commit -m "Review 9 diagnostic: persist self-patch failure"
+            git push origin HEAD:audit/file-04-second-ten-round-hardening
+            exit "$code"
+          fi
+          rm -f round9-patch.log
           git add -A
           git diff --cached --quiet && exit 0
           git commit -m "Review 9 fix: integrate second ten-round hardening as v2.0.2"
