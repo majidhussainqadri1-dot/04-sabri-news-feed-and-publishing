@@ -17,7 +17,6 @@ final class SNFLA_Capabilities {
 			&& class_exists( '\\Sabri\\HomeNewsFeed\\LegacyInteractionMigrationAdapter' );
 	}
 
-
 	public static function activation_preflight() {
 		$user_id = get_current_user_id();
 		if ( $user_id <= 0 || ! current_user_can( 'activate_plugins' ) ) {
@@ -45,7 +44,10 @@ final class SNFLA_Capabilities {
 		}
 		$canonical_migration_authority = in_array( $capability, array( self::CAP_RUN, self::CAP_REVIEW ), true ) && current_user_can( 'sabri_feed_run_migrations' );
 		$allowed = current_user_can( $capability ) || $canonical_migration_authority;
-		$allowed = (bool) apply_filters( 'snfla_actor_capability_allowed', $allowed, $user_id, $capability );
+		// Extension filters may narrow an already-authorized decision, never grant authority.
+		if ( $allowed ) {
+			$allowed = (bool) apply_filters( 'snfla_actor_capability_allowed', true, $user_id, $capability );
+		}
 		if ( ! $allowed ) {
 			return new WP_Error( 'snfla_forbidden', 'The current account lacks the migration capability supplied by canonical governance.', array( 'status' => 403 ) );
 		}
@@ -54,7 +56,6 @@ final class SNFLA_Capabilities {
 		}
 		return $user_id;
 	}
-
 
 	public static function revalidate_actor( $expected_actor_id, $capability = self::CAP_RUN ) {
 		$expected_actor_id = absint( $expected_actor_id );
@@ -68,7 +69,6 @@ final class SNFLA_Capabilities {
 		return $actor_id;
 	}
 
-
 	public static function current_read_actor( $capability = self::CAP_REVIEW ) {
 		$user_id = get_current_user_id();
 		if ( $user_id <= 0 ) {
@@ -78,7 +78,10 @@ final class SNFLA_Capabilities {
 			return new WP_Error( 'snfla_file21_unavailable', 'Canonical File 21 is unavailable or incompatible.', array( 'status' => 503 ) );
 		}
 		$allowed = current_user_can( $capability ) || ( self::CAP_REVIEW === $capability && current_user_can( 'sabri_feed_run_migrations' ) );
-		$allowed = (bool) apply_filters( 'snfla_read_capability_allowed', $allowed, $user_id, $capability );
+		// Read-authority extension filters are deny-only for the same fail-closed reason.
+		if ( $allowed ) {
+			$allowed = (bool) apply_filters( 'snfla_read_capability_allowed', true, $user_id, $capability );
+		}
 		if ( ! $allowed ) {
 			return new WP_Error( 'snfla_forbidden', 'The current account lacks the migration evidence capability.', array( 'status' => 403 ) );
 		}
