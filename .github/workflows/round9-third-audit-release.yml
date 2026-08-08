@@ -16,9 +16,19 @@ jobs:
           fetch-depth: 0
       - shell: bash
         run: |
-          python3 tools/round9-third-audit-release.py
+          set +e
+          python3 tools/round9-third-audit-release.py > /tmp/round9-third.log 2>&1
+          code=$?
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$code" -ne 0 ]; then
+            cp /tmp/round9-third.log ROUND9-THIRD-PATCH-ERROR.txt
+            git add ROUND9-THIRD-PATCH-ERROR.txt
+            git commit -m "Round 9 diagnostic: persist third-audit integration error"
+            git push origin HEAD:audit-file-04-third-ten-round-hardening
+            exit "$code"
+          fi
           git add -A
           git commit -m "Round 9 fix: integrate v2.0.3 third-ten-round release QA"
           git push origin HEAD:audit-file-04-third-ten-round-hardening
