@@ -1,0 +1,48 @@
+name: File04 Future18 one-time test compatibility patch
+
+on:
+  push:
+    branches: ['codex/file-04-future18-v200']
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: codex/file-04-future18-v200
+          persist-credentials: true
+      - name: Update inherited v1.3.0 source assertions for v2.0.0 runtime
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('tests/run-architecture.py')
+          s=p.read_text(encoding='utf-8')
+          old="require('Version: 1.3.0' in main and \"SNFLA_VERSION', '1.3.0'\" in main and \"SNFLA_SCHEMA_VERSION', '1.3.0'\" in main, 'Runtime/header/schema versions must be 1.3.0.')"
+          new="require('Version: 2.0.0' in main and \"SNFLA_VERSION', '2.0.0'\" in main and \"SNFLA_SCHEMA_VERSION', '1.3.0'\" in main, 'Runtime/header must be 2.0.0 while the unchanged storage schema remains 1.3.0.')"
+          if s.count(old)!=1: raise SystemExit('architecture version anchor missing/non-unique')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+
+          p=Path('tests/run-file04-own-plan.py')
+          s=p.read_text(encoding='utf-8')
+          if s.count("VERSION='1.3.0'")!=1: raise SystemExit('own-plan builder version anchor missing/non-unique')
+          p.write_text(s.replace("VERSION='1.3.0'","VERSION='2.0.0'",1),encoding='utf-8')
+
+          p=Path('tools/build-release.py')
+          s=p.read_text(encoding='utf-8')
+          if s.count("'coded':'v1.3.0 candidate'")!=1: raise SystemExit('truthful coded-status anchor missing/non-unique')
+          p.write_text(s.replace("'coded':'v1.3.0 candidate'","'coded':'v2.0.0 Future18 candidate'",1),encoding='utf-8')
+          PY
+      - name: Remove one-time patch workflow and commit
+        run: |
+          rm -f .github/workflows/file04-future18-testcompat-patch.yml
+          git config user.name "Sabri File 04 Future18 Reconciler"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Align File 04 inherited QA and release truth with Future18 v2.0.0"
+          git push origin HEAD:codex/file-04-future18-v200
