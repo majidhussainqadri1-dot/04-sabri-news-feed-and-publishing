@@ -38,7 +38,7 @@ final class SNFLA_Redirects {
 			}
 		}
 
-		// The governing File 04 plan requires a *time-bounded read-only fallback*,
+		// The governing File 04 plan requires a time-bounded read-only fallback,
 		// not a tombstone-only state. If File 21 is temporarily unavailable after
 		// an otherwise valid cutover, a previously public legacy record may render
 		// from its immutable source evidence for the active fallback window. The
@@ -81,10 +81,28 @@ final class SNFLA_Redirects {
 		if ( ! is_string( $url ) || '' === $url || ! wp_http_validate_url( $url ) ) {
 			return false;
 		}
-		$home_host = strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) );
-		$url_host  = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
+		$home       = wp_parse_url( home_url( '/' ) );
+		$target     = wp_parse_url( $url );
 		$legacy_url = get_permalink( absint( $legacy_id ) );
-		return '' !== $home_host && $home_host === $url_host && untrailingslashit( $url ) !== untrailingslashit( (string) $legacy_url );
+		$legacy     = is_string( $legacy_url ) ? wp_parse_url( $legacy_url ) : false;
+		if ( ! is_array( $home ) || ! is_array( $target ) || ! is_array( $legacy ) ) {
+			return false;
+		}
+		$home_scheme   = strtolower( (string) ( $home['scheme'] ?? '' ) );
+		$target_scheme = strtolower( (string) ( $target['scheme'] ?? '' ) );
+		$home_host     = strtolower( (string) ( $home['host'] ?? '' ) );
+		$target_host   = strtolower( (string) ( $target['host'] ?? '' ) );
+		$home_port     = absint( $home['port'] ?? ( 'https' === $home_scheme ? 443 : 80 ) );
+		$target_port   = absint( $target['port'] ?? ( 'https' === $target_scheme ? 443 : 80 ) );
+		if ( '' === $home_scheme || '' === $home_host || $home_scheme !== $target_scheme || $home_host !== $target_host || $home_port !== $target_port ) {
+			return false;
+		}
+
+		// Query strings and fragments cannot turn the same legacy path into a safe
+		// redirect destination; comparing only full URLs can create a self-loop.
+		$target_path = untrailingslashit( rawurldecode( '/' . ltrim( (string) ( $target['path'] ?? '/' ), '/' ) ) );
+		$legacy_path = untrailingslashit( rawurldecode( '/' . ltrim( (string) ( $legacy['path'] ?? '/' ), '/' ) ) );
+		return $target_path !== $legacy_path;
 	}
 
 	private static function private_legacy_response( $status ) {
