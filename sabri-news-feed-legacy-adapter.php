@@ -42,6 +42,7 @@ $snfla_files = array(
 	'class-snfla-admin.php',
 	'class-snfla-cli.php',
 	'class-snfla-central-plan.php',
+	'class-snfla-plan-completion.php',
 	'class-snfla-plugin.php',
 );
 
@@ -56,6 +57,7 @@ add_action(
 	'plugins_loaded',
 	static function () {
 		SNFLA_Central_Plan::boot();
+		SNFLA_Plan_Completion::boot();
 		SNFLA_Plugin::instance()->boot();
 	},
 	30
