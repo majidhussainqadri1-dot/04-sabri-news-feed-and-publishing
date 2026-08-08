@@ -16,9 +16,9 @@
 | 7 | System/release truth | **Defect.** File26/audit evidence was insufficiently blocking and source checks could imply production readiness; fixed binding/blocker propagation and source-level `production_ready=false`. |
 | 8 | Observability, media evidence, proof durability | **Defect.** Zero-sample canary, unbound File21 media attestations and evidence-durability false-success paths were corrected. |
 | 9 | Release/version/QA integration | **Defect.** Material corrections still identified as v2.0.1 and had no deterministic second-audit gate; aligned v2.0.2 runtime/docs/builder/CI/tests. |
-| 10 | Final fresh adversarial regression after Round 9 | **Defect.** Digital Twin, checkpoint, shadow-read and canary control could still report success after option/audit persistence failure. All remaining Future18 state/evidence writes now fail closed and roll back prior state where applicable. |
+| 10 | Final fresh adversarial regression after Round 9 | **Defect.** Digital Twin, checkpoint, shadow-read and canary control could still report success after option/audit persistence failure. The correction makes those writes fail closed, makes failed compensation an explicit blocker/HTTP-500 condition, and rejects corrupted canary state. |
 
-**Round 10 status: DEFECT FOUND AND CORRECTED.** Fresh final adversarial review found the remaining evidence-durability false-success paths; the affected controls were corrected and must pass exact-head regression before release.
+**Round 10 status: DEFECT FOUND, CORRECTED AND RETESTED.** The corrected source tree was exercised by exact-head CI on `8bfb6d9fdd1ed0cabe328d4e613578e5c4ec554c`; run `31271231840` completed successfully. Architecture/ownership, File04 own-plan, central-plan, Future18, both two-review gates, the historical first ten-round gate, the second ten-round gate, deterministic release evidence, secret/PII scan, reproducible v2.0.2 double-build, PHP 8.1 and PHP 8.3 all passed. This audit-file update is documentation-only; the final PR head must still receive its own exact-head CI before merge.
 
 ## Evidence boundary
 
