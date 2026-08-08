@@ -18,6 +18,8 @@ jobs:
           persist-credentials: false
       - name: File 04 architecture and canonical ownership
         run: python3 tests/run-architecture.py
+      - name: File 04 own-plan FR/NFR completion
+        run: python3 tests/run-file04-own-plan.py
       - name: Modern central-plan requirement trace
         run: php tests/run-central-plan.php
       - name: Two post-central-plan review-fix-retest rounds
@@ -76,3 +78,5 @@ jobs:
         run: php tests/run-unit.php
       - name: Central-plan contract checks
         run: php tests/run-central-plan.php
+      - name: File 04 own-plan source checks
+        run: python3 tests/run-file04-own-plan.py
