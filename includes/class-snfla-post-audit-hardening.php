@@ -32,6 +32,8 @@ final class SNFLA_Post_Audit_Hardening {
 	 * Future18 POST endpoints persist migration evidence/control state, so an
 	 * active identity alone is insufficient. Require the same fresh File 00
 	 * current-action / step-up authority used by the core migration workflows.
+	 * Receipt creation additionally requires proof that the claimed underlying
+	 * migration/reconciliation/rollback/cutover event actually exists.
 	 */
 	public static function enforce_future_action_authority( $response, $handler, $request ) {
 		unset( $handler );
@@ -43,7 +45,61 @@ final class SNFLA_Post_Audit_Hardening {
 			return $response;
 		}
 		$actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_REVIEW );
-		return is_wp_error( $actor ) ? $actor : $response;
+		if ( is_wp_error( $actor ) ) {
+			return $actor;
+		}
+		if ( '/' . SNFLA_REST::NAMESPACE . '/future/receipt' === (string) $request->get_route() ) {
+			$receipt_gate = self::validate_receipt_request( $request );
+			if ( is_wp_error( $receipt_gate ) ) { return $receipt_gate; }
+		}
+		return $response;
+	}
+
+	/**
+	 * A cryptographic receipt must attest a real, independently verifiable
+	 * operation. Merely knowing two IDs and an operation label cannot mint an
+	 * authoritative migration receipt.
+	 */
+	private static function validate_receipt_request( WP_REST_Request $request ) {
+		$operation = sanitize_key( (string) $request->get_param( 'operation' ) );
+		$legacy_id = absint( $request->get_param( 'legacy_id' ) );
+		$target_id = absint( $request->get_param( 'target_id' ) );
+		$mapped = $legacy_id > 0 && $target_id > 0
+			&& $target_id === SNFLA_File21_Adapter::target_for( $legacy_id )
+			&& SNFLA_File21_Adapter::migration_target_valid( $legacy_id, $target_id );
+
+		switch ( $operation ) {
+			case 'migration':
+				$verified = $mapped && SNFLA_Checksum::migration_equivalent( $legacy_id, $target_id );
+				break;
+			case 'reconciliation':
+				$verified = $mapped && SNFLA_Reconciliation::validate_current_report();
+				break;
+			case 'rollback':
+				$proof = SNFLA_Rollback::proof();
+				$proof_ids = is_array( $proof ) ? SNFLA_Integrity::normalized_ids( (array) ( $proof['legacy_ids'] ?? array() ), SNFLA_Rollback::MAX_BATCH ) : array();
+				$locked = SNFLA_Inventory::locked();
+				$signature = (string) ( $locked['source_signature'] ?? '' );
+				$verified = SNFLA_Integrity::evidence_valid( $proof )
+					&& in_array( $legacy_id, $proof_ids, true )
+					&& '' !== $signature
+					&& hash_equals( $signature, (string) ( $proof['source_signature'] ?? '' ) );
+				break;
+			case 'cutover':
+				$locked = SNFLA_Inventory::locked();
+				$signature = (string) ( $locked['source_signature'] ?? '' );
+				$verified = $mapped && '' !== $signature
+					&& SNFLA_Audit::has_event( 'redirect_cutover_side_effects_completed', 'cutover:' . $signature );
+				break;
+			default:
+				$verified = false;
+				break;
+		}
+		return $verified ? true : new WP_Error(
+			'snfla_receipt_evidence_unverified',
+			'The requested cryptographic receipt is blocked because the underlying operation cannot be independently verified.',
+			array( 'status' => 412, 'operation' => $operation, 'legacy_id' => $legacy_id )
+		);
 	}
 
 	/**
@@ -227,7 +283,7 @@ final class SNFLA_Post_Audit_Hardening {
 		if ( false !== strpos( $code, 'persist_failed' ) || false !== strpos( $code, 'audit_failed' ) || false !== strpos( $code, 'query_failed' ) || false !== strpos( $code, 'containment_failed' ) || false !== strpos( $code, 'run_finish_failed' ) ) { return 500; }
 		if ( false !== strpos( $code, 'inventory_changed' ) || false !== strpos( $code, 'actor_changed' ) ) { return 409; }
 		if ( false !== strpos( $code, 'not_found' ) || false !== strpos( $code, 'record_missing' ) || false !== strpos( $code, 'source_missing' ) || false !== strpos( $code, 'invalid_source' ) ) { return 404; }
-		if ( false !== strpos( $code, 'target_invalid' ) || false !== strpos( $code, 'proof_required' ) || false !== strpos( $code, 'not_green' ) || false !== strpos( $code, 'contract_' ) ) { return 412; }
+		if ( false !== strpos( $code, 'target_invalid' ) || false !== strpos( $code, 'proof_required' ) || false !== strpos( $code, 'not_green' ) || false !== strpos( $code, 'contract_' ) || false !== strpos( $code, 'evidence_unverified' ) ) { return 412; }
 		if ( false !== strpos( $code, 'authentication_required' ) ) { return 401; }
 		if ( false !== strpos( $code, 'forbidden' ) && 'snfla_gameday_environment_forbidden' !== $code ) { return 403; }
 		return 400;
