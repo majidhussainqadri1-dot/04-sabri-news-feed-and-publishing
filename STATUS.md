@@ -1,6 +1,6 @@
 # File 04 v2.0.0 — Future18 Truthful Status Register
 
-`source_status=future18-code-complete-candidate`
+`source_status=future18-source-complete-exact-head-green`
 `staging_accepted_pending=true`
 `live_deployed=false`
 `operational=false`
@@ -8,9 +8,9 @@
 | Status | Decision | Evidence boundary |
 |---|---|---|
 | Specified | **Complete for current source scope** | Modern consolidated governing plan + File 04 plan + approved `F04-FUT-001..018` extension are reconciled; 71 CV IDs, 2 F04-CEN IDs, 15 AJ IDs, FR-001..013, NFR-001..010 and all 18 Future18 IDs are traced |
-| Coded | **Complete candidate for reviewable File 04 source scope** | v2.0.0 implements all 18 Future18 migration-intelligence/safety capabilities without changing the proven v1.3.0 storage schema or duplicating canonical owners |
-| Packaged | **Pending exact-head v2.0.0 CI proof** | Deterministic builder is upgraded to v2.0.0 and includes Future18 manifest/lock evidence; current head must produce two byte-identical installable/source builds before promotion |
-| Automated-QA Green | **Pending exact-head v2.0.0 CI proof** | Current head must pass architecture, File 04 own-plan QA, central-plan trace, Future18 QA, two fresh Future18 review/fix/retest rounds, deterministic build, secret/PII scan and PHP 8.1/8.3 |
+| Coded | **Complete for reviewable File 04 source scope** | v2.0.0 implements all 18 Future18 migration-intelligence/safety capabilities without changing the proven v1.3.0 storage schema or duplicating canonical owners |
+| Packaged | **Reproducible v2.0.0 candidate — exact-head green** | GitHub Actions run `31264411394` on source head `0022ce602decae0dc2e52e25592292afcbc8a3d5` produced and compared two byte-identical installable builds and two byte-identical complete-source builds; deterministic builder records Future18 manifest/lock evidence |
+| Automated-QA Green | **Exact-head green** | Run `31264411394`: architecture, File 04 own-plan QA, central-plan trace, Future18 QA, two post-central-plan reviews, two fresh Future18 review/fix/retest rounds, deterministic release evidence, secret/PII scan and PHP 8.1/8.3 all PASS |
 | Staging-Accepted | **Pending** | Hostinger fresh install/upgrade, real File 00/File 21/File 26 contracts, real legacy data, visual diff, browser/RTL/WCAG, cache/index, DR GameDay, restore and rollback evidence are external gates |
 | Live-Deployed | **Pending** | Founder-approved controlled production deployment only |
 | Operational | **Pending** | Real monitoring/SLOs, support/escalation, backup/restore, incident handling, migration window and final adapter retirement evidence are required |
@@ -37,7 +37,7 @@
 - **F04-FUT-017 Retirement Confidence/Sunset Engine:** ten evidence gates; score is advisory and Founder approval remains mandatory.
 - **F04-FUT-018 Migration Mission Control:** privacy-safe aggregate operational view; it is not an authoritative truth store.
 - `FUTURE18-TRACEABILITY.md`, `tests/run-future18.py` and `tests/run-future18-reviews.py` bind every enhancement to implementation, ownership, safety and acceptance evidence.
-- Deterministic release builder now records `future18_count=18`, Future18 review rounds and v2.0.0 package identity.
+- Deterministic release builder records `future18_count=18`, Future18 review rounds and v2.0.0 package identity.
 
 ## Canonical ownership preserved
 
@@ -50,7 +50,7 @@
 
 ## Known source-reviewable defects
 
-The v2.0.0 Future18 branch is code-complete as a candidate, but this register intentionally does **not** assert zero defects until the exact current head has passed the full upgraded CI. Any failure must be fixed and the complete exact-head suite rerun before merge.
+On exact source head `0022ce602decae0dc2e52e25592292afcbc8a3d5`, GitHub Actions run `31264411394` completed successfully with all configured v2.0.0 Future18 source gates passing. **Known unresolved defects in the tested reviewable source scope: 0.** This statement does not cover unexecuted Hostinger, browser/device, real-provider, real-data-volume or production behavior. This status-only evidence commit must itself pass the same exact-head CI before merge.
 
 ## Mandatory external gates that source code cannot fabricate
 
