@@ -117,6 +117,7 @@ def build(output:Path,source_output:Path):
           'central_plan_review_rounds':CENTRAL_PLAN_REVIEW_ROUNDS,
           'future18_review_rounds':FUTURE18_REVIEW_ROUNDS,
           'ten_round_post_future18_review_rounds':TEN_ROUND_REVIEW_ROUNDS,
+          'second_ten_round_review_rounds':SECOND_TEN_ROUND_REVIEW_ROUNDS,
           'historical_v120_review_rounds':HISTORICAL_REVIEW_ROUNDS,
           'contracts':{
             'File 00':{'required_for_mutation':True,'purpose':'current identity, step-up and migration capabilities'},
@@ -138,7 +139,7 @@ def build(output:Path,source_output:Path):
               {'name':'sabri:canonical-search-owner','value':'File 26'},
               {'name':'sabri:purpose','value':'temporary legacy migration and compatibility adapter'},
               {'name':'sabri:central-plan','value':CENTRAL_PLAN_ID},
-              {'name':'sabri:post-future18-hardening','value':'ten-round-v1'},
+              {'name':'sabri:post-future18-hardening','value':'two-ten-round-audits-v2'},
           ]}},
           'components':[
             {'bom-ref':'wordpress@>=6.0','type':'framework','name':'WordPress','version':'>=6.0','scope':'required'},
@@ -162,6 +163,7 @@ def build(output:Path,source_output:Path):
           'central_plan_review_rounds':CENTRAL_PLAN_REVIEW_ROUNDS,
           'future18_review_rounds':FUTURE18_REVIEW_ROUNDS,
           'ten_round_post_future18_review_rounds':TEN_ROUND_REVIEW_ROUNDS,
+          'second_ten_round_review_rounds':SECOND_TEN_ROUND_REVIEW_ROUNDS,
           'historical_v120_review_rounds':HISTORICAL_REVIEW_ROUNDS,
           'known_unresolved_source_scope_blockers':0,
           'truthful_status':{
@@ -205,6 +207,7 @@ def build(output:Path,source_output:Path):
       'central_plan_review_rounds':CENTRAL_PLAN_REVIEW_ROUNDS,
       'future18_review_rounds':FUTURE18_REVIEW_ROUNDS,
       'ten_round_post_future18_review_rounds':TEN_ROUND_REVIEW_ROUNDS,
+          'second_ten_round_review_rounds':SECOND_TEN_ROUND_REVIEW_ROUNDS,
       'known_unresolved_source_scope_blockers':0,
       'installable_zip':str(output),'installable_zip_sha256':install_sha,
       'complete_source_zip':str(source_output),'complete_source_zip_sha256':source_zip_sha,
@@ -229,6 +232,7 @@ def verify_only():
           'future18_count':FUTURE18_COUNT,
           'future18_review_rounds':FUTURE18_REVIEW_ROUNDS,
           'ten_round_post_future18_review_rounds':TEN_ROUND_REVIEW_ROUNDS,
+          'second_ten_round_review_rounds':SECOND_TEN_ROUND_REVIEW_ROUNDS,
         },sort_keys=True))
 
 def main():
