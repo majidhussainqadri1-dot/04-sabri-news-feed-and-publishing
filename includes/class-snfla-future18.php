@@ -66,6 +66,7 @@ final class SNFLA_Future18 {
 		self::route( '/future/registry', WP_REST_Server::READABLE, 'rest_registry', $read );
 		self::route( '/future/digital-twin', WP_REST_Server::CREATABLE, 'rest_digital_twin', $act, $ids );
 		self::route( '/future/contract-drift', WP_REST_Server::READABLE, 'rest_contract_drift', $read );
+		self::route( '/future/contract-baseline', WP_REST_Server::CREATABLE, 'rest_contract_baseline', $act );
 		self::route( '/future/fidelity', WP_REST_Server::CREATABLE, 'rest_fidelity', $act, self::pair_args() );
 		self::route( '/future/visual-diff', WP_REST_Server::CREATABLE, 'rest_visual_diff', $act, self::pair_args() );
 		self::route( '/future/lineage', WP_REST_Server::READABLE, 'rest_lineage', $read, array( 'legacy_id' => self::id_arg() ) );
@@ -132,6 +133,7 @@ final class SNFLA_Future18 {
 	public static function rest_registry( WP_REST_Request $request ) { unset( $request ); return self::response( 'future18_registry', self::registry() ); }
 	public static function rest_digital_twin( WP_REST_Request $request ) { return self::response( 'future18_digital_twin', self::digital_twin( (array) $request->get_param( 'legacy_ids' ), get_current_user_id() ) ); }
 	public static function rest_contract_drift( WP_REST_Request $request ) { unset( $request ); return self::response( 'future18_contract_drift', self::contract_drift() ); }
+	public static function rest_contract_baseline( WP_REST_Request $request ) { unset( $request ); return self::response( 'future18_contract_baseline', self::record_contract_baseline( get_current_user_id() ) ); }
 	public static function rest_fidelity( WP_REST_Request $request ) { return self::response( 'future18_fidelity', self::content_fidelity( $request->get_param( 'legacy_id' ), $request->get_param( 'target_id' ) ) ); }
 	public static function rest_visual_diff( WP_REST_Request $request ) { return self::response( 'future18_visual_diff', self::visual_diff( $request->get_param( 'legacy_id' ), $request->get_param( 'target_id' ) ) ); }
 	public static function rest_lineage( WP_REST_Request $request ) { return self::response( 'future18_lineage', self::lineage_graph( $request->get_param( 'legacy_id' ) ) ); }
@@ -203,7 +205,7 @@ final class SNFLA_Future18 {
 	}
 
 	/** F04-FUT-002 — version/fingerprint drift detection across canonical contracts. */
-	public static function contract_drift() {
+	private static function contract_snapshot() {
 		$manifest = SNFLA_Central_Plan::module_manifest();
 		$descriptors = array(
 			'File 00' => apply_filters( 'sabri_file00_contract_descriptor_v1', array( 'verified' => false, 'status' => 'unavailable' ), array( 'consumer' => 'File 04', 'purpose' => 'identity_authority' ) ),
@@ -211,18 +213,75 @@ final class SNFLA_Future18 {
 			'File 26' => apply_filters( 'sabri_file26_contract_descriptor_v1', array( 'verified' => false, 'status' => 'unavailable' ), array( 'consumer' => 'File 04', 'purpose' => 'legacy_resolution_search_handoff' ) ),
 		);
 		$normalized = SNFLA_Checksum::canonicalize( SNFLA_Audit::redact( $descriptors ) );
-		$fingerprint = SNFLA_Checksum::hash( array( 'manifest' => $manifest, 'contracts' => $normalized ) );
-		$previous = get_option( self::DRIFT_OPTION, array() );
-		$changed = ! empty( $previous['fingerprint'] ) && ! hash_equals( (string) $previous['fingerprint'], $fingerprint );
 		$unverified = array();
-		foreach ( $descriptors as $owner => $descriptor ) { if ( ! is_array( $descriptor ) || empty( $descriptor['verified'] ) ) { $unverified[] = $owner; } }
-		$result = array(
-			'feature_id' => 'F04-FUT-002', 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ), 'fingerprint' => $fingerprint,
-			'changed_since_last_verified_snapshot' => $changed, 'unverified_contracts' => $unverified,
-			'block_mutation' => $changed || ! empty( $unverified ), 'descriptors' => $normalized,
+		foreach ( $descriptors as $owner => $descriptor ) {
+			if ( ! is_array( $descriptor ) || empty( $descriptor['verified'] ) ) { $unverified[] = $owner; }
+		}
+		return array(
+			'fingerprint' => SNFLA_Checksum::hash( array( 'manifest' => $manifest, 'contracts' => $normalized ) ),
+			'descriptors' => $normalized,
+			'unverified_contracts' => $unverified,
+			'source_signature' => (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' ),
 		);
-		update_option( self::DRIFT_OPTION, $result, false );
+	}
+
+	public static function contract_drift() {
+		$snapshot = self::contract_snapshot();
+		$baseline = get_option( self::DRIFT_OPTION, array() );
+		$signature = (string) $snapshot['source_signature'];
+		$baseline_valid = is_array( $baseline )
+			&& SNFLA_Integrity::evidence_valid( $baseline )
+			&& ! empty( $baseline['fingerprint'] )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $signature )
+			&& hash_equals( $signature, (string) ( $baseline['source_signature'] ?? '' ) );
+		$changed = $baseline_valid && ! hash_equals( (string) $baseline['fingerprint'], (string) $snapshot['fingerprint'] );
+		$result = array(
+			'feature_id' => 'F04-FUT-002',
+			'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ),
+			'fingerprint' => $snapshot['fingerprint'],
+			'baseline_fingerprint' => $baseline_valid ? (string) $baseline['fingerprint'] : '',
+			'baseline_valid' => $baseline_valid,
+			'baseline_missing_or_invalid' => ! $baseline_valid,
+			'changed_since_verified_baseline' => $changed,
+			'unverified_contracts' => $snapshot['unverified_contracts'],
+			'block_mutation' => ! $baseline_valid || $changed || ! empty( $snapshot['unverified_contracts'] ),
+			'descriptors' => $snapshot['descriptors'],
+		);
 		return $result;
+	}
+
+	public static function record_contract_baseline( $actor_id ) {
+		$actor_id = absint( $actor_id );
+		$authorized = SNFLA_Capabilities::revalidate_actor( $actor_id, SNFLA_Capabilities::CAP_REVIEW );
+		if ( is_wp_error( $authorized ) ) { return $authorized; }
+		if ( ! SNFLA_Inventory::unchanged() ) {
+			return new WP_Error( 'snfla_contract_baseline_source_changed', 'The locked source must be current before recording a contract baseline.', array( 'status' => 409 ) );
+		}
+		$snapshot = self::contract_snapshot();
+		if ( ! empty( $snapshot['unverified_contracts'] ) ) {
+			return new WP_Error( 'snfla_contract_baseline_unverified', 'Every canonical dependency contract must be verified before a baseline can be recorded.', array( 'status' => 412, 'unverified_contracts' => $snapshot['unverified_contracts'] ) );
+		}
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $snapshot['source_signature'] ) ) {
+			return new WP_Error( 'snfla_contract_baseline_source_invalid', 'A cryptographically valid locked source signature is required.', array( 'status' => 412 ) );
+		}
+		$baseline = SNFLA_Integrity::sign_evidence( array(
+			'schema' => 2,
+			'feature_id' => 'F04-FUT-002',
+			'fingerprint' => $snapshot['fingerprint'],
+			'source_signature' => $snapshot['source_signature'],
+			'descriptors' => $snapshot['descriptors'],
+			'actor_digest' => SNFLA_Audit::actor_digest( $actor_id ),
+			'recorded_at_utc' => gmdate( 'Y-m-d H:i:s' ),
+		) );
+		$previous = get_option( self::DRIFT_OPTION, array() );
+		if ( ! update_option( self::DRIFT_OPTION, $baseline, false ) && get_option( self::DRIFT_OPTION, array() ) !== $baseline ) {
+			return new WP_Error( 'snfla_contract_baseline_persist_failed', 'The verified contract baseline could not be persisted.', array( 'status' => 500 ) );
+		}
+		if ( ! SNFLA_Audit::record( 'future18_contract_baseline_recorded', $actor_id, array( 'fingerprint' => $snapshot['fingerprint'], 'source_signature' => $snapshot['source_signature'] ), 'future18-contract-baseline:' . $snapshot['fingerprint'] ) ) {
+			update_option( self::DRIFT_OPTION, $previous, false );
+			return new WP_Error( 'snfla_contract_baseline_audit_failed', 'The contract baseline was reverted because audit evidence could not be written.', array( 'status' => 500 ) );
+		}
+		return array( 'recorded' => true, 'baseline' => SNFLA_Audit::redact( $baseline ), 'drift' => self::contract_drift() );
 	}
 
 	/** F04-FUT-003 — exact textual/provenance fidelity plus optional semantic provider. */
