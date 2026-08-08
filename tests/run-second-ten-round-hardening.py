@@ -33,6 +33,7 @@ need('snfla_media_source_signature_invalid' in plan and 'provider_bound' in plan
 need('snfla_gameday_persist_failed' in future and 'snfla_gameday_audit_failed' in future,'GameDay durability must fail closed.',fail)
 need('persistence_failed' in hard and 'audit_persistence_failed' in hard,'Redirect/citation proof durability must fail closed.',fail)
 need(all(token in future for token in ['snfla_twin_persist_failed','snfla_twin_audit_failed','snfla_checkpoint_persist_failed','snfla_shadow_persist_failed','snfla_shadow_audit_failed','snfla_canary_persist_failed','snfla_canary_audit_failed']),'Round10: remaining Future18 twin/checkpoint/shadow/canary evidence must fail closed on persistence/audit failure.',fail)
+need(all(token in future for token in ['snfla_twin_compensation_failed','snfla_shadow_compensation_failed','snfla_canary_compensation_failed','canary_state_invalid']) and "compensation_failed" in hard,'Round10: failed compensation and corrupted canary state must remain explicit HTTP-500/blocking conditions.',fail)
 need('run-second-ten-round-hardening.py' in workflow and 'run-second-ten-round-hardening.py' in build,'Second ten-round gate must run in CI and deterministic builder.',fail)
 need("VERSION='2.0.2'" in build and 'SECOND_TEN_ROUND_REVIEW_ROUNDS=10' in build,'Builder must bind v2.0.2 and second-ten-round evidence.',fail)
 need('Round 10' in audit and ('PENDING' in audit or 'No new defect' in audit),'Audit must explicitly record the final Round 10 state.',fail)

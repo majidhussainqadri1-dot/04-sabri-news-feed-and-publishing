@@ -316,7 +316,7 @@ final class SNFLA_Post_Audit_Hardening {
 	private static function status_for_error_code( $code ) {
 		if ( false !== strpos( $code, 'unavailable' ) ) { return 503; }
 		if ( false !== strpos( $code, 'locked' ) ) { return 423; }
-		if ( false !== strpos( $code, 'persist_failed' ) || false !== strpos( $code, 'audit_failed' ) || false !== strpos( $code, 'query_failed' ) || false !== strpos( $code, 'containment_failed' ) || false !== strpos( $code, 'run_finish_failed' ) ) { return 500; }
+		if ( false !== strpos( $code, 'persist_failed' ) || false !== strpos( $code, 'audit_failed' ) || false !== strpos( $code, 'query_failed' ) || false !== strpos( $code, 'containment_failed' ) || false !== strpos( $code, 'compensation_failed' ) || false !== strpos( $code, 'run_finish_failed' ) ) { return 500; }
 		if ( false !== strpos( $code, 'inventory_changed' ) || false !== strpos( $code, 'actor_changed' ) ) { return 409; }
 		if ( false !== strpos( $code, 'not_found' ) || false !== strpos( $code, 'record_missing' ) || false !== strpos( $code, 'source_missing' ) || false !== strpos( $code, 'invalid_source' ) ) { return 404; }
 		if ( false !== strpos( $code, 'target_invalid' ) || false !== strpos( $code, 'proof_required' ) || false !== strpos( $code, 'not_green' ) || false !== strpos( $code, 'contract_' ) || false !== strpos( $code, 'evidence_unverified' ) ) { return 412; }

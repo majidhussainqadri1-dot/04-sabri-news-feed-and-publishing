@@ -204,12 +204,20 @@ final class SNFLA_Future18 {
 		}
 		$checkpoint = self::store_checkpoint( 'digital_twin', $twin );
 		if ( is_wp_error( $checkpoint ) ) {
-			update_option( self::TWIN_OPTION, $previous_twin, false );
+			$restored = update_option( self::TWIN_OPTION, $previous_twin, false ) || get_option( self::TWIN_OPTION, array() ) === $previous_twin;
+			if ( ! $restored ) {
+				do_action( 'snfla_operational_alert_v1', 'future18_twin_compensation_failed', 'blocker', array( 'original_error' => $checkpoint->get_error_code() ) );
+				return new WP_Error( 'snfla_twin_compensation_failed', 'Digital Twin checkpoint failed and prior evidence could not be restored; manual repair is required.', array( 'status' => 500, 'original_error' => $checkpoint->get_error_code() ) );
+			}
 			return $checkpoint;
 		}
 		if ( $actor_id > 0 && ! SNFLA_Audit::record( 'future18_digital_twin_completed', $actor_id, array( 'twin_checksum' => $twin['twin_checksum'], 'count' => count( $rows ), 'checkpoint_id' => $checkpoint['checkpoint_id'] ?? '' ), 'future18-twin:' . $twin['twin_checksum'] ) ) {
-			update_option( self::TWIN_OPTION, $previous_twin, false );
-			update_option( self::CHECKPOINTS_OPTION, $previous_checkpoints, false );
+			$twin_restored = update_option( self::TWIN_OPTION, $previous_twin, false ) || get_option( self::TWIN_OPTION, array() ) === $previous_twin;
+			$checkpoints_restored = update_option( self::CHECKPOINTS_OPTION, $previous_checkpoints, false ) || get_option( self::CHECKPOINTS_OPTION, array() ) === $previous_checkpoints;
+			if ( ! $twin_restored || ! $checkpoints_restored ) {
+				do_action( 'snfla_operational_alert_v1', 'future18_twin_compensation_failed', 'blocker', array( 'twin_restored' => $twin_restored, 'checkpoints_restored' => $checkpoints_restored ) );
+				return new WP_Error( 'snfla_twin_compensation_failed', 'Digital Twin audit failed and prior evidence could not be fully restored; manual repair is required.', array( 'status' => 500 ) );
+			}
 			return new WP_Error( 'snfla_twin_audit_failed', 'Digital Twin evidence was reverted because its audit event could not be persisted.', array( 'status' => 500 ) );
 		}
 		$twin['checkpoint'] = $checkpoint;
@@ -410,7 +418,11 @@ final class SNFLA_Future18 {
 			return new WP_Error( 'snfla_shadow_persist_failed', 'Shadow-read evidence could not be persisted; no successful evidence is reported.', array( 'status' => 500 ) );
 		}
 		if ( $actor_id > 0 && ! SNFLA_Audit::record( 'future18_shadow_read_completed', $actor_id, array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'shadow_checksum' => $result['shadow_checksum'] ), 'future18-shadow:' . $result['shadow_checksum'] ) ) {
-			update_option( self::SHADOW_OPTION, $previous, false );
+			$restored = update_option( self::SHADOW_OPTION, $previous, false ) || get_option( self::SHADOW_OPTION, array() ) === $previous;
+			if ( ! $restored ) {
+				do_action( 'snfla_operational_alert_v1', 'future18_shadow_compensation_failed', 'blocker', array( 'legacy_id' => $legacy_id, 'target_id' => $target_id ) );
+				return new WP_Error( 'snfla_shadow_compensation_failed', 'Shadow-read audit failed and prior evidence could not be restored; manual repair is required.', array( 'status' => 500 ) );
+			}
 			return new WP_Error( 'snfla_shadow_audit_failed', 'Shadow-read evidence was reverted because its audit event could not be persisted.', array( 'status' => 500 ) );
 		}
 		return $result;
@@ -433,6 +445,10 @@ final class SNFLA_Future18 {
 		elseif ( $error_rate > 0.01 ) { $blockers[] = 'error_rate_above_one_percent'; }
 		$current = get_option( self::CANARY_OPTION, array( 'approved_percent' => 0 ) );
 		$current_percent = absint( $current['approved_percent'] ?? 0 );
+		if ( ! in_array( $current_percent, array_merge( array( 0 ), $allowed ), true ) ) {
+			$blockers[] = 'canary_state_invalid';
+			$current_percent = 0;
+		}
 		$current_index = array_search( $current_percent, array_merge( array( 0 ), $allowed ), true );
 		$request_index = array_search( $requested_percent, $allowed, true );
 		$max_next = 0 === $current_percent ? 1 : ( isset( $allowed[ min( count( $allowed ) - 1, (int) $current_index ) ] ) ? $allowed[ min( count( $allowed ) - 1, (int) $current_index ) ] : $current_percent );
@@ -445,7 +461,13 @@ final class SNFLA_Future18 {
 			return new WP_Error( 'snfla_canary_persist_failed', 'The approved canary decision could not be persisted; rollout remains at the prior phase.', array( 'status' => 500 ) );
 		}
 		if ( $actor_id > 0 && ! SNFLA_Audit::record( 'future18_canary_decision', $actor_id, $decision, 'future18-canary:' . $requested_percent . ':' . gmdate( 'YmdHis' ) ) ) {
-			if ( $approved ) { update_option( self::CANARY_OPTION, $previous, false ); }
+			if ( $approved ) {
+				$restored = update_option( self::CANARY_OPTION, $previous, false ) || get_option( self::CANARY_OPTION, array() ) === $previous;
+				if ( ! $restored ) {
+					do_action( 'snfla_operational_alert_v1', 'future18_canary_compensation_failed', 'blocker', array( 'requested_percent' => $requested_percent, 'previous_percent' => $current_percent ) );
+					return new WP_Error( 'snfla_canary_compensation_failed', 'Canary audit failed and the prior rollout state could not be restored; rollout must be treated as blocked pending manual repair.', array( 'status' => 500 ) );
+				}
+			}
 			return new WP_Error( 'snfla_canary_audit_failed', 'The canary decision was reverted because its audit event could not be persisted.', array( 'status' => 500 ) );
 		}
 		return $decision;
