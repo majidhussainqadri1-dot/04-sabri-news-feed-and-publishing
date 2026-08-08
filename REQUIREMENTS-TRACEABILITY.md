@@ -1,31 +1,61 @@
-# File 04 v1.2.0 — Requirements Traceability
+# File 04 v1.3.0 — Governing Requirements Traceability
 
 ## Governing sources
 
-- **G1:** Definitive Master Plan v3.0 (`SSH-PMP-2026-v3.0`).
-- **G2:** Consolidated All-Chats Recovered Directives v2.1.
-- **G3:** File 04 Complete Master Plan v1.0 (`SSH-F04-PLAN-2026-v1.0`).
+1. **Modern consolidated governing plan** — `SSH-CENTRAL-CONSOLIDATED-2026-08-07` (later central-plan decisions prevail over older non-conflicting material only where they conflict).
+2. **File 04 — News Feed and Publishing — Legacy Foundation Adapter Complete Master Plan v1.0** — `SSH-F04-PLAN-2026-v1.0`.
+3. Historical v1.2.0 forty-round source audit is retained as ancestry evidence, not as proof that the later central-plan delta was already implemented.
 
-| Requirement | Source | Implementation | Verification |
+## Canonical constitutional boundary
+
+- **File 21 is the sole canonical publication/Home/News/feed owner.**
+- **File 26 is the canonical search/discovery owner.** File 04 exposes only a versioned legacy-ID → canonical-File-21 resolution contract; it contributes no ranking truth or private legacy content to search.
+- **File 17 / canonical community owners** retain community/forum/AMA truth. File 04 does not create a community backend.
+- **File 20 owns shell/routing layout; File 25 owns visual tokens/components; File 24 owns assurance coordination while File 04 preserves native enforcement.**
+- File 04 owns only historical inventory, deterministic mapping, dry-run/quarantine, bounded migration through File 21 commands, reconciliation, cutover redirects, non-destructive rollback, time-bounded read-only fallback and retirement.
+
+## Exact central-plan applicability
+
+The current File 04 plan assigns **71 CV requirements** to File 04's release trace:
+
+- `CV-037`–`CV-049` — 13 requirements: Home/feed/discovery/card/correction/ranking concerns. **Enforcement:** integration regression only; no duplicate File 21/File 26 backend.
+- `CV-074`–`CV-084` — 11 requirements: communities/channels/forum/AMA/wiki/moderation/events/health concerns. **Enforcement:** integration regression only; no duplicate community backend.
+- `CV-239`–`CV-285` — 47 requirements: language/bidi/accessibility/low-bandwidth/safety/privacy/security/SDLC/DR/SLO/observability/degradation/release/support/capacity/vendor/runbook concerns. **Enforcement:** adapter-surface, migration-safety, native-assurance or release-evidence according to canonical ownership.
+
+The machine-readable per-ID registry is `SNFLA_Central_Plan::requirements()` in `includes/class-snfla-central-plan.php`. It expands every individual ID — not merely the ranges — and records `priority`, `owner`, `enforcement`, `code_location`, `contract` and deterministic `test_id=CP-CV-xxx`. `tests/run-central-plan.php` fails if any of the 71 rows is absent or loses one of those fields.
+
+## File-specific central requirements
+
+| ID | Required behavior | Implementation | Verification |
 |---|---|---|---|
-| File 21 sole canonical publication owner | G1 R-04; G3 Charter | File 21 adapter, no parallel publishing backend | architecture round 1/21 |
-| File 04 temporary write-disabled source adapter | G1/G3 | legacy schema guards and inert retired boot | rounds 1/38 |
-| File 00/File 21 fail-closed authority | G1/G2/G3 | capabilities + lock-time actor revalidation | rounds 3/14 |
-| Compensating activation/handover | G2/G3 | signed snapshot, page/plugin restoration, new-table compensation | rounds 4/5/12 |
-| Deterministic complete inventory | G1/G3 | keyset traversal, schema/data signatures, DB error checks | rounds 8–11 |
-| Dry-run and source-only quarantine | G1/G3 | per-run candidate ledger and governed disposition | rounds 29/30 |
-| Backup and isolated restore proof | G1/G2/G3 | source-bound verifier contract and exact counts | round 33 |
-| Bounded/resumable migration | G1/G2/G3 | batch limits, idempotency, persistent interaction cursors | rounds 22–31 |
-| Exact interactions migration | G1/G3 | reactions/saves/views/reports contribution ledger | rounds 23–28 |
-| Full reconciliation/final delta | G1/G3 | complete source scan, mapping/target checks, audit chain | round 34 |
-| Cache/search cutover proof | G2/G3 | verified provider evidence | round 35 |
-| Canonical redirects and tombstones | G1/G3 | 301 targets, 410 source-only/gone state | round 36 |
-| Non-destructive rollback | G1/G2/G3 | local checkpoint before canonical interaction reversal | round 37 |
-| No permanent File 04 dependency | G1 R-04; G3 | route manifest handoff + verified self-deactivation | round 38 |
-| Deterministic package/evidence | G1/G2 | canonical-folder build tool, dependency manifest, CycloneDX SBOM, inventory, checksums, release lock, CI | round 39 |
-| Continuous fresh review law | G2/G3 | `FORTY-ROUND-AUDIT.md/json` and round gate | round 40 |
-| Truthful status separation | G1/G2/G3 | `STATUS.md`, REST status and release lock | release review |
+| `F04-CEN-01` | New File 04 post/comment/feed truth writes are forbidden; historical IDs deterministically resolve/migrate to File 21 canonical IDs/URLs. | `class-snfla-plugin.php`, `class-snfla-mapping.php`, `class-snfla-migration.php`, `class-snfla-file21-adapter.php`, `class-snfla-central-plan.php` | architecture QA + central-plan QA + migration/reconciliation tests |
+| `F04-CEN-02` | Any exceptional migration overlap must be explicit, bounded, evidence-governed and Founder-approved; after cutover File 04 becomes read-only → redirect-only → retired. | schema lifecycle, reconciliation, redirects, rollback, retirement and central-plan manifest | architecture QA + lifecycle/rollback/retirement tests |
 
-## Forty-round evidence
+File 04 does **not** introduce a standing dual-write service. Canonical mutation remains a File 21 command boundary; the legacy source itself is write-disabled.
 
-The complete review ledger is stored in `FORTY-ROUND-AUDIT.md` and `FORTY-ROUND-AUDIT.json`. Every round records its scope, finding, correction and retest result. A failure in any round blocks package verification.
+## Acceptance journeys
+
+The File 04 plan maps these **15** relevant journeys: `AJ-07`, `AJ-10`, `AJ-24`, `AJ-25`, `AJ-28`, `AJ-31`–`AJ-40`.
+
+- `AJ-07` is native release-critical: legacy record → File 21 canonical route, with no duplicate write/ID.
+- `AJ-10`, `AJ-24`, `AJ-25`, `AJ-28`, `AJ-34`, `AJ-35` are cross-file integration regressions; File 04 must not duplicate the canonical notification/donation/search/identity/privacy owners.
+- `AJ-31`–`AJ-33` are adapter-surface/accessibility/network regressions.
+- `AJ-36`–`AJ-37` are degraded-provider and restore/reconciliation gates.
+- `AJ-38`–`AJ-40` are release gates: blockers stop release, screenshot/role/state corpus is required in staging, and two consecutive corrective review/fix/retest rounds precede rollout.
+
+## Modern implementation additions in v1.3.0
+
+1. `SNFLA_Central_Plan` — exact 71-CV registry, 2 F04-CEN IDs, 15 AJ IDs, canonical-owner map and truthful release gate.
+2. File 26 compatibility — `sabri_file26_legacy_resolution_v1` resolves a migrated legacy ID only to a verified, public File 21 canonical object. Unmapped/private targets are explicitly non-indexable and no File 04 ranking backend is created.
+3. Accessibility/localization source safeguards — logical RTL properties, strong `:focus-visible`, 44px controls, LTR isolation for code/JSON, reduced-motion handling, forced-colors support and mobile reflow safeguards.
+4. Release truth separation — source trace completion is distinct from Hostinger staging, backup/restore, File 26 integration acceptance, accessibility acceptance, degraded-provider drills and Founder production approval.
+5. Two fresh post-central-plan source review rounds — requirements/ownership first; adversarial/source regression second.
+6. Deterministic v1.3.0 package metadata includes central-plan IDs, canonical owner boundaries, dependency contracts and review counts.
+
+## Required trace chain
+
+For every applicable item the governing trace is:
+
+**Central CV/CEN/AJ ID → File 04 requirement → design/data/API/event boundary → test ID → defect/fix/commit → package/checksum → staging evidence → Founder approval → rollout/monitoring.**
+
+The repository can prove the chain only through source/package/CI until the external steps actually occur. Hostinger staging, real-data migration, browser/RTL/WCAG acceptance, restore rehearsal, Founder approval, controlled live deployment and operational monitoring MUST NOT be fabricated in this document.
