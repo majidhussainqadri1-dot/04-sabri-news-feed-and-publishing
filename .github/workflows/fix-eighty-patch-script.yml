@@ -22,15 +22,13 @@ jobs:
         shell: bash
         run: |
           set +e
-          sed -i 's/capture_activation_handover", """/capture_activation_handover""", """/' tools/apply-eighty-round-hardening.py
+          perl -0pi -e 's/(?<!")", """/""", """/g' tools/apply-eighty-round-hardening.py
           python3 -m py_compile tools/apply-eighty-round-hardening.py > /tmp/compile.log 2>&1
           rc=$?
           if [ "$rc" -ne 0 ]; then
             {
-              echo 'Driver compile failed after direct repair:'
+              echo 'Driver compile failed after boundary repair:'
               cat /tmp/compile.log
-              echo '--- capture lines ---'
-              grep -n 'capture_activation_handover' tools/apply-eighty-round-hardening.py || true
             } > EIGHTY-FIX-DIAGNOSTIC.txt
             git checkout -- tools/apply-eighty-round-hardening.py
             echo 'failed=true' >> "$GITHUB_OUTPUT"
