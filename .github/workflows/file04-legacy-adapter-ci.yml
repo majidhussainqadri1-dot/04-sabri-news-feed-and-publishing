@@ -1,4 +1,4 @@
-name: File 04 Legacy Adapter — Central Plan + Future18 + Ten-Round Hardening CI
+name: File 04 Legacy Adapter — Central Plan + Future18 + Two-Ten-Round Hardening CI
 
 on:
   pull_request:
@@ -30,8 +30,10 @@ jobs:
         run: python3 tests/run-central-reviews.py
       - name: Two fresh Future18 review-fix-retest rounds
         run: python3 tests/run-future18-reviews.py
-      - name: Ten-round post-Future18 hardening gate
+      - name: Historical first ten-round post-Future18 hardening gate
         run: python3 tests/run-ten-round-post-future18.py
+      - name: Second fresh ten-round hardening gate
+        run: python3 tests/run-second-ten-round-hardening.py
       - name: Deterministic release evidence
         run: python3 tools/build-release.py --verify-only
       - name: Secret and personal-data indicator scan
@@ -57,7 +59,7 @@ jobs:
               if re.search(pat,data): print('Possible',label,'in',p);sys.exit(1)
           print('Credential and personal-data indicator scan passed.')
           PY
-      - name: Reproducible v2.0.1 package twice
+      - name: Reproducible v2.0.2 package twice
         run: |
           python3 tools/build-release.py --output /tmp/file04-a.zip --source-output /tmp/file04-source-a.zip > /tmp/a.json
           python3 tools/build-release.py --output /tmp/file04-b.zip --source-output /tmp/file04-source-b.zip > /tmp/b.json
@@ -92,5 +94,7 @@ jobs:
         run: python3 tests/run-future18.py
       - name: Future18 two-review checks
         run: python3 tests/run-future18-reviews.py
-      - name: Ten-round post-Future18 hardening checks
+      - name: Historical first ten-round post-Future18 hardening checks
         run: python3 tests/run-ten-round-post-future18.py
+      - name: Second fresh ten-round hardening checks
+        run: python3 tests/run-second-ten-round-hardening.py
