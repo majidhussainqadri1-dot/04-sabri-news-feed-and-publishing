@@ -18,17 +18,11 @@ jobs:
           ref: audit-file-04-eighty-round-hardening
           persist-credentials: true
       - name: Repair Python triple-quote boundary
+        shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('tools/apply-eighty-round-hardening.py')
-          s=p.read_text(encoding='utf-8')
-          old='capture_activation_handover", """'
-          new='capture_activation_handover""", """'
-          if s.count(old)!=1:
-              raise SystemExit(f'expected one syntax marker, got {s.count(old)}')
-          p.write_text(s.replace(old,new,1), encoding='utf-8')
-          PY
+          set -euo pipefail
+          grep -n 'capture_activation_handover' tools/apply-eighty-round-hardening.py
+          sed -i 's/capture_activation_handover", """/capture_activation_handover""", """/' tools/apply-eighty-round-hardening.py
           python3 -m py_compile tools/apply-eighty-round-hardening.py
       - name: Commit syntax repair
         run: |
