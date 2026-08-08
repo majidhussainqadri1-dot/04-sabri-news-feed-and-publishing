@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Sabri News Feed Legacy Foundation Adapter
  * Plugin URI: https://github.com/majidhussainqadri1-dot/04-sabri-news-feed-and-publishing
- * Description: Read-only, auditable, reversible migration adapter from historical File 04 records into canonical File 21, with Future18 migration intelligence, post-audit hardening and safety controls.
- * Version: 2.0.1
+ * Description: Read-only, auditable, reversible migration adapter from historical File 04 records into canonical File 21, with Future18 migration intelligence, two ten-round hardening audits and safety controls.
+ * Version: 2.0.2
  * Requires at least: 6.0
  * Requires PHP: 8.1
  * Author: Dr. Allamah Majid Hussain Sabri Muhaddith Mursheed
@@ -13,8 +13,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SNFLA_VERSION', '2.0.1' );
-// Future18/post-audit hardening adds no custom-table schema; proven v1.3.0 storage remains current.
+define( 'SNFLA_VERSION', '2.0.2' );
+// Second-audit hardening adds no custom-table schema; proven v1.3.0 storage remains current.
 define( 'SNFLA_SCHEMA_VERSION', '1.3.0' );
 define( 'SNFLA_FILE', __FILE__ );
 define( 'SNFLA_DIR', plugin_dir_path( __FILE__ ) );

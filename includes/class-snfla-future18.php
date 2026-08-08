@@ -66,6 +66,7 @@ final class SNFLA_Future18 {
 		self::route( '/future/registry', WP_REST_Server::READABLE, 'rest_registry', $read );
 		self::route( '/future/digital-twin', WP_REST_Server::CREATABLE, 'rest_digital_twin', $act, $ids );
 		self::route( '/future/contract-drift', WP_REST_Server::READABLE, 'rest_contract_drift', $read );
+		self::route( '/future/contract-baseline', WP_REST_Server::CREATABLE, 'rest_contract_baseline', $act );
 		self::route( '/future/fidelity', WP_REST_Server::CREATABLE, 'rest_fidelity', $act, self::pair_args() );
 		self::route( '/future/visual-diff', WP_REST_Server::CREATABLE, 'rest_visual_diff', $act, self::pair_args() );
 		self::route( '/future/lineage', WP_REST_Server::READABLE, 'rest_lineage', $read, array( 'legacy_id' => self::id_arg() ) );
@@ -132,6 +133,7 @@ final class SNFLA_Future18 {
 	public static function rest_registry( WP_REST_Request $request ) { unset( $request ); return self::response( 'future18_registry', self::registry() ); }
 	public static function rest_digital_twin( WP_REST_Request $request ) { return self::response( 'future18_digital_twin', self::digital_twin( (array) $request->get_param( 'legacy_ids' ), get_current_user_id() ) ); }
 	public static function rest_contract_drift( WP_REST_Request $request ) { unset( $request ); return self::response( 'future18_contract_drift', self::contract_drift() ); }
+	public static function rest_contract_baseline( WP_REST_Request $request ) { unset( $request ); return self::response( 'future18_contract_baseline', self::record_contract_baseline( get_current_user_id() ) ); }
 	public static function rest_fidelity( WP_REST_Request $request ) { return self::response( 'future18_fidelity', self::content_fidelity( $request->get_param( 'legacy_id' ), $request->get_param( 'target_id' ) ) ); }
 	public static function rest_visual_diff( WP_REST_Request $request ) { return self::response( 'future18_visual_diff', self::visual_diff( $request->get_param( 'legacy_id' ), $request->get_param( 'target_id' ) ) ); }
 	public static function rest_lineage( WP_REST_Request $request ) { return self::response( 'future18_lineage', self::lineage_graph( $request->get_param( 'legacy_id' ) ) ); }
@@ -195,15 +197,35 @@ final class SNFLA_Future18 {
 			'external_simulation' => SNFLA_Audit::redact( is_array( $external ) ? $external : array() ),
 		);
 		$twin['twin_checksum'] = SNFLA_Checksum::hash( $twin );
-		update_option( self::TWIN_OPTION, $twin, false );
+		$previous_twin = get_option( self::TWIN_OPTION, array() );
+		$previous_checkpoints = get_option( self::CHECKPOINTS_OPTION, array() );
+		if ( ! update_option( self::TWIN_OPTION, $twin, false ) && get_option( self::TWIN_OPTION, array() ) !== $twin ) {
+			return new WP_Error( 'snfla_twin_persist_failed', 'Digital Twin evidence could not be persisted; no successful simulation evidence is reported.', array( 'status' => 500 ) );
+		}
 		$checkpoint = self::store_checkpoint( 'digital_twin', $twin );
-		if ( $actor_id > 0 ) { SNFLA_Audit::record( 'future18_digital_twin_completed', $actor_id, array( 'twin_checksum' => $twin['twin_checksum'], 'count' => count( $rows ), 'checkpoint_id' => $checkpoint['checkpoint_id'] ?? '' ), 'future18-twin:' . $twin['twin_checksum'] ); }
+		if ( is_wp_error( $checkpoint ) ) {
+			$restored = update_option( self::TWIN_OPTION, $previous_twin, false ) || get_option( self::TWIN_OPTION, array() ) === $previous_twin;
+			if ( ! $restored ) {
+				do_action( 'snfla_operational_alert_v1', 'future18_twin_compensation_failed', 'blocker', array( 'original_error' => $checkpoint->get_error_code() ) );
+				return new WP_Error( 'snfla_twin_compensation_failed', 'Digital Twin checkpoint failed and prior evidence could not be restored; manual repair is required.', array( 'status' => 500, 'original_error' => $checkpoint->get_error_code() ) );
+			}
+			return $checkpoint;
+		}
+		if ( $actor_id > 0 && ! SNFLA_Audit::record( 'future18_digital_twin_completed', $actor_id, array( 'twin_checksum' => $twin['twin_checksum'], 'count' => count( $rows ), 'checkpoint_id' => $checkpoint['checkpoint_id'] ?? '' ), 'future18-twin:' . $twin['twin_checksum'] ) ) {
+			$twin_restored = update_option( self::TWIN_OPTION, $previous_twin, false ) || get_option( self::TWIN_OPTION, array() ) === $previous_twin;
+			$checkpoints_restored = update_option( self::CHECKPOINTS_OPTION, $previous_checkpoints, false ) || get_option( self::CHECKPOINTS_OPTION, array() ) === $previous_checkpoints;
+			if ( ! $twin_restored || ! $checkpoints_restored ) {
+				do_action( 'snfla_operational_alert_v1', 'future18_twin_compensation_failed', 'blocker', array( 'twin_restored' => $twin_restored, 'checkpoints_restored' => $checkpoints_restored ) );
+				return new WP_Error( 'snfla_twin_compensation_failed', 'Digital Twin audit failed and prior evidence could not be fully restored; manual repair is required.', array( 'status' => 500 ) );
+			}
+			return new WP_Error( 'snfla_twin_audit_failed', 'Digital Twin evidence was reverted because its audit event could not be persisted.', array( 'status' => 500 ) );
+		}
 		$twin['checkpoint'] = $checkpoint;
 		return $twin;
 	}
 
 	/** F04-FUT-002 — version/fingerprint drift detection across canonical contracts. */
-	public static function contract_drift() {
+	private static function contract_snapshot() {
 		$manifest = SNFLA_Central_Plan::module_manifest();
 		$descriptors = array(
 			'File 00' => apply_filters( 'sabri_file00_contract_descriptor_v1', array( 'verified' => false, 'status' => 'unavailable' ), array( 'consumer' => 'File 04', 'purpose' => 'identity_authority' ) ),
@@ -211,18 +233,75 @@ final class SNFLA_Future18 {
 			'File 26' => apply_filters( 'sabri_file26_contract_descriptor_v1', array( 'verified' => false, 'status' => 'unavailable' ), array( 'consumer' => 'File 04', 'purpose' => 'legacy_resolution_search_handoff' ) ),
 		);
 		$normalized = SNFLA_Checksum::canonicalize( SNFLA_Audit::redact( $descriptors ) );
-		$fingerprint = SNFLA_Checksum::hash( array( 'manifest' => $manifest, 'contracts' => $normalized ) );
-		$previous = get_option( self::DRIFT_OPTION, array() );
-		$changed = ! empty( $previous['fingerprint'] ) && ! hash_equals( (string) $previous['fingerprint'], $fingerprint );
 		$unverified = array();
-		foreach ( $descriptors as $owner => $descriptor ) { if ( ! is_array( $descriptor ) || empty( $descriptor['verified'] ) ) { $unverified[] = $owner; } }
-		$result = array(
-			'feature_id' => 'F04-FUT-002', 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ), 'fingerprint' => $fingerprint,
-			'changed_since_last_verified_snapshot' => $changed, 'unverified_contracts' => $unverified,
-			'block_mutation' => $changed || ! empty( $unverified ), 'descriptors' => $normalized,
+		foreach ( $descriptors as $owner => $descriptor ) {
+			if ( ! is_array( $descriptor ) || empty( $descriptor['verified'] ) ) { $unverified[] = $owner; }
+		}
+		return array(
+			'fingerprint' => SNFLA_Checksum::hash( array( 'manifest' => $manifest, 'contracts' => $normalized ) ),
+			'descriptors' => $normalized,
+			'unverified_contracts' => $unverified,
+			'source_signature' => (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' ),
 		);
-		update_option( self::DRIFT_OPTION, $result, false );
+	}
+
+	public static function contract_drift() {
+		$snapshot = self::contract_snapshot();
+		$baseline = get_option( self::DRIFT_OPTION, array() );
+		$signature = (string) $snapshot['source_signature'];
+		$baseline_valid = is_array( $baseline )
+			&& SNFLA_Integrity::evidence_valid( $baseline )
+			&& ! empty( $baseline['fingerprint'] )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $signature )
+			&& hash_equals( $signature, (string) ( $baseline['source_signature'] ?? '' ) );
+		$changed = $baseline_valid && ! hash_equals( (string) $baseline['fingerprint'], (string) $snapshot['fingerprint'] );
+		$result = array(
+			'feature_id' => 'F04-FUT-002',
+			'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ),
+			'fingerprint' => $snapshot['fingerprint'],
+			'baseline_fingerprint' => $baseline_valid ? (string) $baseline['fingerprint'] : '',
+			'baseline_valid' => $baseline_valid,
+			'baseline_missing_or_invalid' => ! $baseline_valid,
+			'changed_since_verified_baseline' => $changed,
+			'unverified_contracts' => $snapshot['unverified_contracts'],
+			'block_mutation' => ! $baseline_valid || $changed || ! empty( $snapshot['unverified_contracts'] ),
+			'descriptors' => $snapshot['descriptors'],
+		);
 		return $result;
+	}
+
+	public static function record_contract_baseline( $actor_id ) {
+		$actor_id = absint( $actor_id );
+		$authorized = SNFLA_Capabilities::revalidate_actor( $actor_id, SNFLA_Capabilities::CAP_REVIEW );
+		if ( is_wp_error( $authorized ) ) { return $authorized; }
+		if ( ! SNFLA_Inventory::unchanged() ) {
+			return new WP_Error( 'snfla_contract_baseline_source_changed', 'The locked source must be current before recording a contract baseline.', array( 'status' => 409 ) );
+		}
+		$snapshot = self::contract_snapshot();
+		if ( ! empty( $snapshot['unverified_contracts'] ) ) {
+			return new WP_Error( 'snfla_contract_baseline_unverified', 'Every canonical dependency contract must be verified before a baseline can be recorded.', array( 'status' => 412, 'unverified_contracts' => $snapshot['unverified_contracts'] ) );
+		}
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $snapshot['source_signature'] ) ) {
+			return new WP_Error( 'snfla_contract_baseline_source_invalid', 'A cryptographically valid locked source signature is required.', array( 'status' => 412 ) );
+		}
+		$baseline = SNFLA_Integrity::sign_evidence( array(
+			'schema' => 2,
+			'feature_id' => 'F04-FUT-002',
+			'fingerprint' => $snapshot['fingerprint'],
+			'source_signature' => $snapshot['source_signature'],
+			'descriptors' => $snapshot['descriptors'],
+			'actor_digest' => SNFLA_Audit::actor_digest( $actor_id ),
+			'recorded_at_utc' => gmdate( 'Y-m-d H:i:s' ),
+		) );
+		$previous = get_option( self::DRIFT_OPTION, array() );
+		if ( ! update_option( self::DRIFT_OPTION, $baseline, false ) && get_option( self::DRIFT_OPTION, array() ) !== $baseline ) {
+			return new WP_Error( 'snfla_contract_baseline_persist_failed', 'The verified contract baseline could not be persisted.', array( 'status' => 500 ) );
+		}
+		if ( ! SNFLA_Audit::record( 'future18_contract_baseline_recorded', $actor_id, array( 'fingerprint' => $snapshot['fingerprint'], 'source_signature' => $snapshot['source_signature'] ), 'future18-contract-baseline:' . $snapshot['fingerprint'] ) ) {
+			update_option( self::DRIFT_OPTION, $previous, false );
+			return new WP_Error( 'snfla_contract_baseline_audit_failed', 'The contract baseline was reverted because audit evidence could not be written.', array( 'status' => 500 ) );
+		}
+		return array( 'recorded' => true, 'baseline' => SNFLA_Audit::redact( $baseline ), 'drift' => self::contract_drift() );
 	}
 
 	/** F04-FUT-003 — exact textual/provenance fidelity plus optional semantic provider. */
@@ -259,7 +338,9 @@ final class SNFLA_Future18 {
 	public static function visual_diff( $legacy_id, $target_id ) {
 		$legacy_id = absint( $legacy_id ); $target_id = absint( $target_id );
 		if ( ! SNFLA_File21_Adapter::migration_target_valid( $legacy_id, $target_id ) ) { return new WP_Error( 'snfla_visual_target_invalid', 'A verified File 21 target is required.', array( 'status' => 412 ) ); }
-		$request = array( 'feature_id' => 'F04-FUT-004', 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'required' => array( 'desktop', 'mobile', 'rtl', 'keyboard', 'zoom_200', 'reduced_motion', 'dom_semantics', 'accessibility_tree' ) );
+		$source_signature = (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' );
+		$request = array( 'feature_id' => 'F04-FUT-004', 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'required' => array( 'desktop', 'mobile', 'rtl', 'keyboard', 'zoom_200', 'reduced_motion', 'dom_semantics', 'accessibility_tree' ), 'source_signature' => $source_signature );
+		$request['request_digest'] = SNFLA_Checksum::hash( $request );
 		$evidence = apply_filters( 'snfla_visual_migration_diff_provider_v1', array( 'verified' => false, 'owner' => 'File 20/File 25' ), $request );
 		$verified = is_array( $evidence ) && ! empty( $evidence['verified'] ) && ! empty( $evidence['provider_id'] ) && isset( $evidence['diff_count'] );
 		return array( 'feature_id' => 'F04-FUT-004', 'verified' => $verified, 'release_blocking' => ! $verified || absint( $evidence['critical_diff_count'] ?? 0 ) > 0, 'evidence' => SNFLA_Audit::redact( is_array( $evidence ) ? $evidence : array() ) );
@@ -332,8 +413,18 @@ final class SNFLA_Future18 {
 		$provider = apply_filters( 'sabri_file21_shadow_read_v1', array( 'verified' => false ), array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'read_only' => true ) );
 		$result = array( 'feature_id' => 'F04-FUT-008', 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'read_only' => true, 'dual_write' => false, 'fidelity' => $fidelity, 'provider' => SNFLA_Audit::redact( is_array( $provider ) ? $provider : array() ), 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ) );
 		$result['shadow_checksum'] = SNFLA_Checksum::hash( $result );
-		update_option( self::SHADOW_OPTION, $result, false );
-		if ( $actor_id > 0 ) { SNFLA_Audit::record( 'future18_shadow_read_completed', $actor_id, array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'shadow_checksum' => $result['shadow_checksum'] ), 'future18-shadow:' . $result['shadow_checksum'] ); }
+		$previous = get_option( self::SHADOW_OPTION, array() );
+		if ( ! update_option( self::SHADOW_OPTION, $result, false ) && get_option( self::SHADOW_OPTION, array() ) !== $result ) {
+			return new WP_Error( 'snfla_shadow_persist_failed', 'Shadow-read evidence could not be persisted; no successful evidence is reported.', array( 'status' => 500 ) );
+		}
+		if ( $actor_id > 0 && ! SNFLA_Audit::record( 'future18_shadow_read_completed', $actor_id, array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'shadow_checksum' => $result['shadow_checksum'] ), 'future18-shadow:' . $result['shadow_checksum'] ) ) {
+			$restored = update_option( self::SHADOW_OPTION, $previous, false ) || get_option( self::SHADOW_OPTION, array() ) === $previous;
+			if ( ! $restored ) {
+				do_action( 'snfla_operational_alert_v1', 'future18_shadow_compensation_failed', 'blocker', array( 'legacy_id' => $legacy_id, 'target_id' => $target_id ) );
+				return new WP_Error( 'snfla_shadow_compensation_failed', 'Shadow-read audit failed and prior evidence could not be restored; manual repair is required.', array( 'status' => 500 ) );
+			}
+			return new WP_Error( 'snfla_shadow_audit_failed', 'Shadow-read evidence was reverted because its audit event could not be persisted.', array( 'status' => 500 ) );
+		}
 		return $result;
 	}
 
@@ -344,14 +435,20 @@ final class SNFLA_Future18 {
 		$invariants = self::invariant_guardian();
 		$drift = self::contract_drift();
 		$metrics = method_exists( 'SNFLA_Plan_Completion', 'metrics_summary' ) ? SNFLA_Plan_Completion::metrics_summary() : array();
-		$error_rate = isset( $metrics['error_rate'] ) && is_numeric( $metrics['error_rate'] ) ? (float) $metrics['error_rate'] : null;
+		$sample_count = absint( $metrics['sample_count'] ?? 0 );
+		$error_rate = $sample_count > 0 && isset( $metrics['error_rate'] ) && is_numeric( $metrics['error_rate'] ) ? (float) $metrics['error_rate'] : null;
 		$blockers = array();
+		if ( 0 === $sample_count ) { $blockers[] = 'observability_samples_missing'; }
 		if ( ! empty( $invariants['blockers'] ) ) { $blockers[] = 'migration_invariant_failure'; }
 		if ( ! empty( $drift['block_mutation'] ) ) { $blockers[] = 'contract_drift_or_unverified_contract'; }
 		if ( null === $error_rate ) { $blockers[] = 'observability_error_rate_missing'; }
 		elseif ( $error_rate > 0.01 ) { $blockers[] = 'error_rate_above_one_percent'; }
 		$current = get_option( self::CANARY_OPTION, array( 'approved_percent' => 0 ) );
 		$current_percent = absint( $current['approved_percent'] ?? 0 );
+		if ( ! in_array( $current_percent, array_merge( array( 0 ), $allowed ), true ) ) {
+			$blockers[] = 'canary_state_invalid';
+			$current_percent = 0;
+		}
 		$current_index = array_search( $current_percent, array_merge( array( 0 ), $allowed ), true );
 		$request_index = array_search( $requested_percent, $allowed, true );
 		$max_next = 0 === $current_percent ? 1 : ( isset( $allowed[ min( count( $allowed ) - 1, (int) $current_index ) ] ) ? $allowed[ min( count( $allowed ) - 1, (int) $current_index ) ] : $current_percent );
@@ -359,8 +456,20 @@ final class SNFLA_Future18 {
 		if ( $requested_percent > $max_next ) { $blockers[] = 'canary_phase_skip_forbidden'; }
 		$approved = empty( $blockers );
 		$decision = array( 'feature_id' => 'F04-FUT-009', 'requested_percent' => $requested_percent, 'previous_percent' => $current_percent, 'approved' => $approved, 'approved_percent' => $approved ? $requested_percent : $current_percent, 'blockers' => array_values( array_unique( $blockers ) ), 'controller_only' => true, 'migration_invoked' => false, 'decided_at_utc' => gmdate( 'Y-m-d H:i:s' ) );
-		if ( $approved ) { update_option( self::CANARY_OPTION, $decision, false ); }
-		if ( $actor_id > 0 ) { SNFLA_Audit::record( 'future18_canary_decision', $actor_id, $decision, 'future18-canary:' . $requested_percent . ':' . gmdate( 'YmdHis' ) ); }
+		$previous = get_option( self::CANARY_OPTION, array( 'approved_percent' => 0 ) );
+		if ( $approved && ! update_option( self::CANARY_OPTION, $decision, false ) && get_option( self::CANARY_OPTION, array() ) !== $decision ) {
+			return new WP_Error( 'snfla_canary_persist_failed', 'The approved canary decision could not be persisted; rollout remains at the prior phase.', array( 'status' => 500 ) );
+		}
+		if ( $actor_id > 0 && ! SNFLA_Audit::record( 'future18_canary_decision', $actor_id, $decision, 'future18-canary:' . $requested_percent . ':' . gmdate( 'YmdHis' ) ) ) {
+			if ( $approved ) {
+				$restored = update_option( self::CANARY_OPTION, $previous, false ) || get_option( self::CANARY_OPTION, array() ) === $previous;
+				if ( ! $restored ) {
+					do_action( 'snfla_operational_alert_v1', 'future18_canary_compensation_failed', 'blocker', array( 'requested_percent' => $requested_percent, 'previous_percent' => $current_percent ) );
+					return new WP_Error( 'snfla_canary_compensation_failed', 'Canary audit failed and the prior rollout state could not be restored; rollout must be treated as blocked pending manual repair.', array( 'status' => 500 ) );
+				}
+			}
+			return new WP_Error( 'snfla_canary_audit_failed', 'The canary decision was reverted because its audit event could not be persisted.', array( 'status' => 500 ) );
+		}
 		return $decision;
 	}
 
@@ -400,10 +509,16 @@ final class SNFLA_Future18 {
 		);
 		$receipt['receipt_checksum'] = SNFLA_Checksum::hash( $receipt );
 		$receipt = SNFLA_Integrity::sign_evidence( $receipt );
-		$all = get_option( self::RECEIPTS_OPTION, array() ); if ( ! is_array( $all ) ) { $all = array(); }
+		$previous = get_option( self::RECEIPTS_OPTION, array() );
+		$all = is_array( $previous ) ? $previous : array();
 		$all[] = $receipt; if ( count( $all ) > self::MAX_RECEIPTS ) { $all = array_slice( $all, -self::MAX_RECEIPTS ); }
-		update_option( self::RECEIPTS_OPTION, $all, false );
-		SNFLA_Audit::record( 'future18_receipt_created', $actor_id, array( 'receipt_id' => $receipt['receipt_id'], 'receipt_checksum' => $receipt['receipt_checksum'], 'operation' => $operation ), 'future18-receipt:' . $receipt['receipt_id'] );
+		if ( ! update_option( self::RECEIPTS_OPTION, $all, false ) && get_option( self::RECEIPTS_OPTION, array() ) !== $all ) {
+			return new WP_Error( 'snfla_receipt_persist_failed', 'The cryptographic receipt could not be persisted; no success is reported.', array( 'status' => 500 ) );
+		}
+		if ( ! SNFLA_Audit::record( 'future18_receipt_created', $actor_id, array( 'receipt_id' => $receipt['receipt_id'], 'receipt_checksum' => $receipt['receipt_checksum'], 'operation' => $operation ), 'future18-receipt:' . $receipt['receipt_id'] ) ) {
+			update_option( self::RECEIPTS_OPTION, $previous, false );
+			return new WP_Error( 'snfla_receipt_audit_failed', 'The cryptographic receipt was reverted because its audit event could not be persisted.', array( 'status' => 500 ) );
+		}
 		return $receipt;
 	}
 
@@ -413,7 +528,10 @@ final class SNFLA_Future18 {
 		$checkpoint['checkpoint_checksum'] = SNFLA_Checksum::hash( $checkpoint );
 		$list = get_option( self::CHECKPOINTS_OPTION, array() ); if ( ! is_array( $list ) ) { $list = array(); }
 		$list[] = $checkpoint; if ( count( $list ) > self::MAX_CHECKPOINTS ) { $list = array_slice( $list, -self::MAX_CHECKPOINTS ); }
-		update_option( self::CHECKPOINTS_OPTION, $list, false ); return array( 'checkpoint_id' => $checkpoint['checkpoint_id'], 'checkpoint_checksum' => $checkpoint['checkpoint_checksum'] );
+		if ( ! update_option( self::CHECKPOINTS_OPTION, $list, false ) && get_option( self::CHECKPOINTS_OPTION, array() ) !== $list ) {
+			return new WP_Error( 'snfla_checkpoint_persist_failed', 'Replay checkpoint evidence could not be persisted.', array( 'status' => 500 ) );
+		}
+		return array( 'checkpoint_id' => $checkpoint['checkpoint_id'], 'checkpoint_checksum' => $checkpoint['checkpoint_checksum'] );
 	}
 
 	public static function replay_checkpoint( $checkpoint_id ) {
@@ -452,7 +570,10 @@ final class SNFLA_Future18 {
 			$target_url = $target_valid ? get_permalink( $target_id ) : false;
 			$rows[] = array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'target_valid' => $target_valid, 'canonical_url_digest' => is_string( $target_url ) && '' !== $target_url ? hash( 'sha256', $target_url ) : '', 'broken' => ! $target_valid || ! is_string( $target_url ) || '' === $target_url );
 		}
-		$provider = apply_filters( 'snfla_redirect_citation_observatory_v1', array( 'verified' => false ), array( 'rows' => $rows, 'checks' => array( '301_or_410', 'redirect_loop', 'redirect_chain', 'query_preservation', 'fragment_preservation', 'external_citation_continuity' ) ) );
+		$source_signature = (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' );
+		$request = array( 'rows' => $rows, 'checks' => array( '301_or_410', 'redirect_loop', 'redirect_chain', 'query_preservation', 'fragment_preservation', 'external_citation_continuity' ), 'source_signature' => $source_signature );
+		$request['request_digest'] = SNFLA_Checksum::hash( $request );
+		$provider = apply_filters( 'snfla_redirect_citation_observatory_v1', array( 'verified' => false ), $request );
 		$broken = count( array_filter( $rows, static function ( $row ) { return ! empty( $row['broken'] ); } ) );
 		return array( 'feature_id' => 'F04-FUT-014', 'count' => count( $rows ), 'broken_count' => $broken, 'rows' => $rows, 'provider_evidence' => SNFLA_Audit::redact( is_array( $provider ) ? $provider : array() ), 'release_blocking' => $broken > 0 );
 	}
@@ -489,11 +610,23 @@ final class SNFLA_Future18 {
 	public static function gameday( $environment, $actor_id ) {
 		$environment = sanitize_key( $environment );
 		if ( 'disposable_staging' !== $environment ) { return new WP_Error( 'snfla_gameday_environment_forbidden', 'GameDay is allowed only in a disposable staging environment.', array( 'status' => 400 ) ); }
-		$request = array( 'feature_id' => 'F04-FUT-016', 'environment' => $environment, 'required_exercises' => array( 'backup_restore', 'migration', 'provider_outage', 'queue_retry', 'cache_rebuild', 'search_reindex', 'rollback', 'reconciliation' ), 'production_chaos_allowed' => false );
+		$source_signature = (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' );
+		$request = array( 'feature_id' => 'F04-FUT-016', 'environment' => $environment, 'required_exercises' => array( 'backup_restore', 'migration', 'provider_outage', 'queue_retry', 'cache_rebuild', 'search_reindex', 'rollback', 'reconciliation' ), 'production_chaos_allowed' => false, 'source_signature' => $source_signature );
+		$request['request_digest'] = SNFLA_Checksum::hash( $request );
 		$evidence = apply_filters( 'snfla_disaster_recovery_gameday_v1', array( 'verified' => false ), $request );
 		$verified = is_array( $evidence ) && ! empty( $evidence['verified'] ) && ! empty( $evidence['provider_id'] ) && empty( $evidence['production_environment'] );
-		$result = array( 'feature_id' => 'F04-FUT-016', 'verified' => $verified, 'environment' => $environment, 'production_chaos_allowed' => false, 'evidence' => SNFLA_Audit::redact( is_array( $evidence ) ? $evidence : array() ), 'performed_at_utc' => gmdate( 'Y-m-d H:i:s' ) );
-		if ( $verified ) { update_option( self::GAMEDAY_OPTION, SNFLA_Integrity::sign_evidence( $result ), false ); SNFLA_Audit::record( 'future18_gameday_verified', $actor_id, array( 'provider_id_digest' => hash( 'sha256', (string) $evidence['provider_id'] ) ), 'future18-gameday:' . gmdate( 'Ymd' ) ); }
+		$result = array( 'feature_id' => 'F04-FUT-016', 'verified' => $verified, 'environment' => $environment, 'production_chaos_allowed' => false, 'source_signature' => $source_signature, 'request_digest' => $request['request_digest'], 'evidence' => SNFLA_Audit::redact( is_array( $evidence ) ? $evidence : array() ), 'performed_at_utc' => gmdate( 'Y-m-d H:i:s' ) );
+		if ( $verified ) {
+			$previous = get_option( self::GAMEDAY_OPTION, array() );
+			$signed = SNFLA_Integrity::sign_evidence( $result );
+			if ( ! update_option( self::GAMEDAY_OPTION, $signed, false ) && get_option( self::GAMEDAY_OPTION, array() ) !== $signed ) {
+				return new WP_Error( 'snfla_gameday_persist_failed', 'GameDay evidence could not be persisted; verification remains blocked.', array( 'status' => 500 ) );
+			}
+			if ( ! SNFLA_Audit::record( 'future18_gameday_verified', $actor_id, array( 'provider_id_digest' => hash( 'sha256', (string) $evidence['provider_id'] ), 'source_signature' => $source_signature, 'request_digest' => $request['request_digest'] ), 'future18-gameday:' . $request['request_digest'] ) ) {
+				update_option( self::GAMEDAY_OPTION, $previous, false );
+				return new WP_Error( 'snfla_gameday_audit_failed', 'GameDay evidence was reverted because audit evidence could not be persisted.', array( 'status' => 500 ) );
+			}
+		}
 		return $result;
 	}
 
@@ -511,7 +644,7 @@ final class SNFLA_Future18 {
 			'contract_drift_clear' => empty( $drift['block_mutation'] ),
 			'file26_integration_accepted' => isset( $system['file26']['status'] ) && 'pass' === $system['file26']['status'],
 			'operational_metrics_present' => isset( $system['metrics']['status'] ) && 'pass' === $system['metrics']['status'],
-			'disaster_recovery_gameday_verified' => is_array( $gameday ) && SNFLA_Integrity::evidence_valid( $gameday ),
+			'disaster_recovery_gameday_verified' => is_array( $gameday ) && SNFLA_Integrity::evidence_valid( $gameday ) && ! empty( $gameday['verified'] ) && ! empty( $gameday['source_signature'] ) && hash_equals( (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' ), (string) $gameday['source_signature'] ),
 			'invariant_guardian_green' => ! empty( $invariants['green'] ),
 		);
 		$passed = count( array_filter( $gates ) ); $score = (int) round( 100 * $passed / self::RETIREMENT_GATE_COUNT );

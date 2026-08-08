@@ -225,14 +225,21 @@ final class SNFLA_Plan_Completion {
 				return new WP_Error( 'snfla_media_reference_broken', 'A legacy attachment is missing or cannot be checksummed; it must be repaired or quarantined.', array( 'status' => 412, 'legacy_id' => $legacy_id, 'reference_id' => $ref['reference_id'] ) );
 			}
 		}
+		$source_signature = (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $source_signature ) || ! SNFLA_Inventory::unchanged() ) {
+			return new WP_Error( 'snfla_media_source_signature_invalid', 'A current locked legacy source signature is required for media/reference attestation.', array( 'status' => 412, 'legacy_id' => $legacy_id ) );
+		}
 		$request = array(
 			'file_number' => '04',
 			'legacy_id' => $legacy_id,
 			'references' => $refs,
 			'required_assertions' => array( 'ownership_verified', 'rights_or_license_verified', 'alt_policy_verified', 'duplicate_hash_checked', 'broken_links_zero', 'canonical_target_contract' ),
+			'source_signature' => $source_signature,
 		);
+		$request['request_digest'] = SNFLA_Checksum::hash( $request );
 		$evidence = apply_filters( 'sabri_file21_legacy_media_preflight_v1', array( 'verified' => false ), $request );
-		if ( ! is_array( $evidence ) || empty( $evidence['verified'] ) || empty( $evidence['provider_id'] ) || empty( $evidence['ownership_verified'] ) || empty( $evidence['rights_or_license_verified'] ) || empty( $evidence['alt_policy_verified'] ) || empty( $evidence['duplicate_hash_checked'] ) || ! array_key_exists( 'broken_links', $evidence ) || 0 !== absint( $evidence['broken_links'] ) ) {
+		$provider_bound = is_array( $evidence ) && ! empty( $evidence['source_signature'] ) && ! empty( $evidence['request_digest'] ) && hash_equals( $source_signature, (string) $evidence['source_signature'] ) && hash_equals( (string) $request['request_digest'], (string) $evidence['request_digest'] );
+		if ( ! is_array( $evidence ) || ! $provider_bound || empty( $evidence['verified'] ) || empty( $evidence['provider_id'] ) || empty( $evidence['ownership_verified'] ) || empty( $evidence['rights_or_license_verified'] ) || empty( $evidence['alt_policy_verified'] ) || empty( $evidence['duplicate_hash_checked'] ) || ! array_key_exists( 'broken_links', $evidence ) || 0 !== absint( $evidence['broken_links'] ) ) {
 			return new WP_Error( 'snfla_file21_media_contract_required', 'Media/reference migration requires a current File 21 provider attestation for rights, ownership, alt policy, duplicate hashes and broken links.', array( 'status' => 412, 'legacy_id' => $legacy_id ) );
 		}
 		$accepted = array_values( array_unique( array_map( 'sanitize_text_field', (array) ( $evidence['accepted_reference_ids'] ?? array() ) ) ) );
@@ -247,6 +254,8 @@ final class SNFLA_Plan_Completion {
 			'legacy_id' => $legacy_id,
 			'references' => $refs,
 			'reference_count' => count( $refs ),
+			'source_signature' => $source_signature,
+			'request_digest' => $request['request_digest'],
 			'evidence' => SNFLA_Audit::redact( $evidence ),
 		);
 	}
@@ -285,12 +294,15 @@ final class SNFLA_Plan_Completion {
 			$preflight = self::media_preflight( $legacy_id );
 			if ( is_wp_error( $preflight ) ) { return $preflight; }
 			if ( empty( $preflight['reference_count'] ) ) { continue; }
+			$verify_request = array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'references' => $preflight['references'], 'provider_id' => $preflight['provider_id'], 'source_signature' => (string) ( $preflight['source_signature'] ?? '' ), 'preflight_request_digest' => (string) ( $preflight['request_digest'] ?? '' ) );
+			$verify_request['request_digest'] = SNFLA_Checksum::hash( $verify_request );
 			$verify = apply_filters(
 				'sabri_file21_verify_migrated_legacy_media_v1',
 				array( 'verified' => false ),
-				array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'references' => $preflight['references'], 'provider_id' => $preflight['provider_id'] )
+				$verify_request
 			);
-			if ( ! is_array( $verify ) || empty( $verify['verified'] ) || empty( $verify['provider_id'] ) || absint( $verify['target_id'] ?? 0 ) !== $target_id || absint( $verify['verified_reference_count'] ?? -1 ) !== absint( $preflight['reference_count'] ) ) {
+			$verify_bound = is_array( $verify ) && ! empty( $verify['source_signature'] ) && ! empty( $verify['request_digest'] ) && hash_equals( (string) $verify_request['source_signature'], (string) $verify['source_signature'] ) && hash_equals( (string) $verify_request['request_digest'], (string) $verify['request_digest'] );
+			if ( ! is_array( $verify ) || ! $verify_bound || empty( $verify['verified'] ) || empty( $verify['provider_id'] ) || absint( $verify['target_id'] ?? 0 ) !== $target_id || absint( $verify['verified_reference_count'] ?? -1 ) !== absint( $preflight['reference_count'] ) ) {
 				$containment = $target_id > 0 ? SNFLA_File21_Adapter::contain_orphan_target( $legacy_id, $target_id, $actor_id, 'media_reference_post_migration_unverified' ) : null;
 				return new WP_Error( 'snfla_file21_media_post_migration_unverified', 'Canonical File 21 media/reference migration could not be verified; the target was contained where possible.', array( 'status' => 412, 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'contained' => is_array( $containment ) && ! empty( $containment['contained'] ) ) );
 			}
@@ -415,21 +427,29 @@ final class SNFLA_Plan_Completion {
 		$checks = array();
 		$checks['runtime'] = array( 'status' => version_compare( PHP_VERSION, '8.1', '>=' ) ? 'pass' : 'blocker', 'php' => PHP_VERSION, 'wordpress' => get_bloginfo( 'version' ), 'required_php' => '>=8.1', 'staging_target' => 'WordPress 7.0.1 / PHP 8.3.x fresh re-verification required' );
 		$checks['file21'] = array_merge( array( 'status' => SNFLA_Capabilities::file21_ready() ? 'pass' : 'blocker' ), SNFLA_File21_Adapter::status() );
-		$file26 = apply_filters( 'sabri_file26_accept_file04_contract_v1', array( 'accepted' => false, 'status' => 'unknown' ), SNFLA_Central_Plan::module_manifest() );
-		$checks['file26'] = array( 'status' => is_array( $file26 ) && ! empty( $file26['accepted'] ) ? 'pass' : 'unknown', 'evidence' => SNFLA_Audit::redact( is_array( $file26 ) ? $file26 : array() ) );
+		$file26_manifest = SNFLA_Central_Plan::module_manifest();
+		$file26_request = array( 'consumer' => 'File 04', 'purpose' => 'legacy_resolution_search_handoff', 'manifest_digest' => SNFLA_Checksum::hash( $file26_manifest ) );
+		$file26 = apply_filters( 'sabri_file26_accept_file04_contract_v1', array( 'accepted' => false, 'status' => 'unknown' ), $file26_request );
+		$file26_bound = is_array( $file26 ) && ! empty( $file26['accepted'] ) && ! empty( $file26['provider_id'] ) && ! empty( $file26['manifest_digest'] ) && hash_equals( (string) $file26_request['manifest_digest'], (string) $file26['manifest_digest'] );
+		$checks['file26'] = array( 'status' => $file26_bound ? 'pass' : 'unknown', 'request_digest' => $file26_request['manifest_digest'], 'evidence' => SNFLA_Audit::redact( is_array( $file26 ) ? $file26 : array() ) );
 		$checks['inventory'] = array( 'status' => SNFLA_Inventory::unchanged() ? 'pass' : 'blocker', 'locked' => ! empty( SNFLA_Inventory::locked() ) );
 		$analysis = self::current_dry_run_analysis();
 		$checks['dry_run_analysis'] = array( 'status' => ! empty( $analysis ) ? 'pass' : 'unknown', 'checksum' => $analysis['analysis_checksum'] ?? '' );
 		$checks['backup_restore'] = array( 'status' => SNFLA_Migration::backup_proof_valid() ? 'pass' : 'unknown' );
 		$reconciliation = SNFLA_Reconciliation::report();
 		$checks['reconciliation'] = array( 'status' => ! empty( $reconciliation['green'] ) && SNFLA_Reconciliation::validate_current_report( $reconciliation ) ? 'pass' : 'unknown', 'report_checksum' => $reconciliation['report_checksum'] ?? '' );
-		$checks['audit'] = SNFLA_Audit::verify_chain();
+		$audit = SNFLA_Audit::verify_chain();
+		$checks['audit'] = array_merge( array( 'status' => ! empty( $audit['valid'] ) ? 'pass' : 'blocker' ), is_array( $audit ) ? $audit : array( 'valid' => false ) );
 		$checks['metrics'] = array( 'status' => empty( self::metrics_summary()['sample_count'] ) ? 'unknown' : 'pass', 'summary' => self::metrics_summary() );
 		$checks['queue'] = array( 'status' => 'not_applicable', 'reason' => 'File 04 uses bounded synchronous migration batches and canonical provider contracts; no independent File 04 delivery queue is owned.' );
 		$checks['cache_search'] = array( 'status' => SNFLA_Schema::state() === 'redirect_cutover' || SNFLA_Schema::state() === 'read_only_fallback' || SNFLA_Schema::state() === 'retired' ? 'evidence_in_audit_chain' : 'pending_cutover', 'canonical_search_owner' => 'File 26' );
-		$blockers = array();
-		foreach ( $checks as $key => $row ) { if ( is_array( $row ) && 'blocker' === ( $row['status'] ?? '' ) ) { $blockers[] = $key; } }
-		return array( 'schema' => 1, 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ), 'checks' => $checks, 'blockers' => $blockers, 'healthy_for_current_lifecycle' => empty( $blockers ), 'production_acceptance_separate' => true );
+		$blockers = array(); $unknown = array();
+		foreach ( $checks as $key => $row ) {
+			if ( ! is_array( $row ) ) { continue; }
+			if ( 'blocker' === ( $row['status'] ?? '' ) ) { $blockers[] = $key; }
+			elseif ( in_array( (string) ( $row['status'] ?? '' ), array( 'unknown', 'pending_cutover' ), true ) ) { $unknown[] = $key; }
+		}
+		return array( 'schema' => 2, 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ), 'checks' => $checks, 'blockers' => $blockers, 'unknown_or_pending' => $unknown, 'healthy_for_current_lifecycle' => empty( $blockers ), 'production_acceptance_separate' => true, 'production_accepted' => false );
 	}
 
 	public static function rest_start( $result, $server, $request ) {
@@ -500,10 +520,15 @@ final class SNFLA_Plan_Completion {
 		$blockers = (array) ( $readiness['blockers'] ?? array() );
 		$analysis = self::current_dry_run_analysis();
 		if ( SNFLA_Schema::state() !== 'legacy_active' && empty( $analysis ) ) { $blockers[] = 'file04_dry_run_analysis_pending'; }
-		$readiness['file04_system_check'] = self::system_check();
+		$system = self::system_check();
+		foreach ( (array) ( $system['blockers'] ?? array() ) as $system_blocker ) { $blockers[] = 'file04_system_' . sanitize_key( $system_blocker ); }
+		$readiness['file04_system_check'] = $system;
 		$readiness['performance_metrics'] = self::metrics_summary();
 		$readiness['blockers'] = array_values( array_unique( $blockers ) );
-		$readiness['production_ready'] = empty( $readiness['blockers'] );
+		$readiness['source_candidate_ready'] = empty( $readiness['blockers'] );
+		// Source/CI evidence can never self-promote this adapter to production acceptance.
+		$readiness['production_ready'] = false;
+		$readiness['external_acceptance_required'] = array( 'hostinger_staging', 'real_file00_file21_file26_contracts', 'backup_restore', 'real_role_journeys', 'founder_approval', 'production_monitoring_rollback_window' );
 		return $readiness;
 	}
 }

@@ -4,14 +4,14 @@ Tags: legacy migration, reconciliation, rollback, wordpress
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.0.1
+Stable tag: 2.0.2
 License: GPLv2 or later
 
 == Description ==
 
 File 04 is a temporary, write-disabled, auditable and reversible adapter from historical `snp_publication` records into canonical File 21. It does not own Home, News, publishing, ranking, comments, reactions, saves, reports, navigation, composition or search truth.
 
-Version 2.0.1 retains the complete v1.3.0 migration/rollback foundation and all 18 Future18 migration-safety capabilities, then applies the ten-round post-Future18 hardening: fresh File 00 step-up for Future18 actions, non-2xx REST failure semantics, complete visual-diff evidence, redirect/citation release blocking, complete DR GameDay exercise proof, cryptographic-receipt authenticity checks, and exact release/CI metadata.
+Version 2.0.2 retains the complete v1.3.0 migration/rollback foundation, all 18 Future18 migration-safety capabilities and the first ten-round hardening, then applies a second fresh ten-round adversarial hardening: deny-only authorization extension hooks, fail-closed corrupted lifecycle state, source/request-bound provider evidence, explicit signed contract baselines, durable receipts/evidence, truthful source-vs-production readiness, real-sample canary gating and anti-replay File 21 media evidence.
 
 == Installation ==
 
@@ -22,6 +22,17 @@ Version 2.0.1 retains the complete v1.3.0 migration/rollback foundation and all 
 5. Do not deploy live, cut over or retire without required evidence and Founder approval.
 
 == Changelog ==
+
+= 2.0.2 =
+* Second fresh ten-round adversarial hardening after v2.0.1.
+* Made capability extension filters deny-only so they cannot grant migration authority.
+* Made corrupted lifecycle state fail closed instead of reopening legacy mutation paths.
+* Bound Future18 visual, redirect/citation and DR provider evidence to the exact current source/request.
+* Replaced self-clearing contract drift with an explicit signed, source-bound baseline workflow.
+* Made cryptographic receipt persistence and audit durable/fail-closed.
+* Made File 26 system evidence manifest-bound and source-level production readiness non-promoting.
+* Required real observability samples before canary approval and source/request-bound File 21 media evidence.
+* Added deterministic second-ten-round audit QA and v2.0.2 release integration.
 
 = 2.0.1 =
 * Added post-Future18 zero-trust step-up enforcement for action/evidence endpoints.

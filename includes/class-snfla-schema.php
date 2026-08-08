@@ -9,6 +9,7 @@ final class SNFLA_Schema {
 	const BACKUP_PROOF_OPTION = 'snfla_backup_proof';
 	const FALLBACK_OPTION = 'snfla_fallback_window';
 	const RETIREMENT_OPTION = 'snfla_retirement_evidence';
+	const INVALID_STATE = 'invalid';
 
 	public static function states() {
 		return array( 'legacy_active', 'inventory_locked', 'dry_run_ready', 'batch_migration', 'reconciliation', 'redirect_cutover', 'read_only_fallback', 'retired' );
@@ -28,8 +29,19 @@ final class SNFLA_Schema {
 	}
 
 	public static function state() {
-		$state = sanitize_key( (string) get_option( self::STATE_OPTION, 'legacy_active' ) );
-		return in_array( $state, self::states(), true ) ? $state : 'legacy_active';
+		$sentinel = new stdClass();
+		$stored   = get_option( self::STATE_OPTION, $sentinel );
+		if ( $stored === $sentinel ) {
+			return 'legacy_active';
+		}
+		$state = sanitize_key( (string) $stored );
+		// A present but unknown lifecycle value is corruption, not permission to
+		// silently fall back to the write-capable initial state.
+		return in_array( $state, self::states(), true ) ? $state : self::INVALID_STATE;
+	}
+
+	public static function state_valid() {
+		return in_array( self::state(), self::states(), true );
 	}
 
 	public static function version() {
@@ -46,6 +58,9 @@ final class SNFLA_Schema {
 			$expected_version = absint( $expected_version );
 			$current          = self::state();
 			$version          = self::version();
+			if ( self::INVALID_STATE === $current ) {
+				return new WP_Error( 'snfla_lifecycle_state_invalid', 'The persisted lifecycle state is invalid. Repair the lifecycle evidence before any mutation.', array( 'status' => 412 ) );
+			}
 			if ( $current !== $expected_state || $version !== $expected_version ) {
 				return new WP_Error( 'snfla_state_conflict', 'The lifecycle state changed. Reload status before retrying.', array( 'status' => 409 ) );
 			}
@@ -79,7 +94,11 @@ final class SNFLA_Schema {
 	public static function assert_current( $expected_state, $expected_version ) {
 		$expected_state   = sanitize_key( $expected_state );
 		$expected_version = absint( $expected_version );
-		if ( self::state() !== $expected_state || self::version() !== $expected_version ) {
+		$current = self::state();
+		if ( self::INVALID_STATE === $current ) {
+			return new WP_Error( 'snfla_lifecycle_state_invalid', 'The persisted lifecycle state is invalid. Repair is required before continuing.', array( 'status' => 412 ) );
+		}
+		if ( $current !== $expected_state || self::version() !== $expected_version ) {
 			return new WP_Error( 'snfla_state_conflict', 'The lifecycle state changed. Reload status before retrying.', array( 'status' => 409 ) );
 		}
 		return true;
@@ -94,6 +113,9 @@ final class SNFLA_Schema {
 		try {
 			$current = self::state();
 			$version = self::version();
+			if ( self::INVALID_STATE === $current ) {
+				return new WP_Error( 'snfla_lifecycle_state_invalid', 'The persisted lifecycle state is invalid. Automatic rollback recovery is blocked.', array( 'status' => 412 ) );
+			}
 			if ( $current !== $expected_state || $version !== $expected_version ) {
 				return new WP_Error( 'snfla_state_conflict', 'The lifecycle state changed. Reload status before retrying.', array( 'status' => 409 ) );
 			}
@@ -120,6 +142,7 @@ final class SNFLA_Schema {
 	}
 
 	public static function public_status() {
-		return array( 'state' => self::state(), 'version' => self::version() );
+		$state = self::state();
+		return array( 'state' => $state, 'version' => self::version(), 'valid' => in_array( $state, self::states(), true ) );
 	}
 }

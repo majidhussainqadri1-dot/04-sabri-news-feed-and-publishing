@@ -22,7 +22,7 @@ hard = text('includes/class-snfla-post-audit-hardening.php')
 
 round1 = report('Future18 Review/Fix Round 1 — completeness, ownership, safety', [
     (len(re.findall(r"'F04-FUT-\d{3}'\s*=>", future)) == 18, 'Exactly 18 stable Future18 requirements must exist.'),
-    ('Version: 2.0.1' in main and 'SNFLA_Future18::boot' in main and 'SNFLA_Post_Audit_Hardening::boot' in main, 'Future18 plus hardened v2.0.1 runtime must load and boot.'),
+    ('Version: 2.0.2' in main and 'SNFLA_Future18::boot' in main and 'SNFLA_Post_Audit_Hardening::boot' in main, 'Future18 plus second-audit v2.0.2 runtime must load and boot.'),
     (all(f'F04-FUT-{i:03d}' in trace for i in range(1, 19)), 'Human traceability must cover F04-FUT-001..018.'),
     ('File 21' in future and 'File 26' in future and 'File 20' in future and 'File 25' in future and 'File 24' in future, 'Canonical ownership boundaries must remain explicit.'),
     ('wp_insert_post(' not in future and '$wpdb->posts' not in future and 'wp_insert_post(' not in hard, 'Future18/hardening must not create a parallel canonical write backend.'),
@@ -47,8 +47,8 @@ round2 = report('Future18 Review/Fix Round 2 — fresh adversarial release regre
     ('silent_normalization_performed' in future and "preg_match( '//u'" in future, 'Unicode/RTL fidelity guard must verify without silent normalization.'),
     ('automatically_authorizes_retirement' in future and 'founder_approval_required' in future, 'Retirement score must not replace Founder authority.'),
     ('run-future18.py' in workflow and 'run-future18-reviews.py' in workflow and 'run-ten-round-post-future18.py' in workflow, 'Exact-head workflow must execute Future18 and post-audit gates.'),
-    ("VERSION='2.0.1'" in build and 'FUTURE18_COUNT=18' in build and 'TEN_ROUND_REVIEW_ROUNDS=10' in build, 'Deterministic release builder must bind v2.0.1 to all 18 enhancements and ten-round evidence.'),
+    ("VERSION='2.0.2'" in build and 'FUTURE18_COUNT=18' in build and 'TEN_ROUND_REVIEW_ROUNDS=10' in build, 'Deterministic release builder must bind v2.0.2 to all 18 enhancements and ten-round evidence.'),
 ])
 
 if not (round1 and round2): sys.exit(1)
-print('Two consecutive fresh Future18 review/fix/retest rounds passed with the v2.0.1 post-audit hardening present.')
+print('Two consecutive fresh Future18 review/fix/retest rounds passed with the v2.0.2 second-audit hardening present.')
