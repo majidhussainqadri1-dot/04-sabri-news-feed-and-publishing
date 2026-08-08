@@ -4,14 +4,14 @@ Tags: legacy migration, reconciliation, rollback, wordpress
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.0.2
+Stable tag: 2.0.3
 License: GPLv2 or later
 
 == Description ==
 
 File 04 is a temporary, write-disabled, auditable and reversible adapter from historical `snp_publication` records into canonical File 21. It does not own Home, News, publishing, ranking, comments, reactions, saves, reports, navigation, composition or search truth.
 
-Version 2.0.2 retains the complete v1.3.0 migration/rollback foundation, all 18 Future18 migration-safety capabilities and the first ten-round hardening, then applies a second fresh ten-round adversarial hardening: deny-only authorization extension hooks, fail-closed corrupted lifecycle state, source/request-bound provider evidence, explicit signed contract baselines, durable receipts/evidence, truthful source-vs-production readiness, real-sample canary gating and anti-replay File 21 media evidence.
+Version 2.0.3 retains the complete v1.3.0 migration/rollback foundation, all 18 Future18 migration-safety capabilities and the first ten-round hardening, then applies a second fresh ten-round adversarial hardening: deny-only authorization extension hooks, fail-closed corrupted lifecycle state, source/request-bound provider evidence, explicit signed contract baselines, durable receipts/evidence, truthful source-vs-production readiness, real-sample canary gating and anti-replay File 21 media evidence.
 
 == Installation ==
 
@@ -22,6 +22,16 @@ Version 2.0.2 retains the complete v1.3.0 migration/rollback foundation, all 18 
 5. Do not deploy live, cut over or retire without required evidence and Founder approval.
 
 == Changelog ==
+
+= 2.0.3 =
+* Third fresh ten-round adversarial audit of the corrected v2.0.2 source.
+* Implemented the plan-required time-bounded immutable legacy read fallback instead of tombstone-only behavior.
+* Prevented checksum collisions when JSON encoding fails and made audit JSON evidence fail closed.
+* Preserved exact opaque idempotency keys instead of normalizing them through human-text sanitization.
+* Bound restore, cutover cache/search and retirement route-handoff provider attestations to exact current requests/source evidence with fresh timestamps.
+* Prevented same-path query/fragment redirect loops by validating normalized same-origin paths.
+* Made mapping/interaction evidence JSON persistence fail closed on encoding errors.
+* Added a deterministic third-ten-round audit gate and v2.0.3 exact-head release evidence.
 
 = 2.0.2 =
 * Second fresh ten-round adversarial hardening after v2.0.1.
