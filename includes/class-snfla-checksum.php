@@ -25,8 +25,18 @@ final class SNFLA_Checksum {
 	}
 
 	public static function encode( $value ) {
-		$encoded = wp_json_encode( self::canonicalize( $value ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
-		return is_string( $encoded ) ? $encoded : '';
+		$canonical = self::canonicalize( $value );
+		$encoded = wp_json_encode( $canonical, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+		if ( is_string( $encoded ) ) {
+			return $encoded;
+		}
+
+		// Never collapse distinct unencodable evidence to hash(''). The fallback
+		// is deterministic because canonicalize() sorts associative keys and
+		// converts objects/resources to inert scalar/array representations first.
+		// This path is encoding-only; no unserialize operation exists anywhere in
+		// the adapter, so legacy payloads cannot execute object magic methods.
+		return 'snfla-ser-v1:' . base64_encode( serialize( $canonical ) );
 	}
 
 	public static function hash( $value ) {
