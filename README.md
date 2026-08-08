@@ -4,7 +4,7 @@ File 04 remains a **temporary, write-disabled, auditable and reversible migratio
 
 ## Governing scope
 
-The source trace covers the consolidated governing plan, File 04 FR-001..013 and NFR-001..010, 71 applicable CV requirements, F04-CEN-01..02, 15 acceptance journeys and F04-FUT-001..018.
+The source trace covers the consolidated governing plan, File 04 FR-001..013 and NFR-001..010, **71 CV requirements** applicable to File 04, F04-CEN-01..02, 15 acceptance journeys and F04-FUT-001..018.
 
 ## v2.0.3 third fresh ten-round hardening
 
