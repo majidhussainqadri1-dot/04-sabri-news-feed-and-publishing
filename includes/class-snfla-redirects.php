@@ -29,6 +29,7 @@ final class SNFLA_Redirects {
 		if ( is_array( $mapping ) && 'quarantined' === sanitize_key( (string) ( $mapping['status'] ?? '' ) ) ) {
 			self::private_legacy_response( 410 );
 		}
+		$file21_ready = SNFLA_Capabilities::file21_ready();
 		$target_id = SNFLA_File21_Adapter::target_for( $legacy_id );
 		if ( $target_id > 0 && SNFLA_File21_Adapter::target_public( $target_id ) ) {
 			$url = get_permalink( $target_id );
@@ -38,15 +39,17 @@ final class SNFLA_Redirects {
 			}
 		}
 
-		// The governing File 04 plan requires a time-bounded read-only fallback,
-		// not a tombstone-only state. If File 21 is temporarily unavailable after
-		// an otherwise valid cutover, a previously public legacy record may render
-		// from its immutable source evidence for the active fallback window. The
-		// legacy mutation guards remain installed globally, comments stay closed,
-		// and the temporary source URL is noindex/no-store so it cannot become a
-		// second permanent public route. A known non-public canonical target never
-		// falls back to the public legacy body.
-		if ( 'read_only_fallback' === $state && self::fallback_active() && 0 === $target_id && self::legacy_public_fallback_allowed( $legacy_id, $mapping ) ) {
+		// The fallback is an outage bridge for records that were already proven to
+		// have migrated canonically. A zero target from target_for() is ambiguous:
+		// it can mean File 21 is unavailable, but it can also mean a broken/missing
+		// canonical mapping while File 21 is healthy. Only the former may expose
+		// immutable legacy source content, and only when the local mapping ledger
+		// proves a prior successful migration of this exact unchanged source.
+		if ( 'read_only_fallback' === $state
+			&& self::fallback_active()
+			&& ! $file21_ready
+			&& 0 === $target_id
+			&& self::legacy_public_fallback_allowed( $legacy_id, $mapping ) ) {
 			self::prepare_read_only_fallback_response();
 			return;
 		}
@@ -58,12 +61,24 @@ final class SNFLA_Redirects {
 	}
 
 	private static function legacy_public_fallback_allowed( $legacy_id, $mapping ) {
-		$post = get_post( absint( $legacy_id ) );
+		$legacy_id = absint( $legacy_id );
+		$post = get_post( $legacy_id );
 		if ( ! $post instanceof WP_Post || SNFLA_Inventory::LEGACY_POST_TYPE !== (string) $post->post_type || 'publish' !== (string) $post->post_status ) {
 			return false;
 		}
-		$status = is_array( $mapping ) ? sanitize_key( (string) ( $mapping['status'] ?? '' ) ) : '';
-		if ( in_array( $status, array( 'quarantined', 'conflict', 'rollback_conflict', 'rolled_back', 'publication_rolled_back_interactions_pending' ), true ) ) {
+		if ( ! is_array( $mapping )
+			|| 'migrated' !== sanitize_key( (string) ( $mapping['status'] ?? '' ) )
+			|| absint( $mapping['target_id'] ?? 0 ) <= 0
+			|| empty( $mapping['source_checksum'] ) ) {
+			return false;
+		}
+		$current_checksum = SNFLA_Checksum::post( $legacy_id );
+		if ( '' === $current_checksum || ! hash_equals( (string) $mapping['source_checksum'], $current_checksum ) ) {
+			return false;
+		}
+		// Any open conflict, including a conflict-ledger read failure sentinel,
+		// blocks fallback rather than guessing that the historic mapping is safe.
+		if ( ! empty( SNFLA_Mapping::open_conflict_codes( $legacy_id ) ) ) {
 			return false;
 		}
 		return true;
