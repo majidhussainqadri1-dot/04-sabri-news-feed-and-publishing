@@ -45,6 +45,7 @@ $snfla_files = array(
 	'class-snfla-central-plan.php',
 	'class-snfla-plan-completion.php',
 	'class-snfla-future18.php',
+	'class-snfla-post-audit-hardening.php',
 	'class-snfla-plugin.php',
 );
 
@@ -61,6 +62,7 @@ add_action(
 		SNFLA_Central_Plan::boot();
 		SNFLA_Plan_Completion::boot();
 		SNFLA_Future18::boot();
+		SNFLA_Post_Audit_Hardening::boot();
 		SNFLA_Plugin::instance()->boot();
 	},
 	30
