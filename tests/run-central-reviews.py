@@ -44,7 +44,7 @@ round2=report('Central-plan Review/Fix Round 2 — fresh adversarial/source regr
     ('LegacyPublicationMigration::migrate_selected' in file21 and 'LegacyPublicationRollback::rollback_selected' in file21, 'Canonical migration/rollback must stay behind File 21 commands.'),
     ('do_not_allow' in plugin and 'block_legacy_comment_write' in plugin and 'block_legacy_meta_write' in plugin, 'Legacy truth writes must remain fail-closed.'),
     ('focus-visible' in css and 'prefers-reduced-motion' in css and 'direction:rtl' in css and 'unicode-bidi' in css, 'RTL/accessibility/reduced-motion source safeguards must exist.'),
-    ('codex/file-04-*' in workflow and 'run-central-plan.php' in workflow and 'run-central-reviews.py' not in workflow, 'Workflow must target modern File 04 branches and run central-plan tests without recursion.'),
+    ('codex/file-04-*' in workflow and 'run-central-plan.php' in workflow and 'run-central-reviews.py' in workflow, 'Workflow must target modern File 04 branches and execute both central-plan review gates.'),
     ("VERSION='1.3.0'" in build and 'central_plan_review_rounds' in build, 'Deterministic package generator must identify v1.3.0 and the two new review rounds.'),
     ('production_ready' in central and 'staging_accepted_pending' in status, 'Source completion must not fabricate staging/production acceptance.'),
 ])
