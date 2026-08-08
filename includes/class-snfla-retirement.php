@@ -150,5 +150,8 @@ final class SNFLA_Retirement {
 		return $network ? ! is_plugin_active_for_network( $plugin ) : ! is_plugin_active( $plugin );
 	}
 
-	public static function mutations_allowed() { return 'retired' !== SNFLA_Schema::state(); }
+	public static function mutations_allowed() {
+		$state = SNFLA_Schema::state();
+		return in_array( $state, SNFLA_Schema::states(), true ) && 'retired' !== $state;
+	}
 }
