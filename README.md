@@ -4,7 +4,7 @@ File 04 is a temporary, write-disabled, auditable and reversible migration/compa
 
 ## Governing scope
 
-The current source trace covers the modern consolidated governing plan (`SSH-CENTRAL-CONSOLIDATED-2026-08-07`), the File 04 complete plan (`SSH-F04-PLAN-2026-v1.0`), 71 applicable CV requirements (`CV-037..049`, `CV-074..084`, `CV-239..285`), `F04-CEN-01..02`, 15 relevant acceptance journeys, `F04-FR-001..013`, `F04-NFR-001..010`, and the approved `F04-FUT-001..018` Future18 extension.
+The current source trace covers the modern consolidated governing plan (`SSH-CENTRAL-CONSOLIDATED-2026-08-07`), the File 04 complete plan (`SSH-F04-PLAN-2026-v1.0`), **71 CV requirements** applicable to File 04 (`CV-037..049`, `CV-074..084`, `CV-239..285`), `F04-CEN-01..02`, 15 relevant acceptance journeys, `F04-FR-001..013`, `F04-NFR-001..010`, and the approved `F04-FUT-001..018` Future18 extension.
 
 ## v2.0.1 post-Future18 hardening
 
