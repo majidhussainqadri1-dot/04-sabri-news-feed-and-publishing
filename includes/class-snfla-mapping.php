@@ -23,6 +23,17 @@ final class SNFLA_Mapping {
 		return $parsed > 0 && (string) $parsed === $value ? $parsed : 0;
 	}
 
+	private static function strict_nonnegative_id( $value ) {
+		if ( is_int( $value ) ) { return $value >= 0 ? $value : null; }
+		if ( '0' === $value ) { return 0; }
+		$positive = self::strict_positive_id( $value );
+		return $positive > 0 ? $positive : null;
+	}
+
+	private static function uuid4_valid( $value ) {
+		return 1 === preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/Di', (string) $value );
+	}
+
 	public static function get( $legacy_id ) {
 		$row = self::get_checked( $legacy_id );
 		return is_wp_error( $row ) ? array() : $row;
@@ -48,14 +59,18 @@ final class SNFLA_Mapping {
 		}
 		$status = sanitize_key( array_key_exists( 'status', $data ) ? $data['status'] : ( $current['status'] ?? 'pending' ) );
 		$allowed_statuses = array( 'pending', 'migrating', 'migrated', 'interaction_pending', 'conflict', 'quarantined', 'publication_rolled_back_interactions_pending', 'rollback_conflict', 'rolled_back' );
-		if ( ! in_array( $status, $allowed_statuses, true ) ) { return false; }
+		$target_id_raw = array_key_exists( 'target_id', $data ) ? $data['target_id'] : ( $current['target_id'] ?? 0 );
+		$target_id = self::strict_nonnegative_id( $target_id_raw );
+		$target_type = sanitize_key( array_key_exists( 'target_type', $data ) ? $data['target_type'] : ( $current['target_type'] ?? '' ) );
+		$run_uuid = sanitize_text_field( (string) ( array_key_exists( 'run_uuid', $data ) ? $data['run_uuid'] : ( $current['run_uuid'] ?? '' ) ) );
+		if ( ! in_array( $status, $allowed_statuses, true ) || null === $target_id || ! in_array( $target_type, array( '', 'post', 'sabri_news' ), true ) || ( '' !== $run_uuid && ! self::uuid4_valid( $run_uuid ) ) ) { return false; }
 		$row = array(
-			'target_id'               => absint( array_key_exists( 'target_id', $data ) ? $data['target_id'] : ( $current['target_id'] ?? 0 ) ),
-			'target_type'             => sanitize_key( array_key_exists( 'target_type', $data ) ? $data['target_type'] : ( $current['target_type'] ?? '' ) ),
+			'target_id'               => $target_id,
+			'target_type'             => $target_type,
 			'status'                  => $status,
 			'source_checksum'         => $source_checksum,
 			'target_checksum'         => $target_checksum,
-			'run_uuid'                => sanitize_text_field( array_key_exists( 'run_uuid', $data ) ? $data['run_uuid'] : ( $current['run_uuid'] ?? '' ) ),
+			'run_uuid'                => $run_uuid,
 			'interaction_ledger_json' => $interaction_json,
 			'last_error_code'         => sanitize_key( array_key_exists( 'last_error_code', $data ) ? $data['last_error_code'] : ( $current['last_error_code'] ?? '' ) ),
 			'updated_at'              => $now,
