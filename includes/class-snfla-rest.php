@@ -70,13 +70,20 @@ final class SNFLA_REST {
 		$inventory = SNFLA_Inventory::locked();
 		$dry = get_option( SNFLA_Schema::DRY_RUN_OPTION, array() );
 		$reconciliation = SNFLA_Reconciliation::report();
+		$dry_trusted = SNFLA_Integrity::report_checksum_valid( $dry )
+			&& ! empty( $dry['report_checksum'] )
+			&& SNFLA_Audit::has_event( 'lifecycle_transitioned', '', 'report_checksum', (string) $dry['report_checksum'] );
+		$reconciliation_uuid = sanitize_text_field( (string) ( $reconciliation['report_uuid'] ?? '' ) );
+		$reconciliation_trusted = SNFLA_Integrity::report_checksum_valid( $reconciliation )
+			&& '' !== $reconciliation_uuid
+			&& SNFLA_Audit::has_event( 'reconciliation_completed', 'reconciliation:' . $reconciliation_uuid, 'report_checksum', (string) ( $reconciliation['report_checksum'] ?? '' ) );
 		$data = array(
 			'plugin'          => array( 'version' => SNFLA_VERSION, 'schema_version' => SNFLA_SCHEMA_VERSION, 'role' => 'legacy_foundation_adapter', 'canonical_owner' => 'File 21' ),
 			'lifecycle'       => SNFLA_Schema::public_status(),
 			'file21'          => SNFLA_File21_Adapter::status(),
 			'inventory'       => empty( $inventory ) ? array() : array( 'captured_at_utc' => $inventory['captured_at_utc'] ?? '', 'source_signature' => $inventory['source_signature'] ?? '', 'post_counts' => $inventory['post_counts'] ?? array(), 'table_counts' => $inventory['table_counts'] ?? array() ),
-			'dry_run'         => empty( $dry ) ? array() : array( 'created_at_utc' => $dry['created_at_utc'] ?? '', 'candidate_count' => $dry['candidate_count'] ?? 0, 'conflict_count' => absint( $dry['conflict_count'] ?? 0 ), 'eligible_count' => absint( $dry['eligible_count'] ?? 0 ), 'complete_scan' => ! empty( $dry['complete_scan'] ), 'report_checksum' => $dry['report_checksum'] ?? '' ),
-			'reconciliation'  => empty( $reconciliation ) ? array() : array( 'green' => ! empty( $reconciliation['green'] ), 'source_total' => $reconciliation['source_total'] ?? 0, 'verified_mappings' => $reconciliation['verified_mappings'] ?? 0, 'open_conflicts' => $reconciliation['open_conflicts'] ?? 0, 'report_checksum' => $reconciliation['report_checksum'] ?? '' ),
+			'dry_run'         => $dry_trusted ? array( 'evidence_valid' => true, 'created_at_utc' => $dry['created_at_utc'] ?? '', 'candidate_count' => $dry['candidate_count'] ?? 0, 'conflict_count' => absint( $dry['conflict_count'] ?? 0 ), 'eligible_count' => absint( $dry['eligible_count'] ?? 0 ), 'complete_scan' => ! empty( $dry['complete_scan'] ), 'report_checksum' => $dry['report_checksum'] ?? '' ) : array( 'evidence_valid' => false ),
+			'reconciliation'  => $reconciliation_trusted ? array( 'evidence_valid' => true, 'green' => ! empty( $reconciliation['green'] ), 'source_total' => $reconciliation['source_total'] ?? 0, 'verified_mappings' => $reconciliation['verified_mappings'] ?? 0, 'open_conflicts' => $reconciliation['open_conflicts'] ?? 0, 'report_checksum' => $reconciliation['report_checksum'] ?? '' ) : array( 'evidence_valid' => false ),
 			'open_conflicts'  => $mapping_counts['open_conflicts'],
 			'mapping_counts'  => $mapping_counts['statuses'],
 			'backup_proof'     => array( 'valid' => SNFLA_Migration::backup_proof_valid() ),
