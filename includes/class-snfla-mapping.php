@@ -63,7 +63,7 @@ final class SNFLA_Mapping {
 		$target_id = self::strict_nonnegative_id( $target_id_raw );
 		$target_type = sanitize_key( array_key_exists( 'target_type', $data ) ? $data['target_type'] : ( $current['target_type'] ?? '' ) );
 		$run_uuid = sanitize_text_field( (string) ( array_key_exists( 'run_uuid', $data ) ? $data['run_uuid'] : ( $current['run_uuid'] ?? '' ) ) );
-		if ( ! in_array( $status, $allowed_statuses, true ) || null === $target_id || ! in_array( $target_type, array( '', 'post', 'sabri_news' ), true ) || ( '' !== $run_uuid && ! self::uuid4_valid( $run_uuid ) ) ) { return false; }
+		if ( ! in_array( $status, $allowed_statuses, true ) || null === $target_id || ! in_array( $target_type, array( '', 'post', 'sabri_news', 'source_only' ), true ) || ( '' !== $run_uuid && ! self::uuid4_valid( $run_uuid ) ) ) { return false; }
 		$row = array(
 			'target_id'               => $target_id,
 			'target_type'             => $target_type,
