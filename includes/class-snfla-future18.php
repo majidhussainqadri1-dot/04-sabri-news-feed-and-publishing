@@ -156,8 +156,8 @@ final class SNFLA_Future18 {
 
 	/** F04-FUT-001 — deterministic, non-mutating migration simulation. */
 	public static function digital_twin( array $legacy_ids, $actor_id = 0 ) {
-		$legacy_ids = SNFLA_Integrity::normalized_ids( $legacy_ids, self::MAX_IDS );
-		if ( empty( $legacy_ids ) ) { return new WP_Error( 'snfla_twin_empty', 'Select at least one legacy publication.', array( 'status' => 400 ) ); }
+		$legacy_ids = SNFLA_Integrity::strict_positive_ids( $legacy_ids, self::MAX_IDS );
+		if ( is_wp_error( $legacy_ids ) || empty( $legacy_ids ) ) { return new WP_Error( 'snfla_twin_empty', 'Select positive, unique canonical legacy IDs.', array( 'status' => 400 ) ); }
 		if ( ! SNFLA_Inventory::unchanged() ) { return new WP_Error( 'snfla_twin_inventory_changed', 'The locked legacy inventory changed; rebuild the source lock before simulation.', array( 'status' => 409 ) ); }
 		$locked = SNFLA_Inventory::locked();
 		$rows = array();
