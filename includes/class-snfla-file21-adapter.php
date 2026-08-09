@@ -65,10 +65,16 @@ final class SNFLA_File21_Adapter {
 	}
 
 	public static function target_for( $legacy_id ) {
-		if ( ! SNFLA_Capabilities::file21_ready() ) {
-			return 0;
-		}
-		return absint( \Sabri\HomeNewsFeed\LegacyPublicationMigration::target_for( absint( $legacy_id ) ) );
+		$legacy_id = self::strict_positive_id( $legacy_id );
+		if ( $legacy_id <= 0 || ! SNFLA_Capabilities::file21_ready() ) { return 0; }
+		return self::strict_positive_id( \Sabri\HomeNewsFeed\LegacyPublicationMigration::target_for( $legacy_id ) );
+	}
+
+	private static function strict_positive_id( $value ) {
+		if ( is_int( $value ) ) { return $value > 0 ? $value : 0; }
+		if ( ! is_string( $value ) || 1 !== preg_match( '/^[1-9][0-9]*$/D', $value ) ) { return 0; }
+		$parsed = (int) $value;
+		return $parsed > 0 && (string) $parsed === $value ? $parsed : 0;
 	}
 
 	public static function migration_target_valid( $legacy_id, $target_id ) {
