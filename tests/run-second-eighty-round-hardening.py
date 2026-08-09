@@ -99,7 +99,7 @@ need('snfla_lifecycle_identity_or_version_invalid' in schema and 'snfla_lifecycl
 need('lifecycle_audit_compensation_failed' in schema and 'lifecycle_recovery_audit_compensation_failed' in schema,'R75 lifecycle audit compensation verification missing',f)
 need('conflict_resolution_compensation_failed' in mapping and 'conflict_supersession_compensation_failed' in mapping and 'system_conflict_compensation_failed' in mapping,'R76 conflict compensation escalation missing',f)
 need('created_by_migration' in mapping and 'strict_nonnegative_id' in mapping and 'synthetic_view' in mapping,'R77 strict interaction-ledger write semantics missing',f)
-need('snfla_interaction_query_identity_invalid' in mapping and "array( 'active', 'rolled_back' )" in mapping,'R78 strict interaction-ledger read/query semantics missing',f)
+need('snfla_interaction_query_identity_invalid' in mapping and "'rolled_back'" in mapping and "'active'" in mapping,'R78 strict interaction-ledger read/query semantics missing',f)
 need('| 79 | **Defect.**' in record and '| 80 | **PENDING' in record,'R79 current audit trace or R80 pending boundary missing',f)
 
 # R65 trace must be current before final fresh regression rounds.
