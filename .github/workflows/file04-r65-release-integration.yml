@@ -18,7 +18,9 @@ jobs:
           ref: audit-file-04-eighty-release
           persist-credentials: true
       - name: Apply R65 release integration
-        run: python3 tools/apply-r65-release-integration.py
+        run: |
+          python3 tools/apply-r65-release-integration.py
+          python3 tools/fix-r65-gates.py
       - name: Diagnose integrated source gates
         id: gates
         shell: bash
