@@ -800,12 +800,16 @@ final class SNFLA_Migration {
 	public static function existing_run( $operation, $idempotency_hash ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
+		$operation = sanitize_key( $operation );
+		$idempotency_hash = strtolower( (string) $idempotency_hash );
+		if ( ! in_array( $operation, array( 'migrate', 'rollback' ), true ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $idempotency_hash ) ) { return new WP_Error( 'snfla_run_ledger_identity_invalid', 'Run-ledger lookup identity is invalid.', array( 'status' => 400 ) ); }
 		$wpdb->last_error = '';
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT run_uuid,operation,status,source_signature,checkpoint_json,summary_json,started_at,finished_at FROM {$t['runs']} WHERE operation=%s AND idempotency_hash=%s LIMIT 1", sanitize_key( $operation ), strtolower( sanitize_text_field( (string) $idempotency_hash ) ) ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT run_uuid,operation,status,source_signature,checkpoint_json,summary_json,started_at,finished_at FROM {$t['runs']} WHERE operation=%s AND idempotency_hash=%s LIMIT 1", $operation, $idempotency_hash ), ARRAY_A );
 		if ( ! empty( $wpdb->last_error ) ) {
 			return new WP_Error( 'snfla_run_ledger_query_failed', 'The operation run ledger could not be read safely.', array( 'status' => 500 ) );
 		}
 		if ( ! is_array( $row ) ) { return array(); }
+		if ( 1 !== preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/Di', (string) ( $row['run_uuid'] ?? '' ) ) || (string) ( $row['operation'] ?? '' ) !== $operation || ! in_array( (string) ( $row['status'] ?? '' ), array( 'running', 'completed', 'partial', 'failed', 'audit_failed', 'interrupted' ), true ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $row['source_signature'] ?? '' ) ) ) { return new WP_Error( 'snfla_run_ledger_corrupt', 'The operation run ledger contains invalid identity or state evidence.', array( 'status' => 500 ) ); }
 		$row['checkpoint'] = json_decode( (string) $row['checkpoint_json'], true );
 		$row['summary'] = json_decode( (string) $row['summary_json'], true );
 		if ( ! is_array( $row['checkpoint'] ) || ! is_array( $row['summary'] ) ) {
