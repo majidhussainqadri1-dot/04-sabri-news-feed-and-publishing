@@ -38,8 +38,9 @@ final class SNFLA_Interaction_Provider {
 
 	/** Resume a previously bounded interaction import without re-importing recorded source rows. */
 	public static function resume( $actor_id, $legacy_id, $max_records = self::DEFAULT_RECORD_BUDGET ) {
-		$legacy_id = absint( $legacy_id );
-		$actor_id  = absint( $actor_id );
+		$legacy_id = self::strict_positive_id( $legacy_id );
+		$actor_id  = self::strict_positive_id( $actor_id );
+		if ( $legacy_id <= 0 || $actor_id <= 0 ) { return new WP_Error( 'snfla_interaction_resume_identity_invalid', 'Canonical positive actor and legacy IDs are required.', array( 'status' => 400 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) {
 			return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) );
 		}
