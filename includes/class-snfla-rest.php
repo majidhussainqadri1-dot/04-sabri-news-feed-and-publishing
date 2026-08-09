@@ -139,7 +139,7 @@ final class SNFLA_REST {
 	public static function cutover( WP_REST_Request $request ) {
 		$actor = self::can_run( $request );
 		if ( is_wp_error( $actor ) ) { return self::failure( $actor ); }
-		return self::result( 'snfla_cutover_completed', SNFLA_Reconciliation::cutover( $actor, $request->get_param( 'expected_state' ), $request->get_param( 'expected_version' ) ) );
+		return self::result( 'snfla_cutover_completed', SNFLA_Reconciliation::approve_cutover( $actor, $request->get_param( 'expected_state' ), $request->get_param( 'expected_version' ) ) );
 	}
 
 	public static function open_fallback( WP_REST_Request $request ) {
