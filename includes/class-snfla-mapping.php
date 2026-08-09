@@ -22,6 +22,7 @@ final class SNFLA_Mapping {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
 		$legacy_id = absint( $legacy_id );
+		if ( $legacy_id <= 0 ) { return false; }
 		$current = self::get_checked( $legacy_id );
 		if ( is_wp_error( $current ) ) { return false; }
 		$now = gmdate( 'Y-m-d H:i:s' );
@@ -32,10 +33,13 @@ final class SNFLA_Mapping {
 			$interaction_json = wp_json_encode( SNFLA_Audit::redact( (array) $data['interaction_ledger'] ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 			if ( ! is_string( $interaction_json ) ) { return false; }
 		}
+		$status = sanitize_key( array_key_exists( 'status', $data ) ? $data['status'] : ( $current['status'] ?? 'pending' ) );
+		$allowed_statuses = array( 'pending', 'migrating', 'migrated', 'interaction_pending', 'conflict', 'quarantined', 'publication_rolled_back_interactions_pending', 'rollback_conflict', 'rolled_back' );
+		if ( ! in_array( $status, $allowed_statuses, true ) ) { return false; }
 		$row = array(
 			'target_id'               => absint( array_key_exists( 'target_id', $data ) ? $data['target_id'] : ( $current['target_id'] ?? 0 ) ),
 			'target_type'             => sanitize_key( array_key_exists( 'target_type', $data ) ? $data['target_type'] : ( $current['target_type'] ?? '' ) ),
-			'status'                  => sanitize_key( array_key_exists( 'status', $data ) ? $data['status'] : ( $current['status'] ?? 'pending' ) ),
+			'status'                  => $status,
 			'source_checksum'         => preg_match( '/^[a-f0-9]{64}$/', $source_checksum ) ? $source_checksum : '',
 			'target_checksum'         => preg_match( '/^[a-f0-9]{64}$/', $target_checksum ) ? $target_checksum : '',
 			'run_uuid'                => sanitize_text_field( array_key_exists( 'run_uuid', $data ) ? $data['run_uuid'] : ( $current['run_uuid'] ?? '' ) ),
