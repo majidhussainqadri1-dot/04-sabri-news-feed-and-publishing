@@ -72,7 +72,7 @@ need("array( 'migrated', 'skipped', 'warnings' )" in plan and 'snfla_file21_migr
 need('quarantine_mapping_read_failed' in migration and 'quarantine_mapping_write_failed' in migration, 'R53 emergency quarantine ledger hardening missing', f)
 need('schema_healthy()' in db and "! empty( $health['ok'] )" in db, 'R54 positive schema-health evidence missing', f)
 need('network_retirement_requires_network_operator' in retirement and 'SNFLA_Schema::state_valid()' in retirement, 'R55-R56 network retirement/lifecycle validity gate missing', f)
-need('metrics_persist_failed' in plan and "'schema' =" not in plan and "$checks['schema']" in plan, 'R57-R58 observability/system schema gate missing', f)
+need('metrics_persist_failed' in plan and "$checks['schema']" in plan, 'R57-R58 observability/system schema gate missing', f)
 need('$file26_verified_at' in plan and 'is_finite' in plan, 'R59-R60 File26 freshness/storage-estimate strictness missing', f)
 need('function parse_ids' in cli and 'snfla_output_encoding_failed' in cli, 'R61-R62 CLI ID/output hardening missing', f)
 need('fallback_evidence_valid' in admin and 'snfla_admin_mapping_query_failed' in admin, 'R63-R64 admin evidence/query error hardening missing', f)

@@ -29,7 +29,7 @@ hard=text('includes/class-snfla-post-audit-hardening.php')
 all_php='\n'.join(p.read_text(encoding='utf-8') for p in ROOT.rglob('*.php') if '.git' not in p.parts and 'tests' not in p.parts)
 
 round1=report('Central-plan Review/Fix Round 1 — requirements, ownership and File 04 plan traceability',[
-    ('Version: 2.0.3' in main, 'Runtime must be second-audit hardened patch 2.0.3.'),
+    ('Version: 2.0.4' in main, 'Runtime must be second-audit hardened patch 2.0.4.'),
     ('class-snfla-central-plan.php' in main and 'SNFLA_Central_Plan::boot' in main, 'Central-plan contract layer must be loaded.'),
     ('class-snfla-plan-completion.php' in main and 'SNFLA_Plan_Completion::boot' in main, 'File 04 own-plan completion layer must be loaded.'),
     ('class-snfla-post-audit-hardening.php' in main and 'SNFLA_Post_Audit_Hardening::boot' in main, 'Post-Future18 hardening layer must be loaded.'),
@@ -52,7 +52,7 @@ round2=report('Central-plan Review/Fix Round 2 — fresh adversarial/source regr
     ('snfla_verify_cutover_cache_invalidation' in reconciliation and 'snfla_verify_cutover_search_reindex' in reconciliation, 'Cutover must require cache and canonical-search evidence.'),
     ('focus-visible' in css and 'prefers-reduced-motion' in css and 'direction:rtl' in css and 'unicode-bidi' in css, 'RTL/accessibility/reduced-motion source safeguards must exist.'),
     ('run-central-plan.php' in workflow and 'run-file04-own-plan.py' in workflow and 'run-central-reviews.py' in workflow and 'run-ten-round-post-future18.py' in workflow, 'Workflow must execute central, File04 and ten-round gates.'),
-    ("VERSION='2.0.3'" in build and 'central_plan_review_rounds' in build and 'TEN_ROUND_REVIEW_ROUNDS=10' in build, 'Deterministic package generator must identify v2.0.3 and all review evidence.'),
+    ("VERSION='2.0.4'" in build and 'central_plan_review_rounds' in build and 'TEN_ROUND_REVIEW_ROUNDS=10' in build, 'Deterministic package generator must identify v2.0.4 and all review evidence.'),
     ('production_ready' in central and 'staging_accepted_pending' in status, 'Source completion must not fabricate staging/production acceptance.'),
 ])
 
@@ -70,4 +70,4 @@ for command,label in [
         print(proc.stdout,end='')
 
 if not (round1 and round2): sys.exit(1)
-print('Two consecutive post-plan source reviews passed with v2.0.3 second-audit hardening and zero known blockers in the tested source scope.')
+print('Two consecutive post-plan source reviews passed with v2.0.4 second-audit hardening and zero known blockers in the tested source scope.')

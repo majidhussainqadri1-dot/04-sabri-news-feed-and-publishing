@@ -4,14 +4,14 @@ Tags: legacy migration, reconciliation, rollback, wordpress
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.0.3
+Stable tag: 2.0.4
 License: GPLv2 or later
 
 == Description ==
 
 File 04 is a temporary, write-disabled, auditable and reversible adapter from historical `snp_publication` records into canonical File 21. It does not own Home, News, publishing, ranking, comments, reactions, saves, reports, navigation, composition or search truth.
 
-Version 2.0.3 retains the v1.3.0 migration/rollback foundation, all 18 Future18 migration-safety capabilities and the first two fresh ten-round hardening audits, then applies a **third fresh ten-round adversarial audit** covering controlled read-only fallback, deterministic evidence encoding, exact opaque idempotency tokens, source/request-bound restore/cutover/retirement attestations, redirect-loop integrity, fail-closed mapping evidence serialization and release/QA consistency. Hostinger staging, live deployment and operational acceptance remain separate evidence gates.
+Version 2.0.4 retains the full migration/rollback and Future18 scope, then applies a fresh sequential 80-round hardening audit across lifecycle integrity, schema verification, REST identity/idempotency, migration/reconciliation/rollback compensation, provider anti-replay, multisite safety, CLI/admin truthfulness, deterministic packaging and canonical ownership. Hostinger staging, live deployment and operational acceptance remain separate evidence gates.
 
 == Installation ==
 
@@ -22,6 +22,13 @@ Version 2.0.3 retains the v1.3.0 migration/rollback foundation, all 18 Future18 
 5. Do not deploy live, cut over or retire without required evidence and Founder approval.
 
 == Changelog ==
+
+= 2.0.4 =
+* Completed a fresh sequential 80-round Review → immediate correction → retest audit.
+* Hardened lifecycle/schema integrity, signed evidence, exact idempotency and strict object identity.
+* Hardened migration, reconciliation, interactions, rollback, quarantine and compensation paths.
+* Added provider freshness/request binding, multisite safety, CLI/admin fail-closed behavior and File21 result-scope validation.
+* Added a permanent 80-round deterministic QA gate and v2.0.4 release/package integration while preserving storage schema 1.3.0.
 
 = 2.0.3 =
 * Third fresh ten-round adversarial audit of the corrected v2.0.2 source.

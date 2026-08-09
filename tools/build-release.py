@@ -4,7 +4,7 @@ import argparse, hashlib, json, shutil, subprocess, sys, tempfile, uuid, zipfile
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-VERSION='2.0.3'
+VERSION='2.0.4'
 PACKAGE_ROOT='04-sabri-news-feed-legacy-adapter'
 FIXED_DT=(2026,8,8,0,0,0)
 GENERATED_NAMES={'SOURCE-INVENTORY.tsv','CHECKSUMS.sha256','RELEASE-LOCK.json','PACKAGE-MANIFEST.json','PACKAGE-CHECKSUMS.sha256'}
@@ -22,6 +22,7 @@ FUTURE18_REVIEW_ROUNDS=2
 TEN_ROUND_REVIEW_ROUNDS=10
 SECOND_TEN_ROUND_REVIEW_ROUNDS=10
 THIRD_TEN_ROUND_REVIEW_ROUNDS=10
+EIGHTY_ROUND_REVIEW_ROUNDS=80
 HISTORICAL_REVIEW_ROUNDS=40
 
 def sha256_bytes(data:bytes)->str:return hashlib.sha256(data).hexdigest()
@@ -76,6 +77,7 @@ def run_source_gates():
     subprocess.run([sys.executable,str(ROOT/'tests/run-ten-round-post-future18.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-second-ten-round-hardening.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-third-ten-round-hardening.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
+    subprocess.run([sys.executable,str(ROOT/'tests/run-eighty-round-hardening.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
 
 def build(output:Path,source_output:Path):
     run_source_gates()
@@ -106,6 +108,7 @@ def build(output:Path,source_output:Path):
           'post_future18_hardening':{'version':'1.0.0','review_rounds':TEN_ROUND_REVIEW_ROUNDS,'gate':'tests/run-ten-round-post-future18.py','scope':'authorization, REST failures, visual/redirect/DR evidence, receipt authenticity, release consistency'},
           'second_ten_round_hardening':{'version':'1.0.0','review_rounds':SECOND_TEN_ROUND_REVIEW_ROUNDS,'gate':'tests/run-second-ten-round-hardening.py','audit':'SECOND-TEN-ROUND-HARDENING-AUDIT.md','scope':'second fresh fail-closed/security/reliability review'},
           'third_ten_round_hardening':{'version':'1.0.0','review_rounds':THIRD_TEN_ROUND_REVIEW_ROUNDS,'gate':'tests/run-third-ten-round-hardening.py','audit':'THIRD-TEN-ROUND-HARDENING-AUDIT.md','scope':'third fresh plan/anti-replay/serialization/release review'},
+          'eighty_round_hardening':{'version':'1.0.0','review_rounds':EIGHTY_ROUND_REVIEW_ROUNDS,'gate':'tests/run-eighty-round-hardening.py','audit':'EIGHTY-ROUND-HARDENING-AUDIT.md','scope':'fresh sequential reliability, security, migration, rollback, evidence, integration and release review'},
           'canonical_owners':{'publications_home_news_feed':'File 21','search_discovery':'File 26','shell':'File 20','visual_system':'File 25','assurance':'File 24'},
           'legacy_source_retained':True,
           'non_destructive':True,
@@ -122,6 +125,7 @@ def build(output:Path,source_output:Path):
           'ten_round_post_future18_review_rounds':TEN_ROUND_REVIEW_ROUNDS,
           'second_ten_round_review_rounds':SECOND_TEN_ROUND_REVIEW_ROUNDS,
           'third_ten_round_review_rounds':THIRD_TEN_ROUND_REVIEW_ROUNDS,
+          'eighty_round_review_rounds':EIGHTY_ROUND_REVIEW_ROUNDS,
           'historical_v120_review_rounds':HISTORICAL_REVIEW_ROUNDS,
           'contracts':{
             'File 00':{'required_for_mutation':True,'purpose':'current identity, step-up and migration capabilities'},
@@ -169,11 +173,12 @@ def build(output:Path,source_output:Path):
           'ten_round_post_future18_review_rounds':TEN_ROUND_REVIEW_ROUNDS,
           'second_ten_round_review_rounds':SECOND_TEN_ROUND_REVIEW_ROUNDS,
           'third_ten_round_review_rounds':THIRD_TEN_ROUND_REVIEW_ROUNDS,
+          'eighty_round_review_rounds':EIGHTY_ROUND_REVIEW_ROUNDS,
           'historical_v120_review_rounds':HISTORICAL_REVIEW_ROUNDS,
           'known_unresolved_source_scope_blockers':0,
           'truthful_status':{
             'specified':'complete current source scope',
-            'coded':'v2.0.3 third-ten-round hardened candidate',
+            'coded':'v2.0.4 eighty-round hardened candidate',
             'packaged':'reproducible candidate when this build succeeds',
             'automated_qa':'source gates executed by builder/CI',
             'staging_accepted':'pending',
@@ -214,6 +219,7 @@ def build(output:Path,source_output:Path):
       'ten_round_post_future18_review_rounds':TEN_ROUND_REVIEW_ROUNDS,
           'second_ten_round_review_rounds':SECOND_TEN_ROUND_REVIEW_ROUNDS,
           'third_ten_round_review_rounds':THIRD_TEN_ROUND_REVIEW_ROUNDS,
+      'eighty_round_review_rounds':EIGHTY_ROUND_REVIEW_ROUNDS,
       'known_unresolved_source_scope_blockers':0,
       'installable_zip':str(output),'installable_zip_sha256':install_sha,
       'complete_source_zip':str(source_output),'complete_source_zip_sha256':source_zip_sha,
@@ -240,12 +246,13 @@ def verify_only():
           'ten_round_post_future18_review_rounds':TEN_ROUND_REVIEW_ROUNDS,
           'second_ten_round_review_rounds':SECOND_TEN_ROUND_REVIEW_ROUNDS,
           'third_ten_round_review_rounds':THIRD_TEN_ROUND_REVIEW_ROUNDS,
+          'eighty_round_review_rounds':EIGHTY_ROUND_REVIEW_ROUNDS,
         },sort_keys=True))
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.3.zip'))
-    ap.add_argument('--source-output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.3-complete-source.zip'))
+    ap.add_argument('--output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.4.zip'))
+    ap.add_argument('--source-output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.4-complete-source.zip'))
     ap.add_argument('--verify-only',action='store_true')
     args=ap.parse_args()
     if args.verify_only: verify_only(); return

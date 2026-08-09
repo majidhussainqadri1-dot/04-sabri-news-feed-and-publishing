@@ -7,7 +7,7 @@ def need(c,m,f):
     if not c:f.append(m)
 f=[]
 main=t('sabri-news-feed-legacy-adapter.php'); redirects=t('includes/class-snfla-redirects.php'); checksum=t('includes/class-snfla-checksum.php'); audit=t('includes/class-snfla-audit.php'); rest=t('includes/class-snfla-rest.php'); migration=t('includes/class-snfla-migration.php'); recon=t('includes/class-snfla-reconciliation.php'); retirement=t('includes/class-snfla-retirement.php'); mapping=t('includes/class-snfla-mapping.php'); workflow=t('.github/workflows/file04-legacy-adapter-ci.yml'); build=t('tools/build-release.py'); record=t('THIRD-TEN-ROUND-HARDENING-AUDIT.md')
-need('Version: 2.0.3' in main and "SNFLA_VERSION', '2.0.3'" in main,'v2.0.3 runtime metadata missing',f)
+need('Version: 2.0.4' in main and "SNFLA_VERSION', '2.0.4'" in main,'v2.0.4 runtime metadata missing',f)
 need("SNFLA_SCHEMA_VERSION', '1.3.0'" in main,'storage schema must remain 1.3.0',f)
 need('legacy_public_fallback_allowed' in redirects and 'public_source_fallback' in redirects and 'X-Sabri-File04-Fallback' in redirects and "'tombstone_only' => false" in redirects,'Round1 read-only fallback implementation missing',f)
 need('snfla-ser-v1:' in checksum and 'base64_encode( serialize( $canonical ) )' in checksum and "return '';" not in checksum.split('public static function encode',1)[1].split('public static function hash',1)[0],'Round2 checksum encoding must not collapse to empty input',f)
@@ -19,7 +19,7 @@ need("$request['request_digest']" in retirement and "$summary['request_digest']"
 need('rawurldecode' in redirects and '$target_path !== $legacy_path' in redirects and '$home_port !== $target_port' in redirects,'Round7 normalized same-origin redirect-loop guard missing',f)
 need('$interaction_json = wp_json_encode' in mapping and 'if ( ! is_string( $interaction_json ) )' in mapping and '$original_json = wp_json_encode' in mapping and 'if ( ! is_string( $original_json ) )' in mapping,'Round8 mapping evidence encoding guards missing',f)
 need('run-third-ten-round-hardening.py' in workflow and 'run-third-ten-round-hardening.py' in build,'Round9 third audit gate must run in CI and builder',f)
-need("VERSION='2.0.3'" in build and 'THIRD_TEN_ROUND_REVIEW_ROUNDS=10' in build,'Round9 builder metadata missing',f)
+need("VERSION='2.0.4'" in build and 'THIRD_TEN_ROUND_REVIEW_ROUNDS=10' in build,'Round9 builder metadata missing',f)
 need("'audit-file-04-*'" in workflow,'Current third-audit branch family must be covered by push CI',f)
 # Round 10: fallback may only bridge a real File21 outage for an unchanged record
 # that the local ledger proves was already migrated to a canonical target.
