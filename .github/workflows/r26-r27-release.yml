@@ -1,4 +1,4 @@
-name: File04 R26 release metadata fix
+name: File04 R27 second-eighty builder integration
 on:
   push:
     branches: [audit-file-04-eighty-round-2]
@@ -14,9 +14,9 @@ jobs:
       - shell: bash
         run: |
           set -euo pipefail
-          python3 tools/r26-r27-release.py
+          python3 tools/r27-builder.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "80-round audit R26: promote corrected source to v2.0.5"
+          git commit -m "80-round audit R27: integrate permanent second-eighty builder gate"
           git push origin HEAD:audit-file-04-eighty-round-2
