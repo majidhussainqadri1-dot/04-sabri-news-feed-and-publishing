@@ -236,21 +236,30 @@ final class SNFLA_Future18 {
 	/** F04-FUT-002 — version/fingerprint drift detection across canonical contracts. */
 	private static function contract_snapshot() {
 		$manifest = SNFLA_Central_Plan::module_manifest();
-		$descriptors = array(
-			'File 00' => apply_filters( 'sabri_file00_contract_descriptor_v1', array( 'verified' => false, 'status' => 'unavailable' ), array( 'consumer' => 'File 04', 'purpose' => 'identity_authority' ) ),
-			'File 21' => apply_filters( 'sabri_file21_contract_descriptor_v1', array( 'verified' => false, 'status' => 'unavailable' ), array( 'consumer' => 'File 04', 'purpose' => 'canonical_publication_migration' ) ),
-			'File 26' => apply_filters( 'sabri_file26_contract_descriptor_v1', array( 'verified' => false, 'status' => 'unavailable' ), array( 'consumer' => 'File 04', 'purpose' => 'legacy_resolution_search_handoff' ) ),
+		$source_signature = (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' );
+		$manifest_digest = SNFLA_Checksum::hash( $manifest );
+		$requests = array(
+			'File 00' => array( 'consumer' => 'File 04', 'purpose' => 'identity_authority' ),
+			'File 21' => array( 'consumer' => 'File 04', 'purpose' => 'canonical_publication_migration' ),
+			'File 26' => array( 'consumer' => 'File 04', 'purpose' => 'legacy_resolution_search_handoff' ),
 		);
-		$normalized = SNFLA_Checksum::canonicalize( SNFLA_Audit::redact( $descriptors ) );
-		$unverified = array();
-		foreach ( $descriptors as $owner => $descriptor ) {
-			if ( ! is_array( $descriptor ) || empty( $descriptor['verified'] ) ) { $unverified[] = $owner; }
+		$filters = array( 'File 00' => 'sabri_file00_contract_descriptor_v1', 'File 21' => 'sabri_file21_contract_descriptor_v1', 'File 26' => 'sabri_file26_contract_descriptor_v1' );
+		$descriptors=array(); $unverified=array();
+		foreach ( $requests as $owner => $request ) {
+			$request['source_signature']=$source_signature; $request['manifest_digest']=$manifest_digest; $request['request_digest']=SNFLA_Checksum::hash($request);
+			$descriptor=apply_filters( $filters[$owner], array('verified'=>false,'status'=>'unavailable'), $request );
+			$verified_at=is_array($descriptor)&&!empty($descriptor['verified_at_utc'])?strtotime((string)$descriptor['verified_at_utc'].' UTC'):false;
+			$bound=is_array($descriptor)&&!empty($descriptor['verified'])&&!empty($descriptor['provider_id'])
+				&&hash_equals($source_signature,(string)($descriptor['source_signature']??''))&&hash_equals($manifest_digest,(string)($descriptor['manifest_digest']??''))&&hash_equals((string)$request['request_digest'],(string)($descriptor['request_digest']??''))
+				&&false!==$verified_at&&$verified_at>=time()-15*MINUTE_IN_SECONDS&&$verified_at<=time()+300;
+			if(!$bound){$unverified[]=$owner;} $descriptors[$owner]=$descriptor;
 		}
+		$normalized = SNFLA_Checksum::canonicalize( SNFLA_Audit::redact( $descriptors ) );
 		return array(
 			'fingerprint' => SNFLA_Checksum::hash( array( 'manifest' => $manifest, 'contracts' => $normalized ) ),
 			'descriptors' => $normalized,
 			'unverified_contracts' => $unverified,
-			'source_signature' => (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' ),
+			'source_signature' => $source_signature,
 		);
 	}
 
