@@ -249,16 +249,22 @@ final class SNFLA_Mapping {
 	public static function dry_run_replace( $run_uuid, $source_signature, $legacy_id, $source_checksum, array $conflicts, $target_type = 'auto' ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
+		$run_uuid = sanitize_text_field( (string) $run_uuid );
+		$source_signature = strtolower( (string) $source_signature );
+		$source_checksum = strtolower( (string) $source_checksum );
+		$legacy_id = self::strict_positive_id( $legacy_id );
+		$target_type = sanitize_key( $target_type );
+		if ( ! self::uuid4_valid( $run_uuid ) || $legacy_id <= 0 || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $source_signature ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $source_checksum ) || ! in_array( $target_type, array( 'auto', 'post', 'sabri_news' ), true ) ) { return false; }
 		$conflicts = array_values( array_unique( array_filter( array_map( 'sanitize_key', $conflicts ) ) ) );
 		$conflicts_json = wp_json_encode( $conflicts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 		if ( ! is_string( $conflicts_json ) ) { return false; }
 		$sql = $wpdb->prepare(
 			"INSERT INTO {$t['dry_run']} (run_uuid,source_signature,legacy_id,source_checksum,target_type,eligible,conflict_codes_json,created_at) VALUES (%s,%s,%d,%s,%s,%d,%s,%s) ON DUPLICATE KEY UPDATE source_signature=VALUES(source_signature),source_checksum=VALUES(source_checksum),target_type=VALUES(target_type),eligible=VALUES(eligible),conflict_codes_json=VALUES(conflict_codes_json),created_at=VALUES(created_at)",
-			sanitize_text_field( $run_uuid ),
-			sanitize_text_field( $source_signature ),
-			absint( $legacy_id ),
-			sanitize_text_field( $source_checksum ),
-			sanitize_key( $target_type ),
+			$run_uuid,
+			$source_signature,
+			$legacy_id,
+			$source_checksum,
+			$target_type,
 			empty( $conflicts ) ? 1 : 0,
 			$conflicts_json,
 			gmdate( 'Y-m-d H:i:s' )
