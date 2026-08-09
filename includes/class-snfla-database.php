@@ -770,6 +770,8 @@ final class SNFLA_Database {
 		if ( ! is_string( $name ) || 1 !== preg_match( '/^[a-z0-9_]{1,40}$/D', $name ) ) { return false; }
 		$lock_name = substr( $wpdb->prefix . 'snfla_' . $name, 0, 64 );
 		$wpdb->last_error=''; $result=$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
-		return empty($wpdb->last_error) && 1 === (int)$result;
+		$released = empty($wpdb->last_error) && 1 === (int)$result;
+		if ( ! $released ) { do_action( 'snfla_operational_alert_v1', 'database_lock_release_failed', 'critical', array( 'lock_digest' => hash('sha256',$lock_name) ) ); }
+		return $released;
 	}
 }
