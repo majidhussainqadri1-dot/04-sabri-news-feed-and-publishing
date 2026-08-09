@@ -17,15 +17,21 @@ jobs:
         with:
           ref: audit-file-04-eighty-round-hardening
           persist-credentials: true
-      - name: Apply R34-R50 corrections
+      - name: Apply and lint R34-R50 corrections
         id: patch
         shell: bash
         run: |
           set +e
           python3 tools/apply-eighty-round-r34-r50.py > /tmp/r34-r50.log 2>&1
-          rc=$?
+          patch_rc=$?
           cat /tmp/r34-r50.log
-          if [ "$rc" -ne 0 ]; then
+          lint_rc=0
+          if [ "$patch_rc" -eq 0 ]; then
+            while IFS= read -r -d '' file; do
+              php -l "$file" >> /tmp/r34-r50.log 2>&1 || lint_rc=1
+            done < <(find includes -name '*.php' -print0)
+          fi
+          if [ "$patch_rc" -ne 0 ] || [ "$lint_rc" -ne 0 ]; then
             cp /tmp/r34-r50.log EIGHTY-R34-R50-DIAGNOSTIC.txt
             git checkout -- includes
             echo 'failed=true' >> "$GITHUB_OUTPUT"
@@ -34,9 +40,6 @@ jobs:
             echo 'failed=false' >> "$GITHUB_OUTPUT"
           fi
           exit 0
-      - name: PHP syntax
-        if: steps.patch.outputs.failed == 'false'
-        run: find includes -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Commit result
         run: |
           git config user.name 'github-actions[bot]'
