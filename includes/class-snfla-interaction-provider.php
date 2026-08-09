@@ -209,7 +209,9 @@ final class SNFLA_Interaction_Provider {
 	private static function migrate_kind( $kind, $legacy_id, $target_id, $budget, array &$progress ) {
 		global $wpdb;
 		$legacy_table = $wpdb->prefix . 'snp_' . $kind;
+		$wpdb->last_error = '';
 		$exists       = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $legacy_table ) ) );
+		if ( ! empty( $wpdb->last_error ) ) { return array( 'processed' => 0, 'migrated' => 0, 'skipped' => 0, 'remaining' => true, 'errors' => array( 'interaction_source_schema_query_failed_' . $kind ) ); }
 		$has_table    = $exists === $legacy_table;
 		$state        = isset( $progress['interaction_progress'][ $kind ] ) && is_array( $progress['interaction_progress'][ $kind ] ) ? $progress['interaction_progress'][ $kind ] : array();
 		$report       = array( 'processed' => 0, 'migrated' => 0, 'skipped' => 0, 'remaining' => false, 'errors' => array() );
