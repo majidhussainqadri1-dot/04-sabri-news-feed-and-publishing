@@ -73,7 +73,7 @@ jobs:
             git add R65-INTEGRATION-DIAGNOSTIC.txt
             git commit -m '80-round audit R65: record exact integration gate failure'
           else
-            git add -A tests tools .github/workflows/file04-legacy-adapter-ci.yml readme.txt README.md STATUS.md EIGHTY-ROUND-HARDENING-AUDIT.md R65-INTEGRATION-DIAGNOSTIC.txt
+            git add -A
             git commit -m 'File 04 v2.0.4: complete R65 release and QA integration'
           fi
           git push origin HEAD:audit-file-04-eighty-release
