@@ -7,7 +7,7 @@ final class SNFLA_REST {
 	public static function register() {
 		$state_args = array(
 			'expected_state' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_key', 'validate_callback' => static function ( $value ) { return in_array( sanitize_key( (string) $value ), SNFLA_Schema::states(), true ); } ),
-			'expected_version' => array( 'required' => true, 'type' => 'integer', 'sanitize_callback' => 'absint', 'validate_callback' => static function ( $value ) { return absint( $value ) >= 1; } ),
+			'expected_version' => array( 'required' => true, 'type' => 'integer', 'sanitize_callback' => static function ( $value ) { return is_int( $value ) && $value >= 1 ? $value : 0; }, 'validate_callback' => static function ( $value ) { return is_int( $value ) && $value >= 1; } ),
 		);
 		$ids_arg = array( 'legacy_ids' => array( 'required' => true, 'type' => 'array', 'items' => array( 'type' => 'integer' ), 'validate_callback' => static function ( $value ) { if ( ! is_array( $value ) || count( $value ) < 1 || count( $value ) > SNFLA_Migration::MAX_BATCH ) return false; $ids = array(); foreach ( $value as $id ) { if ( ! is_int( $id ) && ! ( is_string( $id ) && preg_match( '/^[1-9][0-9]*$/D', $id ) ) ) return false; $id = (int) $id; if ( $id <= 0 || isset( $ids[ $id ] ) ) return false; $ids[ $id ] = true; } return true; } ) );
 		self::route( '/status', WP_REST_Server::READABLE, 'status', array(), false );
