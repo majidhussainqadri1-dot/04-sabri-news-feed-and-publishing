@@ -61,12 +61,12 @@ final class SNFLA_Capabilities {
 	}
 
 	public static function revalidate_actor( $expected_actor_id, $capability = self::CAP_RUN ) {
-		$expected_actor_id = absint( $expected_actor_id );
+		if ( ! is_int( $expected_actor_id ) || $expected_actor_id <= 0 ) { return new WP_Error( 'snfla_actor_identity_invalid', 'The protected operation requires a canonical positive actor identity.', array( 'status' => 400 ) ); }
 		$actor_id = self::current_actor( $capability );
 		if ( is_wp_error( $actor_id ) ) {
 			return $actor_id;
 		}
-		if ( $expected_actor_id <= 0 || absint( $actor_id ) !== $expected_actor_id ) {
+		if ( ! is_int( $actor_id ) || $actor_id !== $expected_actor_id ) {
 			return new WP_Error( 'snfla_actor_changed', 'The authenticated actor changed while the protected operation was waiting for its lock.', array( 'status' => 409 ) );
 		}
 		return $actor_id;
