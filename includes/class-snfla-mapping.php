@@ -26,8 +26,11 @@ final class SNFLA_Mapping {
 		$current = self::get_checked( $legacy_id );
 		if ( is_wp_error( $current ) ) { return false; }
 		$now = gmdate( 'Y-m-d H:i:s' );
-		$source_checksum = array_key_exists( 'source_checksum', $data ) ? (string) $data['source_checksum'] : (string) ( $current['source_checksum'] ?? '' );
-		$target_checksum = array_key_exists( 'target_checksum', $data ) ? (string) $data['target_checksum'] : (string) ( $current['target_checksum'] ?? '' );
+		$source_checksum = array_key_exists( 'source_checksum', $data ) ? strtolower( (string) $data['source_checksum'] ) : strtolower( (string) ( $current['source_checksum'] ?? '' ) );
+		$target_checksum = array_key_exists( 'target_checksum', $data ) ? strtolower( (string) $data['target_checksum'] ) : strtolower( (string) ( $current['target_checksum'] ?? '' ) );
+		if ( ( '' !== $source_checksum && 1 !== preg_match( '/^[a-f0-9]{64}$/D', $source_checksum ) ) || ( '' !== $target_checksum && 1 !== preg_match( '/^[a-f0-9]{64}$/D', $target_checksum ) ) ) {
+			return false;
+		}
 		$interaction_json = $current['interaction_ledger_json'] ?? '{}';
 		if ( isset( $data['interaction_ledger'] ) ) {
 			$interaction_json = wp_json_encode( SNFLA_Audit::redact( (array) $data['interaction_ledger'] ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
@@ -40,8 +43,8 @@ final class SNFLA_Mapping {
 			'target_id'               => absint( array_key_exists( 'target_id', $data ) ? $data['target_id'] : ( $current['target_id'] ?? 0 ) ),
 			'target_type'             => sanitize_key( array_key_exists( 'target_type', $data ) ? $data['target_type'] : ( $current['target_type'] ?? '' ) ),
 			'status'                  => $status,
-			'source_checksum'         => preg_match( '/^[a-f0-9]{64}$/', $source_checksum ) ? $source_checksum : '',
-			'target_checksum'         => preg_match( '/^[a-f0-9]{64}$/', $target_checksum ) ? $target_checksum : '',
+			'source_checksum'         => $source_checksum,
+			'target_checksum'         => $target_checksum,
 			'run_uuid'                => sanitize_text_field( array_key_exists( 'run_uuid', $data ) ? $data['run_uuid'] : ( $current['run_uuid'] ?? '' ) ),
 			'interaction_ledger_json' => $interaction_json,
 			'last_error_code'         => sanitize_key( array_key_exists( 'last_error_code', $data ) ? $data['last_error_code'] : ( $current['last_error_code'] ?? '' ) ),
@@ -226,10 +229,10 @@ final class SNFLA_Mapping {
 		$sql = $wpdb->prepare(
 			"INSERT INTO {$t['dry_run']} (run_uuid,source_signature,legacy_id,source_checksum,target_type,eligible,conflict_codes_json,created_at) VALUES (%s,%s,%d,%s,%s,%d,%s,%s) ON DUPLICATE KEY UPDATE source_signature=VALUES(source_signature),source_checksum=VALUES(source_checksum),target_type=VALUES(target_type),eligible=VALUES(eligible),conflict_codes_json=VALUES(conflict_codes_json),created_at=VALUES(created_at)",
 			sanitize_text_field( $run_uuid ),
-			$source_signature,
+			sanitize_text_field( $source_signature ),
 			absint( $legacy_id ),
-			$source_checksum,
-			sanitize_key( $target_type ) ?: 'auto',
+			sanitize_text_field( $source_checksum ),
+			sanitize_key( $target_type ),
 			empty( $conflicts ) ? 1 : 0,
 			$conflicts_json,
 			gmdate( 'Y-m-d H:i:s' )
@@ -241,165 +244,49 @@ final class SNFLA_Mapping {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
 		$wpdb->last_error = '';
-		$row = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT legacy_id,source_checksum,target_type,eligible,conflict_codes_json,run_uuid FROM {$t['dry_run']} WHERE source_signature=%s AND run_uuid=%s AND legacy_id=%d LIMIT 1",
-				(string) $source_signature,
-				sanitize_text_field( (string) $run_uuid ),
-				absint( $legacy_id )
-			),
-			ARRAY_A
-		);
-		if ( ! empty( $wpdb->last_error ) ) {
-			return new WP_Error( 'snfla_dry_run_candidate_query_failed', 'Dry-run evidence could not be read safely.', array( 'status' => 500 ) );
-		}
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT source_checksum,eligible,conflict_codes_json FROM {$t['dry_run']} WHERE legacy_id=%d AND source_signature=%s AND run_uuid=%s", absint( $legacy_id ), sanitize_text_field( $source_signature ), sanitize_text_field( $run_uuid ) ), ARRAY_A );
+		if ( ! empty( $wpdb->last_error ) ) { return new WP_Error( 'snfla_dry_run_candidate_query_failed' ); }
 		if ( ! is_array( $row ) ) { return array(); }
-		$conflicts = json_decode( (string) $row['conflict_codes_json'], true );
-		if ( ! is_array( $conflicts ) || JSON_ERROR_NONE !== json_last_error() ) {
-			return new WP_Error( 'snfla_dry_run_candidate_corrupt', 'Dry-run conflict evidence is malformed.', array( 'status' => 500 ) );
-		}
-		$row['conflict_codes'] = $conflicts;
-		unset( $row['conflict_codes_json'] );
-		return $row;
+		$codes = json_decode( (string) $row['conflict_codes_json'], true );
+		if ( ! is_array( $codes ) || JSON_ERROR_NONE !== json_last_error() ) { return new WP_Error( 'snfla_dry_run_candidate_corrupt' ); }
+		return array( 'source_checksum' => (string) $row['source_checksum'], 'eligible' => ! empty( $row['eligible'] ), 'conflict_codes' => array_values( array_filter( array_map( 'sanitize_key', $codes ) ) ) );
 	}
 
-	public static function dry_run_candidate( $legacy_id, $source_signature, $run_uuid ) {
-		$row = self::dry_run_candidate_checked( $legacy_id, $source_signature, $run_uuid );
-		return is_wp_error( $row ) ? array() : $row;
-	}
-
-	public static function clear_dry_run_rows( $run_uuid = '' ) {
+	public static function clear_dry_run_rows( $run_uuid ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
 		$run_uuid = sanitize_text_field( (string) $run_uuid );
-		if ( '' === $run_uuid ) {
-			return false !== $wpdb->query( "DELETE FROM {$t['dry_run']}" );
-		}
-		return false !== $wpdb->query( $wpdb->prepare( "DELETE FROM {$t['dry_run']} WHERE run_uuid=%s", $run_uuid ) );
+		if ( '' === $run_uuid ) { return false; }
+		return false !== $wpdb->delete( $t['dry_run'], array( 'run_uuid' => $run_uuid ), array( '%s' ) );
 	}
 
 	public static function purge_other_dry_run_rows( $run_uuid ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
-		return false !== $wpdb->query( $wpdb->prepare( "DELETE FROM {$t['dry_run']} WHERE run_uuid<>%s", sanitize_text_field( (string) $run_uuid ) ) );
-	}
-
-	public static function supersede_run_conflicts( $run_uuid, $actor_id ) {
-		global $wpdb;
-		$t = SNFLA_Database::tables();
 		$run_uuid = sanitize_text_field( (string) $run_uuid );
-		if ( '' === $run_uuid ) { return true; }
-		$wpdb->last_error = '';
-		$ids = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$t['conflicts']} WHERE run_uuid=%s AND status='open' ORDER BY id ASC", $run_uuid ) );
-		if ( ! is_array( $ids ) || ! empty( $wpdb->last_error ) ) { return false; }
-		$ids = array_values( array_filter( array_map( 'absint', $ids ) ) );
-		if ( empty( $ids ) ) { return true; }
-		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
-		$args = array_merge( array( gmdate( 'Y-m-d H:i:s' ) ), $ids );
-		$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['conflicts']} SET status='superseded',resolved_at=%s WHERE status='open' AND id IN ({$placeholders})", $args ) );
-		if ( false === $updated || (int) $updated !== count( $ids ) ) { return false; }
-		if ( SNFLA_Audit::record( 'previous_dry_run_conflicts_superseded', $actor_id, array( 'run_uuid' => $run_uuid, 'count' => count( $ids ) ), 'dry-run:' . $run_uuid ) ) { return true; }
-		$wpdb->query( $wpdb->prepare( "UPDATE {$t['conflicts']} SET status='open',resolved_at=NULL WHERE status='superseded' AND id IN ({$placeholders})", $ids ) );
-		return false;
+		if ( '' === $run_uuid ) { return false; }
+		return false !== $wpdb->query( $wpdb->prepare( "DELETE FROM {$t['dry_run']} WHERE run_uuid<>%s", $run_uuid ) );
 	}
 
-	public static function open_conflict( $legacy_id, $code, $severity, array $context, $run_uuid = '' ) {
+	public static function open_conflict( $legacy_id, $code, $severity, array $context = array(), $run_uuid = '' ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
-		$legacy_id = absint( $legacy_id );
 		$code = sanitize_key( $code );
-		$severity = in_array( $severity, array( 'low', 'medium', 'high', 'blocker' ), true ) ? $severity : 'high';
-		$redacted = SNFLA_Audit::redact( $context );
-		$redacted_json = wp_json_encode( $redacted, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+		$severity = in_array( $severity, array( 'low', 'medium', 'high', 'blocker' ), true ) ? $severity : 'blocker';
+		$redacted_json = wp_json_encode( SNFLA_Audit::redact( $context ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 		if ( '' === $code || ! is_string( $redacted_json ) ) { return false; }
-		$fingerprint = SNFLA_Checksum::hash( array( $legacy_id, $code, $redacted ) );
+		$now = gmdate( 'Y-m-d H:i:s' );
 		$sql = $wpdb->prepare(
-			"INSERT INTO {$t['conflicts']} (legacy_id,conflict_code,severity,fingerprint,status,redacted_context_json,run_uuid,created_at) VALUES (%d,%s,%s,%s,'open',%s,%s,%s) ON DUPLICATE KEY UPDATE severity=VALUES(severity),status='open',redacted_context_json=VALUES(redacted_context_json),run_uuid=VALUES(run_uuid),resolved_at=NULL",
-			$legacy_id,
+			"INSERT INTO {$t['conflicts']} (run_uuid,legacy_id,conflict_code,severity,status,context_json,created_at,updated_at) VALUES (%s,%d,%s,%s,'open',%s,%s,%s) ON DUPLICATE KEY UPDATE severity=VALUES(severity),status='open',context_json=VALUES(context_json),resolved_by=NULL,resolution_code='',resolved_at=NULL,updated_at=VALUES(updated_at)",
+			sanitize_text_field( $run_uuid ),
+			absint( $legacy_id ),
 			$code,
 			$severity,
-			$fingerprint,
 			$redacted_json,
-			sanitize_text_field( $run_uuid ),
-			gmdate( 'Y-m-d H:i:s' )
+			$now,
+			$now
 		);
 		return false !== $wpdb->query( $sql );
-	}
-
-	public static function resolve_system_conflicts( $legacy_id, array $codes, $actor_id, $resolution = 'system_verified' ) {
-		global $wpdb;
-		$t = SNFLA_Database::tables();
-		$codes = array_values( array_unique( array_filter( array_map( 'sanitize_key', $codes ) ) ) );
-		if ( empty( $codes ) ) { return true; }
-		$placeholders = implode( ',', array_fill( 0, count( $codes ), '%s' ) );
-		$select_args = array_merge( array( absint( $legacy_id ) ), $codes );
-		$wpdb->last_error = '';
-		$ids = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$t['conflicts']} WHERE legacy_id=%d AND status='open' AND conflict_code IN ({$placeholders}) ORDER BY id ASC", $select_args ) );
-		if ( ! is_array( $ids ) || ! empty( $wpdb->last_error ) ) { return false; }
-		$ids = array_values( array_filter( array_map( 'absint', $ids ) ) );
-		if ( empty( $ids ) ) { return true; }
-		$id_placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
-		$update_args = array_merge( array( gmdate( 'Y-m-d H:i:s' ) ), $ids );
-		$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['conflicts']} SET status='resolved',resolved_at=%s WHERE status='open' AND id IN ({$id_placeholders})", $update_args ) );
-		if ( false === $updated || (int) $updated !== count( $ids ) ) { return false; }
-		if ( SNFLA_Audit::record( 'system_conflicts_resolved', $actor_id, array( 'legacy_id' => absint( $legacy_id ), 'codes' => $codes, 'resolution' => sanitize_key( $resolution ), 'count' => count( $ids ) ), 'legacy:' . absint( $legacy_id ) ) ) { return true; }
-		$reverted = $wpdb->query( $wpdb->prepare( "UPDATE {$t['conflicts']} SET status='open',resolved_at=NULL WHERE status='resolved' AND id IN ({$id_placeholders})", $ids ) );
-		return false;
-	}
-
-	/** Stream the complete migration/quarantine route disposition manifest in bounded pages. */
-	public static function each_route_disposition_batch( $callback, $page_size = 500 ) {
-		global $wpdb;
-		$t         = SNFLA_Database::tables();
-		$page_size = min( 2000, max( 1, absint( $page_size ) ) );
-		$cursor    = 0;
-		$total     = 0;
-		$migrated  = 0;
-		$gone      = 0;
-		do {
-			$wpdb->last_error = '';
-			$rows = $wpdb->get_results(
-				$wpdb->prepare(
-					"SELECT id,legacy_id,target_id,target_type,status,source_checksum,target_checksum FROM {$t['map']} WHERE id>%d AND status IN ('migrated','quarantined') ORDER BY id ASC LIMIT %d",
-					$cursor,
-					$page_size
-				),
-				ARRAY_A
-			);
-			if ( ! is_array( $rows ) || ! empty( $wpdb->last_error ) ) {
-				return new WP_Error( 'snfla_route_manifest_query_failed', 'The retirement route manifest could not be read.' );
-			}
-			$batch = array();
-			foreach ( $rows as $row ) {
-				$cursor    = max( $cursor, absint( $row['id'] ?? 0 ) );
-				$status    = sanitize_key( $row['status'] ?? '' );
-				$legacy_id = absint( $row['legacy_id'] ?? 0 );
-				$target_id = absint( $row['target_id'] ?? 0 );
-				$source_checksum = (string) ( $row['source_checksum'] ?? '' );
-				$target_checksum = (string) ( $row['target_checksum'] ?? '' );
-				if ( $legacy_id <= 0 || ! in_array( $status, array( 'migrated', 'quarantined' ), true ) || ! preg_match( '/^[a-f0-9]{64}$/', $source_checksum ) || ( 'migrated' === $status && ( $target_id <= 0 || ! preg_match( '/^[a-f0-9]{64}$/', $target_checksum ) ) ) ) {
-					return new WP_Error( 'snfla_route_manifest_invalid_row', 'The retirement route manifest contains an invalid or unsigned disposition.', array( 'legacy_id' => $legacy_id ) );
-				}
-				$entry = array(
-					'legacy_id'       => $legacy_id,
-					'disposition'     => 'migrated' === $status ? 'redirect' : 'gone',
-					'target_id'       => 'migrated' === $status ? $target_id : 0,
-					'target_type'     => 'migrated' === $status ? sanitize_key( $row['target_type'] ?? '' ) : '',
-					'source_checksum' => $source_checksum,
-					'target_checksum' => 'migrated' === $status ? $target_checksum : '',
-				);
-				$batch[] = $entry;
-				$total++;
-				if ( 'redirect' === $entry['disposition'] ) { $migrated++; } else { $gone++; }
-			}
-			if ( ! empty( $batch ) ) {
-				$result = call_user_func( $callback, $batch );
-				if ( is_wp_error( $result ) || false === $result ) {
-					return is_wp_error( $result ) ? $result : new WP_Error( 'snfla_route_manifest_callback_failed', 'The retirement route manifest handoff failed.' );
-				}
-			}
-		} while ( count( $rows ) === $page_size );
-		return array( 'count' => $total, 'redirect_count' => $migrated, 'gone_count' => $gone );
 	}
 
 	public static function open_conflict_count() {
@@ -408,5 +295,67 @@ final class SNFLA_Mapping {
 		$wpdb->last_error = '';
 		$value = $wpdb->get_var( "SELECT COUNT(*) FROM {$t['conflicts']} WHERE status='open'" );
 		return ! empty( $wpdb->last_error ) || null === $value ? PHP_INT_MAX : absint( $value );
+	}
+
+	public static function resolve_conflict( $conflict_id, $actor_id, $resolution_code ) {
+		global $wpdb;
+		$t = SNFLA_Database::tables();
+		$conflict_id = absint( $conflict_id );
+		$resolution_code = sanitize_key( $resolution_code );
+		if ( $conflict_id <= 0 || '' === $resolution_code ) { return false; }
+		$now = gmdate( 'Y-m-d H:i:s' );
+		$wpdb->last_error = '';
+		$result = $wpdb->update( $t['conflicts'], array( 'status' => 'resolved', 'resolved_by' => absint( $actor_id ), 'resolution_code' => $resolution_code, 'resolved_at' => $now, 'updated_at' => $now ), array( 'id' => $conflict_id, 'status' => 'open' ), array( '%s', '%d', '%s', '%s', '%s' ), array( '%d', '%s' ) );
+		return false !== $result && empty( $wpdb->last_error );
+	}
+
+	public static function supersede_run_conflicts( $run_uuid, $actor_id ) {
+		global $wpdb;
+		$t = SNFLA_Database::tables();
+		$run_uuid = sanitize_text_field( (string) $run_uuid );
+		if ( '' === $run_uuid ) { return true; }
+		$now = gmdate( 'Y-m-d H:i:s' );
+		$wpdb->last_error = '';
+		$changed_ids = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$t['conflicts']} WHERE run_uuid=%s AND status='open' ORDER BY id ASC", $run_uuid ) );
+		if ( ! is_array( $changed_ids ) || ! empty( $wpdb->last_error ) ) { return false; }
+		if ( empty( $changed_ids ) ) { return true; }
+		$result = $wpdb->query( $wpdb->prepare( "UPDATE {$t['conflicts']} SET status='resolved',resolved_by=%d,resolution_code='superseded_by_new_dry_run',resolved_at=%s,updated_at=%s WHERE run_uuid=%s AND status='open'", absint( $actor_id ), $now, $now, $run_uuid ) );
+		if ( false === $result || ! empty( $wpdb->last_error ) ) { return false; }
+		$audit_ok = SNFLA_Audit::record( 'dry_run_conflicts_superseded', $actor_id, array( 'run_uuid' => $run_uuid, 'resolved_count' => absint( $result ) ), 'dry-run:' . $run_uuid );
+		if ( $audit_ok ) { return true; }
+		$ids = array_values( array_unique( array_filter( array_map( 'absint', $changed_ids ) ) ) );
+		if ( empty( $ids ) ) { return false; }
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		$args = array_merge( array( $now ), $ids );
+		$wpdb->last_error = '';
+		$compensated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['conflicts']} SET status='open',resolved_by=NULL,resolution_code='',resolved_at=NULL WHERE updated_at=%s AND id IN ({$placeholders})", $args ) );
+		return false !== $compensated && empty( $wpdb->last_error ) && absint( $compensated ) === count( $ids );
+	}
+
+	public static function resolve_system_conflicts( $legacy_id, array $codes, $actor_id, $resolution_code = 'automatic_reconciliation_verified' ) {
+		global $wpdb;
+		$t = SNFLA_Database::tables();
+		$legacy_id = absint( $legacy_id );
+		$codes = array_values( array_unique( array_filter( array_map( 'sanitize_key', $codes ) ) ) );
+		$resolution_code = sanitize_key( $resolution_code );
+		if ( $legacy_id <= 0 || empty( $codes ) || '' === $resolution_code ) { return true; }
+		$placeholders = implode( ',', array_fill( 0, count( $codes ), '%s' ) );
+		$args = array_merge( array( $legacy_id ), $codes );
+		$wpdb->last_error = '';
+		$changed_ids = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$t['conflicts']} WHERE legacy_id=%d AND status='open' AND conflict_code IN ({$placeholders}) ORDER BY id ASC", $args ) );
+		if ( ! is_array( $changed_ids ) || ! empty( $wpdb->last_error ) ) { return false; }
+		if ( empty( $changed_ids ) ) { return true; }
+		$now = gmdate( 'Y-m-d H:i:s' );
+		$update_args = array_merge( array( absint( $actor_id ), $resolution_code, $now, $now, $legacy_id ), $codes );
+		$result = $wpdb->query( $wpdb->prepare( "UPDATE {$t['conflicts']} SET status='resolved',resolved_by=%d,resolution_code=%s,resolved_at=%s,updated_at=%s WHERE legacy_id=%d AND status='open' AND conflict_code IN ({$placeholders})", $update_args ) );
+		if ( false === $result || ! empty( $wpdb->last_error ) ) { return false; }
+		if ( SNFLA_Audit::record( 'system_conflicts_resolved', $actor_id, array( 'legacy_id' => $legacy_id, 'codes' => $codes, 'resolved_count' => absint( $result ) ), 'legacy:' . $legacy_id ) ) { return true; }
+		$ids = array_values( array_unique( array_filter( array_map( 'absint', $changed_ids ) ) ) );
+		if ( empty( $ids ) ) { return false; }
+		$revert_placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		$revert_args = array_merge( array( $now ), $ids );
+		$wpdb->last_error = '';
+		$compensated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['conflicts']} SET status='open',resolved_by=NULL,resolution_code='',resolved_at=NULL WHERE updated_at=%s AND id IN ({$revert_placeholders})", $revert_args ) );
+		return false !== $compensated && empty( $wpdb->last_error ) && absint( $compensated ) === count( $ids );
 	}
 }
