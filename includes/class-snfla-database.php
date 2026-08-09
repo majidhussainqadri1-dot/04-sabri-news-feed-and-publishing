@@ -72,8 +72,9 @@ final class SNFLA_Database {
 		} elseif ( SNFLA_Schema::version() < 1 ) {
 			self::compensate_or_fail( $snapshot, $actor_id, new WP_Error( 'snfla_lifecycle_version_corrupt', 'A corrupt persisted lifecycle version blocks activation.' ) );
 		}
-		self::persist_option( 'snfla_schema_version', SNFLA_SCHEMA_VERSION );
-		self::persist_option( 'snfla_plugin_version', SNFLA_VERSION );
+		if ( ! self::persist_option( 'snfla_schema_version', SNFLA_SCHEMA_VERSION ) || ! self::persist_option( 'snfla_plugin_version', SNFLA_VERSION ) || ! self::persist_option( 'snfla_schema_health', array( 'ok' => true, 'code' => '', 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ) ) ) ) {
+			self::compensate_or_fail( $snapshot, $actor_id, new WP_Error( 'snfla_activation_version_evidence_failed', 'Activation version/schema-health evidence could not be persisted.' ) );
+		}
 
 		$final_handover = $snapshot;
 		$final_handover['deactivated_plugins'] = $deactivated;
