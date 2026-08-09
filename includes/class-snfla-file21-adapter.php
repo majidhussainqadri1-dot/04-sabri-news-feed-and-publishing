@@ -141,9 +141,9 @@ final class SNFLA_File21_Adapter {
 	 * rollback command. File 04 never writes File 21 posts or tables directly.
 	 */
 	public static function contain_orphan_target( $legacy_id, $target_id, $actor_id, $reason_code ) {
-		$legacy_id  = absint( $legacy_id );
-		$target_id  = absint( $target_id );
-		$actor_id   = absint( $actor_id );
+		$legacy_id  = self::strict_positive_id( $legacy_id );
+		$target_id  = self::strict_positive_id( $target_id );
+		$actor_id   = self::strict_positive_id( $actor_id );
 		$reason_code = sanitize_key( $reason_code ) ?: 'canonical_mapping_unverified';
 		if ( $legacy_id <= 0 || $target_id <= 0
 			|| absint( get_post_meta( $target_id, '_sabri_hnf_legacy_source_id', true ) ) !== $legacy_id
