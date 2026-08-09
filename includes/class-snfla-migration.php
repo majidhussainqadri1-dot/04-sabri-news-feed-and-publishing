@@ -5,6 +5,7 @@ final class SNFLA_Migration {
 	const MAX_BATCH = 100;
 
 	public static function dry_run( $actor_id, $limit = 500, $expected_state = 'inventory_locked', $expected_version = 1 ) {
+		if ( ! is_int( $limit ) || $limit < 50 || $limit > 1000 || ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_dry_run_parameters_invalid', 'Dry-run limit and lifecycle version must be canonical bounded integers.', array( 'status' => 400 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) {
 			return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) );
 		}
@@ -25,10 +26,10 @@ final class SNFLA_Migration {
 				return new WP_Error( 'snfla_inventory_signature_invalid', 'The locked inventory signature is invalid.', array( 'status' => 412 ) );
 			}
 			if ( ! SNFLA_Inventory::unchanged() ) { return new WP_Error( 'snfla_inventory_changed_after_lock', 'The legacy source changed while waiting for the migration lock.', array( 'status' => 409 ) ); }
-			$state_recheck = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), absint( $expected_version ) );
+			$state_recheck = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), $expected_version );
 			if ( is_wp_error( $state_recheck ) ) { return $state_recheck; }
 			$run_uuid = wp_generate_uuid4();
-			$batch_size = min( 1000, max( 50, absint( $limit ) ) );
+			$batch_size = $limit;
 			$totals = array( 'candidate_count' => 0, 'eligible_count' => 0, 'conflict_count' => 0, 'already_migrated' => 0 );
 			$status_counts = array();
 			$conflict_counts = array();
@@ -87,7 +88,7 @@ final class SNFLA_Migration {
 				SNFLA_Mapping::clear_dry_run_rows( $run_uuid );
 				return new WP_Error( 'snfla_dry_run_persist_failed', 'The dry-run report could not be persisted.', array( 'status' => 500 ) );
 			}
-			$transition = SNFLA_Schema::transition( 'dry_run_ready', $expected_state, absint( $expected_version ), $actor_id, array( 'report_checksum' => $report['report_checksum'], 'run_uuid' => $run_uuid, 'complete_scan' => true ) );
+			$transition = SNFLA_Schema::transition( 'dry_run_ready', $expected_state, $expected_version, $actor_id, array( 'report_checksum' => $report['report_checksum'], 'run_uuid' => $run_uuid, 'complete_scan' => true ) );
 			if ( is_wp_error( $transition ) ) {
 				update_option( SNFLA_Schema::DRY_RUN_OPTION, $previous, false );
 				SNFLA_Mapping::clear_dry_run_rows( $run_uuid );
