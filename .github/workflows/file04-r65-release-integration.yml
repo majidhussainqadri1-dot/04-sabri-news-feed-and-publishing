@@ -65,7 +65,7 @@ jobs:
       - name: PHP syntax after successful gates
         if: steps.gates.outputs.failed == 'false'
         run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
-      - name: Commit R65 result
+      - name: Commit non-workflow R65 result
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -73,7 +73,8 @@ jobs:
             git add R65-INTEGRATION-DIAGNOSTIC.txt
             git commit -m '80-round audit R65: record exact integration gate failure'
           else
+            git checkout -- .github/workflows/file04-legacy-adapter-ci.yml
             git add -A
-            git commit -m 'File 04 v2.0.4: complete R65 release and QA integration'
+            git commit -m 'File 04 v2.0.4: complete non-workflow R65 release and QA integration'
           fi
           git push origin HEAD:audit-file-04-eighty-release
