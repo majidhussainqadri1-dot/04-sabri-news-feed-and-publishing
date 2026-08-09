@@ -8,7 +8,7 @@ The source trace covers the consolidated governing plan, File 04 FR-001..013 and
 
 ## v2.0.4 fresh eighty-round hardening
 
-A new sequential 80-round audit reopened the corrected source and applied **Review → immediate correction → affected regression** before every next round. Rounds 1–65 discovered repository/source defects and corrected them. Rounds 66–80 are separate final regression reviews covering ownership boundaries, File21/File26 integration, authorization, privacy, bounded queries, concurrency/idempotency, recovery, redirects/fallback, quarantine, PHP 8.1/8.3, accessibility/RTL, deterministic packaging and final lifecycle truth. See `EIGHTY-ROUND-HARDENING-AUDIT.md`.
+A new sequential 80-round audit reopened the corrected source and applied **Review → immediate correction → affected regression** before every next round. **Rounds 1–65 discovered genuine repository/source defects and each was corrected before the next round. Rounds 66–80 were then completed as fresh focused regression reviews and found no new repository/source defect.** Those final clean rounds rechecked canonical ownership, File21/File26 boundaries, authorization, privacy, bounded queries, concurrency/idempotency, recovery, redirects/fallback, quarantine, PHP 8.1/8.3, accessibility/RTL, deterministic packaging and lifecycle truth. See `EIGHTY-ROUND-HARDENING-AUDIT.md`.
 
 Storage schema remains **1.3.0** because these corrections do not require a custom-table schema migration.
 
