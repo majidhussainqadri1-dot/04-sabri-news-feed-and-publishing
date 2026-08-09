@@ -19,25 +19,59 @@ jobs:
           persist-credentials: true
       - name: Apply R65 release integration
         run: python3 tools/apply-r65-release-integration.py
-      - name: Integrated source gates
+      - name: Diagnose integrated source gates
+        id: gates
+        shell: bash
         run: |
-          php tests/run-unit.php
-          php tests/run-central-plan.php
-          python3 tests/run-architecture.py
-          python3 tests/run-file04-own-plan.py
-          python3 tests/run-future18.py
-          python3 tests/run-central-reviews.py
-          python3 tests/run-future18-reviews.py
-          python3 tests/run-ten-round-post-future18.py
-          python3 tests/run-second-ten-round-hardening.py
-          python3 tests/run-third-ten-round-hardening.py
-          python3 tests/run-eighty-round-hardening.py
-          python3 tools/build-release.py --verify-only
-          find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
-      - name: Commit R65 integration
+          set +e
+          : > /tmp/r65-gates.log
+          failed=0
+          run_gate() {
+            label="$1"; shift
+            echo "=== $label ===" | tee -a /tmp/r65-gates.log
+            "$@" >> /tmp/r65-gates.log 2>&1
+            rc=$?
+            if [ "$rc" -ne 0 ]; then
+              echo "FAILED: $label (rc=$rc)" | tee -a /tmp/r65-gates.log
+              failed=1
+              return 1
+            fi
+            echo "PASS: $label" | tee -a /tmp/r65-gates.log
+            return 0
+          }
+          run_gate unit php tests/run-unit.php || true
+          run_gate central php tests/run-central-plan.php || true
+          run_gate architecture python3 tests/run-architecture.py || true
+          run_gate own-plan python3 tests/run-file04-own-plan.py || true
+          run_gate future18 python3 tests/run-future18.py || true
+          run_gate central-reviews python3 tests/run-central-reviews.py || true
+          run_gate future18-reviews python3 tests/run-future18-reviews.py || true
+          run_gate first-ten python3 tests/run-ten-round-post-future18.py || true
+          run_gate second-ten python3 tests/run-second-ten-round-hardening.py || true
+          run_gate third-ten python3 tests/run-third-ten-round-hardening.py || true
+          run_gate eighty python3 tests/run-eighty-round-hardening.py || true
+          run_gate builder python3 tools/build-release.py --verify-only || true
+          if [ "$failed" -ne 0 ]; then
+            cp /tmp/r65-gates.log R65-INTEGRATION-DIAGNOSTIC.txt
+            git checkout -- tests tools .github/workflows/file04-legacy-adapter-ci.yml readme.txt README.md STATUS.md EIGHTY-ROUND-HARDENING-AUDIT.md
+            echo 'failed=true' >> "$GITHUB_OUTPUT"
+          else
+            rm -f R65-INTEGRATION-DIAGNOSTIC.txt
+            echo 'failed=false' >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+      - name: PHP syntax after successful gates
+        if: steps.gates.outputs.failed == 'false'
+        run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
+      - name: Commit R65 result
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests tools .github/workflows/file04-legacy-adapter-ci.yml readme.txt README.md STATUS.md EIGHTY-ROUND-HARDENING-AUDIT.md
-          git commit -m 'File 04 v2.0.4: complete R65 release and QA integration'
+          if [ "${{ steps.gates.outputs.failed }}" = "true" ]; then
+            git add R65-INTEGRATION-DIAGNOSTIC.txt
+            git commit -m '80-round audit R65: record exact integration gate failure'
+          else
+            git add -A tests tools .github/workflows/file04-legacy-adapter-ci.yml readme.txt README.md STATUS.md EIGHTY-ROUND-HARDENING-AUDIT.md R65-INTEGRATION-DIAGNOSTIC.txt
+            git commit -m 'File 04 v2.0.4: complete R65 release and QA integration'
+          fi
           git push origin HEAD:audit-file-04-eighty-release
