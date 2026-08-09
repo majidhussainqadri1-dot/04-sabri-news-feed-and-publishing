@@ -732,16 +732,18 @@ final class SNFLA_Database {
 			foreach ( $rows as $index ) {
 				$name = (string) ( $index['Key_name'] ?? '' );
 				if ( '' === $name ) { continue; }
-				if ( ! isset( $actual_indexes[ $name ] ) ) { $actual_indexes[ $name ] = array( 'unique' => 0 === absint( $index['Non_unique'] ?? 1 ), 'columns' => array() ); }
+				if ( ! isset( $actual_indexes[ $name ] ) ) { $actual_indexes[ $name ] = array( 'unique' => 0 === absint( $index['Non_unique'] ?? 1 ), 'columns' => array(), 'sub_parts' => array() ); }
 				$seq = max( 1, absint( $index['Seq_in_index'] ?? 1 ) );
 				$actual_indexes[ $name ]['columns'][ $seq ] = strtolower( (string) ( $index['Column_name'] ?? '' ) );
+				$actual_indexes[ $name ]['sub_parts'][ $seq ] = isset( $index['Sub_part'] ) ? absint( $index['Sub_part'] ) : 0;
 			}
-			foreach ( $actual_indexes as &$index ) { ksort( $index['columns'], SORT_NUMERIC ); $index['columns'] = array_values( $index['columns'] ); } unset( $index );
+			foreach ( $actual_indexes as &$index ) { ksort( $index['columns'], SORT_NUMERIC ); ksort( $index['sub_parts'], SORT_NUMERIC ); $index['columns'] = array_values( $index['columns'] ); $index['sub_parts'] = array_values( $index['sub_parts'] ); } unset( $index );
 			foreach ( $index_rules as $name => $rule ) {
 				$must_be_unique = ! empty( $rule[0] ); $required_columns = array_map( 'strtolower', (array) ( $rule[1] ?? array() ) );
 				if ( ! array_key_exists( $name, $actual_indexes ) ) { $errors[] = $key . '_' . $name . '_index_missing'; }
 				elseif ( $must_be_unique && empty( $actual_indexes[ $name ]['unique'] ) ) { $errors[] = $key . '_' . $name . '_unique_missing'; }
 				elseif ( $required_columns !== $actual_indexes[ $name ]['columns'] ) { $errors[] = $key . '_' . $name . '_columns_mismatch'; }
+				elseif ( array_filter( $actual_indexes[ $name ]['sub_parts'] ) ) { $errors[] = $key . '_' . $name . '_prefix_index_not_allowed'; }
 			}
 		}
 		return empty( $errors ) ? true : new WP_Error( 'snfla_schema_verification_failed', 'File 04 database schema verification failed.', array( 'errors' => array_values( array_unique( $errors ) ) ) );
