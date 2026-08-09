@@ -644,6 +644,15 @@ final class SNFLA_Future18 {
 		$reconciliation = SNFLA_Reconciliation::report(); $rollback = SNFLA_Rollback::proof(); $invariants = self::invariant_guardian(); $drift = self::contract_drift();
 		$system = method_exists( 'SNFLA_Plan_Completion', 'system_check' ) ? SNFLA_Plan_Completion::system_check() : array();
 		$gameday = get_option( self::GAMEDAY_OPTION, array() );
+		$gameday_time = is_array( $gameday ) && ! empty( $gameday['performed_at_utc'] ) ? strtotime( (string) $gameday['performed_at_utc'] . ' UTC' ) : false;
+		$gameday_signature = (string) ( $gameday['source_signature'] ?? '' );
+		$gameday_request = (string) ( $gameday['request_digest'] ?? '' );
+		$current_signature = (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' );
+		$gameday_current = is_array( $gameday ) && SNFLA_Integrity::evidence_valid( $gameday ) && ! empty( $gameday['verified'] )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $current_signature ) && hash_equals( $current_signature, $gameday_signature )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $gameday_request )
+			&& false !== $gameday_time && $gameday_time >= time() - 7 * DAY_IN_SECONDS && $gameday_time <= time() + 300
+			&& SNFLA_Audit::has_event( 'future18_gameday_verified', 'future18-gameday:' . $gameday_request, 'source_signature', $current_signature );
 		$gates = array(
 			'legacy_writes_disabled' => empty( $invariants['checks']['legacy_writes_forbidden'] ) ? false : true,
 			'zero_open_conflicts' => 0 === SNFLA_Mapping::open_conflict_count(),
@@ -653,7 +662,7 @@ final class SNFLA_Future18 {
 			'contract_drift_clear' => empty( $drift['block_mutation'] ),
 			'file26_integration_accepted' => isset( $system['file26']['status'] ) && 'pass' === $system['file26']['status'],
 			'operational_metrics_present' => isset( $system['metrics']['status'] ) && 'pass' === $system['metrics']['status'],
-			'disaster_recovery_gameday_verified' => is_array( $gameday ) && SNFLA_Integrity::evidence_valid( $gameday ) && ! empty( $gameday['verified'] ) && ! empty( $gameday['source_signature'] ) && hash_equals( (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' ), (string) $gameday['source_signature'] ),
+			'disaster_recovery_gameday_verified' => $gameday_current,
 			'invariant_guardian_green' => ! empty( $invariants['green'] ),
 		);
 		$passed = count( array_filter( $gates ) ); $score = (int) round( 100 * $passed / self::RETIREMENT_GATE_COUNT );
