@@ -88,7 +88,10 @@ final class SNFLA_Database {
 		SNFLA_Plugin::instance()->register_legacy_schema();
 		self::refresh_runtime_state();
 		if ( 'retired' !== (string) get_option( SNFLA_Schema::STATE_OPTION, 'legacy_active' ) && ! wp_next_scheduled( 'snfla_daily_integrity_check' ) ) {
-			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'snfla_daily_integrity_check' );
+			$scheduled = wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'snfla_daily_integrity_check', array(), true );
+			if ( is_wp_error( $scheduled ) || false === $scheduled ) {
+				self::compensate_or_fail( $snapshot, $actor_id, new WP_Error( 'snfla_integrity_schedule_failed', 'The mandatory daily integrity check could not be scheduled.' ) );
+			}
 		}
 		if ( ! SNFLA_Audit::record( 'adapter_activation_handover_completed', $actor_id, array( 'plugin_count' => count( $deactivated ), 'page_count' => count( $page_quarantine ), 'schema_version' => SNFLA_SCHEMA_VERSION ) ) ) {
 			self::compensate_or_fail( $snapshot, $actor_id, new WP_Error( 'snfla_activation_audit_failed', 'Activation was reverted because its audit evidence could not be written.' ) );
