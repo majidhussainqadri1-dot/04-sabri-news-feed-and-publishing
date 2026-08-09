@@ -29,9 +29,9 @@ final class SNFLA_Interaction_Provider {
 	/** Called synchronously by File 21 while File 04 already owns the migration lock. */
 	public static function migrate( array $context ) {
 		return self::run(
-			absint( $context['legacy_id'] ?? 0 ),
-			absint( $context['target_id'] ?? 0 ),
-			absint( $context['actor_id'] ?? 0 ),
+			self::strict_positive_id( $context['legacy_id'] ?? 0 ),
+			self::strict_positive_id( $context['target_id'] ?? 0 ),
+			self::strict_positive_id( $context['actor_id'] ?? 0 ),
 			self::budget( $context['max_records'] ?? self::DEFAULT_RECORD_BUDGET )
 		);
 	}
@@ -97,6 +97,13 @@ final class SNFLA_Interaction_Provider {
 			SNFLA_Database::release_lock( $lock_name );
 			SNFLA_Database::release_lock( 'operation' );
 		}
+	}
+
+	private static function strict_positive_id( $value ) {
+		if ( is_int( $value ) ) { return $value > 0 ? $value : 0; }
+		if ( ! is_string( $value ) || 1 !== preg_match( '/^[1-9][0-9]*$/D', $value ) ) { return 0; }
+		$parsed = (int) $value;
+		return $parsed > 0 && (string) $parsed === $value ? $parsed : 0;
 	}
 
 	private static function budget( $value ) {
