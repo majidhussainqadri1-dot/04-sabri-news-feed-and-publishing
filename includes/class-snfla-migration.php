@@ -779,10 +779,13 @@ final class SNFLA_Migration {
 	public static function finish_run( $uuid, $status, array $summary ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
+		$uuid = sanitize_text_field( (string) $uuid );
+		$status = sanitize_key( $status );
+		if ( 1 !== preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/Di', $uuid ) || ! in_array( $status, array( 'completed', 'partial', 'failed', 'audit_failed', 'interrupted' ), true ) ) { return false; }
 		$summary_json = wp_json_encode( SNFLA_Audit::redact( $summary ) );
 		if ( false === $summary_json ) { return false; }
 		$wpdb->last_error = '';
-		$result = $wpdb->update( $t['runs'], array( 'status' => sanitize_key( $status ), 'summary_json' => $summary_json, 'finished_at' => gmdate( 'Y-m-d H:i:s' ) ), array( 'run_uuid' => sanitize_text_field( $uuid ) ), array( '%s', '%s', '%s' ), array( '%s' ) );
+		$result = $wpdb->update( $t['runs'], array( 'status' => $status, 'summary_json' => $summary_json, 'finished_at' => gmdate( 'Y-m-d H:i:s' ) ), array( 'run_uuid' => $uuid ), array( '%s', '%s', '%s' ), array( '%s' ) );
 		return false !== $result && empty( $wpdb->last_error ) && ( 0 < (int) $result || self::run_has_status( $uuid, $status ) );
 	}
 
