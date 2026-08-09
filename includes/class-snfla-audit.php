@@ -10,6 +10,9 @@ final class SNFLA_Audit {
 		global $wpdb;
 		$t       = SNFLA_Database::tables();
 		$action  = sanitize_key( $action );
+		if ( '' === $action ) {
+			return false;
+		}
 		$context = self::redact( is_array( $context ) ? $context : array() );
 		$context_json = wp_json_encode( $context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 		if ( ! is_string( $context_json ) ) {
@@ -108,6 +111,9 @@ final class SNFLA_Audit {
 		global $wpdb;
 		$t          = SNFLA_Database::tables();
 		$action     = sanitize_key( $action );
+		if ( '' === $action ) {
+			return false;
+		}
 		$object_ref = sanitize_text_field( $object_ref );
 		$cursor     = PHP_INT_MAX;
 		do {
