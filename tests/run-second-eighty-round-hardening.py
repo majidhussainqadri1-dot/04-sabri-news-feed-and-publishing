@@ -85,13 +85,30 @@ need("'hours' => array( 'type' => 'integer', 'default' => 24" in rest and "get_p
 need('SNFLA_Reconciliation::approve_cutover' in rest and 'SNFLA_Reconciliation::cutover' not in rest,'R62 REST cutover canonical method mismatch remains',f)
 need('snfla_reconciliation_version_invalid' in reconciliation and 'snfla_cutover_version_invalid' in reconciliation,'R63-R64 reconciliation/cutover exact lifecycle versions missing',f)
 
+# R66-R79: final correction series and current proof trace.
+need('SNFLA_REST::NS' in cli and 'SNFLA_REST::NAMESPACE' not in cli,'R66 WP-CLI REST namespace correction missing',f)
+need('private function integer_arg' in cli and 'snfla_invalid_integer_arg' in cli,'R67 strict WP-CLI numeric parser missing',f)
+need('mapping_row_valid' in mapping and 'snfla_mapping_row_corrupt' in mapping,'R68 mapping-row read integrity missing',f)
+need('expected_fingerprint' in mapping and 'redacted_context_json' in mapping and 'hash_equals( $expected_fingerprint, $fingerprint )' in mapping,'R69 conflict fingerprint/JSON integrity missing',f)
+need('$validated_codes' in mapping and "sanitize_key( $code ) !== $code" in mapping,'R70 exact dry-run conflict-code integrity missing',f)
+need('snfla_migration_identity_or_version_invalid' in migration and '$authorized_actor !== $actor_id' in migration,'R71 core migration exact actor/version semantics missing',f)
+need('snfla_rollback_identity_or_version_invalid' in rollback and '$authorized_actor !== $actor_id' in rollback,'R72 core rollback exact actor/version semantics missing',f)
+caps=t('includes/class-snfla-capabilities.php'); schema=t('includes/class-snfla-schema.php')
+need('snfla_actor_identity_invalid' in caps and '! is_int( $expected_actor_id )' in caps,'R73 strict revalidation actor identity missing',f)
+need('snfla_lifecycle_identity_or_version_invalid' in schema and 'snfla_lifecycle_version_invalid' in schema,'R74 central lifecycle actor/version semantics missing',f)
+need('lifecycle_audit_compensation_failed' in schema and 'lifecycle_recovery_audit_compensation_failed' in schema,'R75 lifecycle audit compensation verification missing',f)
+need('conflict_resolution_compensation_failed' in mapping and 'conflict_supersession_compensation_failed' in mapping and 'system_conflict_compensation_failed' in mapping,'R76 conflict compensation escalation missing',f)
+need('created_by_migration' in mapping and 'strict_nonnegative_id' in mapping and 'synthetic_view' in mapping,'R77 strict interaction-ledger write semantics missing',f)
+need('snfla_interaction_query_identity_invalid' in mapping and "array( 'active', 'rolled_back' )" in mapping,'R78 strict interaction-ledger read/query semantics missing',f)
+need('| 79 | **Defect.**' in record and '| 80 | **PENDING' in record,'R79 current audit trace or R80 pending boundary missing',f)
+
 # R65 trace must be current before final fresh regression rounds.
-need('| 65 | **Defect.**' in record and '| 66 | **PENDING' in record,'R65 audit trace is not current or final regressions were pre-certified',f)
-need('corrected through Round 65' in status or 'through Round 65' in status,'R65 truthful status does not state current review boundary',f)
+need('| 65 | **Defect.**' in record and '| 79 | **Defect.**' in record and '| 80 | **PENDING' in record,'R79 audit trace is not current or R80 was pre-certified',f)
+need('corrected through Round 79' in status or 'through Round 79' in status,'R79 truthful status does not state current review boundary',f)
 for i in range(1,81): need(f'| {i} |' in record,f'audit record missing round {i}',f)
 
 if f:
     print('Second 80-round hardening gate failed:',file=sys.stderr)
     for item in f: print('-',item,file=sys.stderr)
     sys.exit(1)
-print('Second 80-round gate passed for R01-R65 corrected controls; R66-R80 remain deliberately pending fresh regression.')
+print('Second 80-round gate passed for R01-R79 corrected controls; R80 remains deliberately pending final fresh review.')

@@ -72,25 +72,25 @@
 | 63 | **Defect.** Reconciliation run still normalized lifecycle version via `absint`; it now requires an exact positive integer. |
 | 64 | **Defect.** Cutover approval still normalized lifecycle version via `absint`; it now requires an exact positive integer through state assertion and transition. |
 | 65 | **Defect.** The permanent second-eighty audit/gate/status trace had fallen behind R28-R64, so the repository could no longer prove which later corrections were part of this fresh audit. The audit record, deterministic gate and truthful status were brought through R65 before any final regression rounds are claimed. |
-| 66 | **PENDING — not yet claimed.** |
-| 67 | **PENDING — not yet claimed.** |
-| 68 | **PENDING — not yet claimed.** |
-| 69 | **PENDING — not yet claimed.** |
-| 70 | **PENDING — not yet claimed.** |
-| 71 | **PENDING — not yet claimed.** |
-| 72 | **PENDING — not yet claimed.** |
-| 73 | **PENDING — not yet claimed.** |
-| 74 | **PENDING — not yet claimed.** |
-| 75 | **PENDING — not yet claimed.** |
-| 76 | **PENDING — not yet claimed.** |
-| 77 | **PENDING — not yet claimed.** |
-| 78 | **PENDING — not yet claimed.** |
-| 79 | **PENDING — not yet claimed.** |
+| 66 | **Defect.** Fresh exact-head QA exposed two source defects: the R36 conflict hardening had introduced literal escaped indentation that broke PHP syntax, and WP-CLI status referenced nonexistent `SNFLA_REST::NAMESPACE` instead of `SNFLA_REST::NS`. Both were corrected before continuing. |
+| 67 | **Defect.** WP-CLI numeric options arrive as strings while the strengthened core expects canonical integers; explicit numeric overrides could therefore become unusable. A strict bounded decimal `integer_arg()` parser now normalizes only valid CLI numeric syntax into exact integers. |
+| 68 | **Defect.** Mapping writes were strict but existing mapping rows were trusted on read. `mapping_row_valid()` now verifies legacy/target identity, target type, state, checksums, run UUID and progress JSON before any row is accepted. |
+| 69 | **Defect.** Conflict-ledger integrity checked fingerprint shape but not fingerprint correctness and did not validate redacted JSON. The expected fingerprint is now recomputed and compared, and stored redacted JSON must decode cleanly. |
+| 70 | **Defect.** Dry-run conflict codes were decoded and sanitized, allowing malformed stored values to alias canonical codes. Stored codes must now already be unique, nonempty canonical keys. |
+| 71 | **Defect.** Core migration still accepted actor/version values through lossy equality/coercion. Migration now requires exact positive actor/version integers and uses exact lifecycle version/equality semantics. |
+| 72 | **Defect.** Core rollback likewise allowed lossy actor/version semantics. Rollback now requires exact positive actor/version integers and exact actor identity. |
+| 73 | **Defect.** `revalidate_actor()` itself normalized the expected actor with `absint`, so malformed direct callers could alias the current actor. Expected/current actor identity is now exact positive-integer equality. |
+| 74 | **Defect.** Shared lifecycle primitives still normalized expected versions and did not strictly validate actor IDs. `transition()`, `assert_current()` and `recover_to_batch()` now enforce canonical positive identity/version semantics centrally. |
+| 75 | **Defect.** Lifecycle audit-failure compensation restored old state/version without verifying restoration. Restoration is now verified; failed compensation raises a critical alert and manual-recovery error. |
+| 76 | **Defect.** Conflict-resolution/supersession/system-resolution audit compensation did not explicitly escalate restoration failure. Exact restoration is now checked and critical operational alerts are emitted on compensation failure. |
+| 77 | **Defect.** Interaction-ledger write paths still used lossy IDs/contribution coercion. Ledger writes now require strict legacy/target/canonical identity, source-row rules, strict contribution counts and boolean migration flags. |
+| 78 | **Defect.** Interaction-ledger read/query/rollback paths still normalized identities, kinds, statuses and limits. Those paths now use strict positive/nonnegative IDs, kind/status allowlists, exact bounded limits and DB-error checks. |
+| 79 | **Defect.** After R66-R78 the permanent second-eighty audit/status/gate no longer described or asserted the corrected source, so exact-head QA could not prove those rounds. The audit record and permanent deterministic gate were advanced through R79; R80 remains deliberately unclaimed until final fresh review. |
 | 80 | **PENDING — not yet claimed.** |
 
 ## Current count before final regressions
 
-Defect rounds so far: **1–32, 34, 36–65**. Clean rounds so far: **33, 35**. R66–R80 are deliberately unclaimed until they are freshly reviewed on the corrected R65 source.
+Defect rounds so far: **1–32, 34, 36–79**. Clean rounds so far: **33, 35**. **R80 alone remains deliberately unclaimed** until one final fresh adversarial review and exact-head regression are completed on the corrected R79 source.
 
 ## Evidence boundary
 
