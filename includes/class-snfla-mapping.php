@@ -166,17 +166,19 @@ final class SNFLA_Mapping {
 	public static function record_interaction_row( $legacy_id, $target_id, $kind, $source_row_id, $canonical_row_id, array $original ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
-		$legacy_id = absint( $legacy_id );
-		$target_id = absint( $target_id );
-		$source_row_id = absint( $source_row_id );
-		$canonical_row_id = absint( $canonical_row_id );
+		$legacy_id = self::strict_positive_id( $legacy_id );
+		$target_id = self::strict_positive_id( $target_id );
 		$kind = sanitize_key( $kind );
-		$synthetic_view = 'views' === $kind && 0 === $source_row_id;
+		$synthetic_view = 'views' === $kind && ( 0 === $source_row_id || '0' === $source_row_id );
+		$source_row_id = $synthetic_view ? 0 : self::strict_positive_id( $source_row_id );
+		$canonical_row_id = self::strict_positive_id( $canonical_row_id );
 		if ( $legacy_id <= 0 || $target_id <= 0 || ( $source_row_id <= 0 && ! $synthetic_view ) || $canonical_row_id <= 0 || ! in_array( $kind, array( 'reactions', 'saves', 'views', 'reports' ), true ) ) {
 			return false;
 		}
+		if ( isset( $original['created_by_migration'] ) && ! is_bool( $original['created_by_migration'] ) ) { return false; }
 		$created_by_migration = ! empty( $original['created_by_migration'] );
-		$contribution_count = max( 0, absint( $original['source_contribution'] ?? 0 ) );
+		$contribution_count = self::strict_nonnegative_id( $original['source_contribution'] ?? 0 );
+		if ( null === $contribution_count ) { return false; }
 		$original = SNFLA_Audit::redact( $original );
 		$original_json = wp_json_encode( $original, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 		if ( ! is_string( $original_json ) ) { return false; }
