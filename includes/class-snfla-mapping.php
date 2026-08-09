@@ -311,7 +311,12 @@ final class SNFLA_Mapping {
 		$source_checksum = strtolower( (string) ( $row['source_checksum'] ?? '' ) );
 		$eligible = (string) ( $row['eligible'] ?? '' );
 		if ( ! is_array( $codes ) || JSON_ERROR_NONE !== json_last_error() || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $source_checksum ) || ! in_array( $eligible, array( '0', '1' ), true ) ) { return new WP_Error( 'snfla_dry_run_candidate_corrupt' ); }
-		return array( 'source_checksum' => $source_checksum, 'eligible' => '1' === $eligible, 'conflict_codes' => array_values( array_filter( array_map( 'sanitize_key', $codes ) ) ) );
+		$validated_codes=array(); $seen=array();
+		foreach ( $codes as $code ) {
+			if ( ! is_string( $code ) || '' === $code || sanitize_key( $code ) !== $code || isset( $seen[ $code ] ) ) { return new WP_Error( 'snfla_dry_run_candidate_corrupt' ); }
+			$seen[$code]=true; $validated_codes[]=$code;
+		}
+		return array( 'source_checksum' => $source_checksum, 'eligible' => '1' === $eligible, 'conflict_codes' => $validated_codes );
 	}
 
 	public static function clear_dry_run_rows( $run_uuid ) {
