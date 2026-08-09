@@ -565,7 +565,7 @@ final class SNFLA_Future18 {
 
 	/** F04-FUT-014 — bounded URL/redirect/citation continuity verification. */
 	public static function redirect_observatory( array $legacy_ids ) {
-		$legacy_ids = SNFLA_Integrity::normalized_ids( $legacy_ids, self::MAX_IDS ); if ( empty( $legacy_ids ) ) { return new WP_Error( 'snfla_redirect_observatory_empty', 'Select one or more legacy IDs.', array( 'status' => 400 ) ); }
+		$legacy_ids = SNFLA_Integrity::strict_positive_ids( $legacy_ids, self::MAX_IDS ); if ( is_wp_error( $legacy_ids ) || empty( $legacy_ids ) ) { return new WP_Error( 'snfla_redirect_observatory_empty', 'Select positive, unique canonical legacy IDs.', array( 'status' => 400 ) ); }
 		$rows = array();
 		foreach ( $legacy_ids as $legacy_id ) {
 			$target_id = SNFLA_File21_Adapter::target_for( $legacy_id );
