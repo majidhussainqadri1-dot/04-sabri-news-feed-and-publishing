@@ -124,8 +124,8 @@ final class SNFLA_File21_Adapter {
 	}
 
 	public static function rolled_back_target_valid( $legacy_id, $target_id ) {
-		$legacy_id = absint( $legacy_id );
-		$target_id = absint( $target_id );
+		$legacy_id = self::strict_positive_id( $legacy_id );
+		$target_id = self::strict_positive_id( $target_id );
 		$post = $target_id > 0 ? get_post( $target_id ) : null;
 		return $legacy_id > 0
 			&& $post instanceof WP_Post
