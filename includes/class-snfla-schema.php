@@ -62,7 +62,7 @@ final class SNFLA_Schema {
 		try {
 			$to               = sanitize_key( $to );
 			$expected_state   = sanitize_key( $expected_state );
-			$expected_version = absint( $expected_version );
+			if ( ! is_int( $expected_version ) || $expected_version < 1 || ! is_int( $actor_id ) || $actor_id <= 0 ) { return new WP_Error( 'snfla_lifecycle_identity_or_version_invalid', 'Lifecycle actor/version must be canonical positive integers.', array( 'status' => 400 ) ); }
 			$current          = self::state();
 			$version          = self::version();
 			if ( self::INVALID_STATE === $current || $version < 1 ) {
@@ -101,7 +101,7 @@ final class SNFLA_Schema {
 
 	public static function assert_current( $expected_state, $expected_version ) {
 		$expected_state   = sanitize_key( $expected_state );
-		$expected_version = absint( $expected_version );
+		if ( ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_lifecycle_version_invalid', 'Lifecycle version must be a canonical positive integer.', array( 'status' => 400 ) ); }
 		$current = self::state();
 		if ( self::INVALID_STATE === $current || self::version() < 1 ) {
 			return new WP_Error( 'snfla_lifecycle_state_invalid', 'The persisted lifecycle state is invalid. Repair is required before continuing.', array( 'status' => 412 ) );
@@ -114,7 +114,7 @@ final class SNFLA_Schema {
 
 	public static function recover_to_batch( $expected_state, $expected_version, $actor_id, $context = array() ) {
 		$expected_state   = sanitize_key( $expected_state );
-		$expected_version = absint( $expected_version );
+		if ( ! is_int( $expected_version ) || $expected_version < 1 || ! is_int( $actor_id ) || $actor_id <= 0 ) { return new WP_Error( 'snfla_lifecycle_identity_or_version_invalid', 'Lifecycle recovery actor/version must be canonical positive integers.', array( 'status' => 400 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'lifecycle', 5 ) ) {
 			return new WP_Error( 'snfla_lifecycle_locked', 'Another lifecycle transition is running.', array( 'status' => 423 ) );
 		}
