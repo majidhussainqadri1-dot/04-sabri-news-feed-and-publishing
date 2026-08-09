@@ -158,8 +158,10 @@ final class SNFLA_Mapping {
 	public static function interaction_source_recorded( $legacy_id, $kind, $source_row_id ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
+		$legacy_id=self::strict_positive_id($legacy_id); $source_row_id=self::strict_positive_id($source_row_id); $kind=sanitize_key($kind);
+		if($legacy_id<=0||$source_row_id<=0||!in_array($kind,array('reactions','saves','views','reports'),true)){return new WP_Error('snfla_interaction_identity_invalid');}
 		$wpdb->last_error = '';
-		$value = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['interaction_ledger']} WHERE legacy_id=%d AND kind=%s AND source_row_id=%d AND status='active' LIMIT 1", absint( $legacy_id ), sanitize_key( $kind ), absint( $source_row_id ) ) );
+		$value = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['interaction_ledger']} WHERE legacy_id=%d AND kind=%s AND source_row_id=%d AND status='active' LIMIT 1", $legacy_id, $kind, $source_row_id ) );
 		return ! empty( $wpdb->last_error ) ? new WP_Error( 'snfla_interaction_ledger_query_failed' ) : 0 < absint( $value );
 	}
 
@@ -202,8 +204,10 @@ final class SNFLA_Mapping {
 	public static function interaction_original_by_canonical( $legacy_id, $kind, $canonical_row_id ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
+		$legacy_id=self::strict_positive_id($legacy_id); $canonical_row_id=self::strict_positive_id($canonical_row_id); $kind=sanitize_key($kind);
+		if($legacy_id<=0||$canonical_row_id<=0||!in_array($kind,array('reactions','saves','views','reports'),true)){return new WP_Error('snfla_interaction_identity_invalid');}
 		$wpdb->last_error = '';
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT original_json,created_by_migration FROM {$t['interaction_ledger']} WHERE legacy_id=%d AND kind=%s AND canonical_row_id=%d AND status='active' ORDER BY id ASC LIMIT 1", absint( $legacy_id ), sanitize_key( $kind ), absint( $canonical_row_id ) ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT original_json,created_by_migration FROM {$t['interaction_ledger']} WHERE legacy_id=%d AND kind=%s AND canonical_row_id=%d AND status='active' ORDER BY id ASC LIMIT 1", $legacy_id, $kind, $canonical_row_id ), ARRAY_A );
 		if ( ! empty( $wpdb->last_error ) ) { return new WP_Error( 'snfla_interaction_ledger_query_failed' ); }
 		if ( ! is_array( $row ) ) { return array(); }
 		$original = json_decode( (string) $row['original_json'], true );
@@ -215,11 +219,11 @@ final class SNFLA_Mapping {
 	public static function interaction_rows( $legacy_id, $after_id = 0, $limit = 500, $kind = '', $status = 'active' ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
-		$legacy_id = absint( $legacy_id );
-		$after_id = absint( $after_id );
-		$limit = min( 2000, max( 1, absint( $limit ) ) );
+		$legacy_id = self::strict_positive_id( $legacy_id );
+		$after_id = self::strict_nonnegative_id( $after_id );
 		$kind = sanitize_key( $kind );
 		$status = sanitize_key( $status );
+		if ( $legacy_id<=0 || null===$after_id || !is_int($limit) || $limit<1 || $limit>2000 || (''!==$kind&&!in_array($kind,array('reactions','saves','views','reports'),true)) || (''!==$status&&!in_array($status,array('active','rolled_back'),true)) ) { return new WP_Error('snfla_interaction_query_identity_invalid'); }
 		$where = "legacy_id=%d AND id>%d";
 		$args = array( $legacy_id, $after_id );
 		if ( '' !== $kind ) {
@@ -240,12 +244,12 @@ final class SNFLA_Mapping {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
 		$wpdb->last_error = '';
+		$legacy_id=self::strict_positive_id($legacy_id); $canonical_row_id=self::strict_positive_id($canonical_row_id); $kind=sanitize_key($kind);
+		if($legacy_id<=0||$canonical_row_id<=0||!in_array($kind,array('reactions','saves','views','reports'),true)){return new WP_Error('snfla_interaction_identity_invalid');}
 		$value = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COALESCE(SUM(contribution_count),0) FROM {$t['interaction_ledger']} WHERE legacy_id=%d AND kind=%s AND canonical_row_id=%d AND status='active'",
-				absint( $legacy_id ),
-				sanitize_key( $kind ),
-				absint( $canonical_row_id )
+				$legacy_id, $kind, $canonical_row_id
 			)
 		);
 		return ! empty( $wpdb->last_error ) || null === $value ? new WP_Error( 'snfla_interaction_ledger_query_failed' ) : absint( $value );
@@ -254,11 +258,12 @@ final class SNFLA_Mapping {
 	public static function interaction_canonical_groups( $legacy_id, $after_first_id = 0, $limit = 500 ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
-		$limit = min( 2000, max( 1, absint( $limit ) ) );
+		$legacy_id=self::strict_positive_id($legacy_id); $after_first_id=self::strict_nonnegative_id($after_first_id);
+		if($legacy_id<=0||null===$after_first_id||!is_int($limit)||$limit<1||$limit>2000){return new WP_Error('snfla_interaction_query_identity_invalid');}
 		$sql = $wpdb->prepare(
 			"SELECT l.* FROM {$t['interaction_ledger']} l INNER JOIN (SELECT MIN(id) first_id FROM {$t['interaction_ledger']} WHERE legacy_id=%d AND status='active' GROUP BY kind,canonical_row_id) g ON g.first_id=l.id WHERE l.id>%d ORDER BY l.id ASC LIMIT %d",
-			absint( $legacy_id ),
-			absint( $after_first_id ),
+			$legacy_id,
+			$after_first_id,
 			$limit
 		);
 		$wpdb->last_error = '';
@@ -269,7 +274,9 @@ final class SNFLA_Mapping {
 	public static function mark_interaction_ledger_rolled_back( $legacy_id ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
-		return false !== $wpdb->query( $wpdb->prepare( "UPDATE {$t['interaction_ledger']} SET status='rolled_back',updated_at=%s WHERE legacy_id=%d AND status='active'", gmdate( 'Y-m-d H:i:s' ), absint( $legacy_id ) ) );
+		$legacy_id=self::strict_positive_id($legacy_id); if($legacy_id<=0){return false;}
+		$wpdb->last_error=''; $result=$wpdb->query( $wpdb->prepare( "UPDATE {$t['interaction_ledger']} SET status='rolled_back',updated_at=%s WHERE legacy_id=%d AND status='active'", gmdate( 'Y-m-d H:i:s' ), $legacy_id ) );
+		return false!==$result && empty($wpdb->last_error);
 	}
 
 	public static function dry_run_replace( $run_uuid, $source_signature, $legacy_id, $source_checksum, array $conflicts, $target_type = 'auto' ) {
