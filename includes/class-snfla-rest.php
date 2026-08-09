@@ -241,7 +241,11 @@ final class SNFLA_REST {
 	private static function integrity_status() {
 		$chain = SNFLA_Audit::verify_chain();
 		$last  = get_option( 'snfla_last_integrity_check', array() );
-		return array( 'audit_chain' => array( 'valid' => ! empty( $chain['valid'] ), 'checked' => absint( $chain['checked'] ?? 0 ), 'error' => sanitize_key( (string) ( $chain['error'] ?? '' ) ) ), 'last_check' => is_array( $last ) ? array( 'checked_at_utc' => sanitize_text_field( (string) ( $last['checked_at_utc'] ?? '' ) ), 'ok' => ! empty( $last['ok'] ) ) : array() );
+		$last_trusted = SNFLA_Integrity::evidence_valid( $last );
+		return array(
+			'audit_chain' => array( 'valid' => ! empty( $chain['valid'] ), 'checked' => absint( $chain['checked'] ?? 0 ), 'error' => sanitize_key( (string) ( $chain['error'] ?? '' ) ) ),
+			'last_check'  => $last_trusted ? array( 'evidence_valid' => true, 'checked_at_utc' => sanitize_text_field( (string) ( $last['checked_at_utc'] ?? '' ) ), 'ok' => ! empty( $last['ok'] ) ) : array( 'evidence_valid' => false ),
+		);
 	}
 
 	private static function authorize( WP_REST_Request $request, $capability ) {
