@@ -254,6 +254,23 @@ final class SNFLA_Rollback {
 		return empty( $blocked ) ? true : new WP_Error( 'snfla_rollback_conflict', 'Rollback stopped because one or more targets are unavailable, changed, or have inconsistent File 21 mapping state.', array( 'status' => 409, 'blocked' => $blocked ) );
 	}
 
+	public static function proof_current() {
+		$proof = self::proof();
+		if ( ! SNFLA_Integrity::evidence_valid( $proof ) ) { return false; }
+		$locked = SNFLA_Inventory::locked();
+		$source_signature = strtolower( (string) ( $locked['source_signature'] ?? '' ) );
+		$proof_signature = strtolower( (string) ( $proof['source_signature'] ?? '' ) );
+		$performed = ! empty( $proof['performed_at_utc'] ) ? strtotime( (string) $proof['performed_at_utc'] . ' UTC' ) : false;
+		$run_uuid = (string) ( $proof['run_uuid'] ?? '' );
+		return 1 === preg_match( '/^[a-f0-9]{64}$/D', $source_signature )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $proof_signature )
+			&& hash_equals( $source_signature, $proof_signature )
+			&& SNFLA_Inventory::unchanged()
+			&& false !== $performed && $performed >= time() - 7 * DAY_IN_SECONDS && $performed <= time() + 300
+			&& 1 === preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/Di', $run_uuid )
+			&& SNFLA_Audit::has_event( 'rollback_completed', '', 'run_uuid', $run_uuid );
+	}
+
 	public static function proof() {
 		$proof = get_option( 'snfla_last_rollback_proof', array() );
 		if ( SNFLA_Integrity::evidence_valid( $proof ) ) { return $proof; }

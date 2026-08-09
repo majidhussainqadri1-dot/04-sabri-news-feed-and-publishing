@@ -648,7 +648,7 @@ final class SNFLA_Future18 {
 			'legacy_writes_disabled' => empty( $invariants['checks']['legacy_writes_forbidden'] ) ? false : true,
 			'zero_open_conflicts' => 0 === SNFLA_Mapping::open_conflict_count(),
 			'fresh_green_reconciliation' => ! empty( $reconciliation['green'] ) && SNFLA_Reconciliation::validate_current_report( $reconciliation ),
-			'rollback_proof_valid' => SNFLA_Integrity::evidence_valid( $rollback ),
+			'rollback_proof_valid' => SNFLA_Rollback::proof_current(),
 			'backup_restore_valid' => SNFLA_Migration::backup_proof_valid(),
 			'contract_drift_clear' => empty( $drift['block_mutation'] ),
 			'file26_integration_accepted' => isset( $system['file26']['status'] ) && 'pass' === $system['file26']['status'],
