@@ -275,13 +275,19 @@ final class SNFLA_Mapping {
 	public static function dry_run_candidate_checked( $legacy_id, $source_signature, $run_uuid ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
+		$legacy_id = self::strict_positive_id( $legacy_id );
+		$source_signature = strtolower( (string) $source_signature );
+		$run_uuid = sanitize_text_field( (string) $run_uuid );
+		if ( $legacy_id <= 0 || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $source_signature ) || ! self::uuid4_valid( $run_uuid ) ) { return new WP_Error( 'snfla_dry_run_candidate_identity_invalid' ); }
 		$wpdb->last_error = '';
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT source_checksum,eligible,conflict_codes_json FROM {$t['dry_run']} WHERE legacy_id=%d AND source_signature=%s AND run_uuid=%s", absint( $legacy_id ), sanitize_text_field( $source_signature ), sanitize_text_field( $run_uuid ) ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT source_checksum,eligible,conflict_codes_json FROM {$t['dry_run']} WHERE legacy_id=%d AND source_signature=%s AND run_uuid=%s", $legacy_id, $source_signature, $run_uuid ), ARRAY_A );
 		if ( ! empty( $wpdb->last_error ) ) { return new WP_Error( 'snfla_dry_run_candidate_query_failed' ); }
 		if ( ! is_array( $row ) ) { return array(); }
 		$codes = json_decode( (string) $row['conflict_codes_json'], true );
-		if ( ! is_array( $codes ) || JSON_ERROR_NONE !== json_last_error() ) { return new WP_Error( 'snfla_dry_run_candidate_corrupt' ); }
-		return array( 'source_checksum' => (string) $row['source_checksum'], 'eligible' => ! empty( $row['eligible'] ), 'conflict_codes' => array_values( array_filter( array_map( 'sanitize_key', $codes ) ) ) );
+		$source_checksum = strtolower( (string) ( $row['source_checksum'] ?? '' ) );
+		$eligible = (string) ( $row['eligible'] ?? '' );
+		if ( ! is_array( $codes ) || JSON_ERROR_NONE !== json_last_error() || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $source_checksum ) || ! in_array( $eligible, array( '0', '1' ), true ) ) { return new WP_Error( 'snfla_dry_run_candidate_corrupt' ); }
+		return array( 'source_checksum' => $source_checksum, 'eligible' => '1' === $eligible, 'conflict_codes' => array_values( array_filter( array_map( 'sanitize_key', $codes ) ) ) );
 	}
 
 	public static function clear_dry_run_rows( $run_uuid ) {
