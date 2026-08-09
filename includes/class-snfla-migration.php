@@ -369,7 +369,7 @@ final class SNFLA_Migration {
 		try {
 			$authorized_actor = SNFLA_Capabilities::revalidate_actor( $actor_id, SNFLA_Capabilities::CAP_REVIEW );
 			if ( is_wp_error( $authorized_actor ) ) { return $authorized_actor; }
-			$state = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), absint( $expected_version ) );
+			$state = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), $expected_version );
 			if ( is_wp_error( $state ) ) { return $state; }
 			if ( ! in_array( SNFLA_Schema::state(), array( 'dry_run_ready', 'batch_migration', 'reconciliation' ), true ) ) {
 				return new WP_Error( 'snfla_quarantine_state_invalid', 'Quarantine dispositions are allowed only before redirect cutover.', array( 'status' => 409 ) );
@@ -500,11 +500,12 @@ final class SNFLA_Migration {
 	}
 
 	public static function migrate( $actor_id, array $legacy_ids, $idempotency_key, $expected_state, $expected_version, $with_interactions = true ) {
+		if ( ! is_int( $actor_id ) || $actor_id <= 0 || ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_migration_identity_or_version_invalid', 'Migration actor and lifecycle version must be canonical positive integers.', array( 'status' => 400 ) ); }
 		$legacy_ids = SNFLA_Integrity::strict_positive_ids( $legacy_ids, self::MAX_BATCH );
 		if ( is_wp_error( $legacy_ids ) ) { return new WP_Error( 'snfla_invalid_migration_batch', 'Migration IDs must be positive, unique and canonical.', array( 'status' => 400 ) ); }
 		if ( empty( $legacy_ids ) ) { return new WP_Error( 'snfla_empty_batch', 'Select at least one legacy publication.', array( 'status' => 400 ) ); }
 		$authorized_actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_RUN );
-		if ( is_wp_error( $authorized_actor ) || absint( $authorized_actor ) !== absint( $actor_id ) ) { return new WP_Error( 'snfla_canonical_migration_capability_missing', 'File 21 canonical migration capability and fresh File 00 authority are required.', array( 'status' => 403 ) ); }
+		if ( is_wp_error( $authorized_actor ) || $authorized_actor !== $actor_id ) { return new WP_Error( 'snfla_canonical_migration_capability_missing', 'File 21 canonical migration capability and fresh File 00 authority are required.', array( 'status' => 403 ) ); }
 		if ( ! self::backup_proof_valid() ) { return new WP_Error( 'snfla_backup_proof_required', 'A recent backup and restore proof is required before migration.', array( 'status' => 412 ) ); }
 		if ( ! SNFLA_Inventory::unchanged() ) { return new WP_Error( 'snfla_inventory_changed', 'The legacy source changed after inventory lock.', array( 'status' => 409 ) ); }
 		$dry = get_option( SNFLA_Schema::DRY_RUN_OPTION, array() );
@@ -538,7 +539,7 @@ final class SNFLA_Migration {
 		if ( ! SNFLA_Database::acquire_lock( 'migration', 5 ) ) { SNFLA_Database::release_lock( 'operation' ); return new WP_Error( 'snfla_migration_locked', 'Another migration operation is already running.', array( 'status' => 423 ) ); }
 		try {
 			$authorized_actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_RUN );
-			if ( is_wp_error( $authorized_actor ) || absint( $authorized_actor ) !== absint( $actor_id ) ) {
+			if ( is_wp_error( $authorized_actor ) || $authorized_actor !== $actor_id ) {
 				return new WP_Error( 'snfla_canonical_migration_capability_changed', 'Migration authority changed while waiting for the operation lock.', array( 'status' => 403 ) );
 			}
 			if ( ! self::backup_proof_valid() ) {
@@ -547,7 +548,7 @@ final class SNFLA_Migration {
 			if ( ! SNFLA_Inventory::unchanged() ) {
 				return new WP_Error( 'snfla_inventory_changed_after_lock', 'The legacy source changed while waiting for the migration lock.', array( 'status' => 409 ) );
 			}
-			$state_recheck = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), absint( $expected_version ) );
+			$state_recheck = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), $expected_version );
 			if ( is_wp_error( $state_recheck ) ) { return $state_recheck; }
 
 			$locked = SNFLA_Inventory::locked();
@@ -572,7 +573,7 @@ final class SNFLA_Migration {
 			if ( ! self::create_run( $run_uuid, 'migrate', 'running', $actor_id, $idempotency_hash, (string) $locked['source_signature'], array( 'legacy_ids' => $legacy_ids ) ) ) {
 				return new WP_Error( 'snfla_run_create_failed', 'The migration run ledger could not be created.', array( 'status' => 500 ) );
 			}
-			$transition = SNFLA_Schema::transition( 'batch_migration', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'batch_size' => count( $legacy_ids ), 'run_uuid' => $run_uuid ) );
+			$transition = SNFLA_Schema::transition( 'batch_migration', sanitize_key( $expected_state ), $expected_version, $actor_id, array( 'batch_size' => count( $legacy_ids ), 'run_uuid' => $run_uuid ) );
 			if ( is_wp_error( $transition ) ) {
 				self::finish_run( $run_uuid, 'failed', array( 'error' => $transition->get_error_code() ) );
 				return $transition;
