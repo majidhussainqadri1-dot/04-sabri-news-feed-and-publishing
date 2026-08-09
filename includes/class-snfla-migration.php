@@ -354,7 +354,8 @@ final class SNFLA_Migration {
 	}
 
 	public static function quarantine_disposition( $actor_id, array $legacy_ids, $reason_code, $decision_reference, $expected_state, $expected_version ) {
-		$legacy_ids = SNFLA_Integrity::normalized_ids( $legacy_ids, self::MAX_BATCH );
+		$legacy_ids = SNFLA_Integrity::strict_positive_ids( $legacy_ids, self::MAX_BATCH );
+		if ( is_wp_error( $legacy_ids ) ) { return new WP_Error( 'snfla_invalid_quarantine_batch', 'Quarantine IDs must be positive, unique and canonical.', array( 'status' => 400 ) ); }
 		$reason_code = sanitize_key( (string) $reason_code );
 		$allowed_reasons = array( 'approved_source_only_retention', 'approved_privacy_exclusion', 'approved_data_quality_exclusion' );
 		$decision_reference = trim( (string) $decision_reference );

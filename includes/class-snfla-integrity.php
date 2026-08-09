@@ -38,6 +38,19 @@ final class SNFLA_Integrity {
 		return hash_equals( $expected, $actual );
 	}
 
+	public static function strict_positive_ids( array $ids, $limit = 100 ) {
+		if ( ! is_int( $limit ) || $limit < 1 || count( $ids ) < 1 || count( $ids ) > $limit ) { return new WP_Error( 'snfla_invalid_id_batch' ); }
+		$out=array(); $seen=array();
+		foreach ( $ids as $raw ) {
+			if ( is_int( $raw ) ) { $id=$raw; }
+			elseif ( is_string( $raw ) && 1 === preg_match( '/^[1-9][0-9]*$/D', $raw ) ) { $id=(int)$raw; if ( $id<=0 || (string)$id !== $raw ) { return new WP_Error( 'snfla_invalid_id_batch' ); } }
+			else { return new WP_Error( 'snfla_invalid_id_batch' ); }
+			if ( $id<=0 || isset($seen[$id]) ) { return new WP_Error( 'snfla_invalid_id_batch' ); }
+			$seen[$id]=true; $out[]=$id;
+		}
+		return $out;
+	}
+
 	public static function normalized_ids( array $ids, $limit = 100 ) {
 		$ids = array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) );
 		sort( $ids, SORT_NUMERIC );
