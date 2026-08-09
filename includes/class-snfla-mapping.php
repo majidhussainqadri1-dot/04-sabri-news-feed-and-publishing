@@ -12,9 +12,33 @@ final class SNFLA_Mapping {
 		if ( ! empty( $wpdb->last_error ) ) {
 			return new WP_Error( 'snfla_mapping_query_failed', 'The legacy mapping ledger could not be read safely.', array( 'status' => 500 ) );
 		}
-		return is_array( $row ) ? $row : array();
+		if ( ! is_array( $row ) ) { return array(); }
+		if ( ! self::mapping_row_valid( $row, $legacy_id ) ) {
+			return new WP_Error( 'snfla_mapping_row_corrupt', 'The legacy mapping ledger row contains invalid identity, state or integrity fields.', array( 'status' => 500 ) );
+		}
+		return $row;
 	}
 
+
+	private static function mapping_row_valid( array $row, $expected_legacy_id ) {
+		$legacy_id = self::strict_positive_id( $row['legacy_id'] ?? 0 );
+		$target_id = self::strict_nonnegative_id( $row['target_id'] ?? 0 );
+		$target_type = (string) ( $row['target_type'] ?? '' );
+		$status = (string) ( $row['status'] ?? '' );
+		$source_checksum = strtolower( (string) ( $row['source_checksum'] ?? '' ) );
+		$target_checksum = strtolower( (string) ( $row['target_checksum'] ?? '' ) );
+		$run_uuid = (string) ( $row['run_uuid'] ?? '' );
+		$progress = json_decode( (string) ( $row['interaction_ledger_json'] ?? '{}' ), true );
+		$allowed_statuses = array( 'pending', 'migrating', 'migrated', 'interaction_pending', 'conflict', 'quarantined', 'publication_rolled_back_interactions_pending', 'rollback_conflict', 'rolled_back' );
+		return $legacy_id === $expected_legacy_id
+			&& null !== $target_id
+			&& in_array( $target_type, array( '', 'post', 'sabri_news', 'source_only' ), true )
+			&& in_array( $status, $allowed_statuses, true )
+			&& ( '' === $source_checksum || 1 === preg_match( '/^[a-f0-9]{64}$/D', $source_checksum ) )
+			&& ( '' === $target_checksum || 1 === preg_match( '/^[a-f0-9]{64}$/D', $target_checksum ) )
+			&& ( '' === $run_uuid || self::uuid4_valid( $run_uuid ) )
+			&& is_array( $progress ) && JSON_ERROR_NONE === json_last_error();
+	}
 
 	private static function strict_positive_id( $value ) {
 		if ( is_int( $value ) ) { return $value > 0 ? $value : 0; }
