@@ -11,7 +11,7 @@
 | Specified | **Complete for current source scope** | Consolidated plan + File04 plan + CV/CEN/AJ + FR/NFR + Future18 |
 | Coded | **Corrected through Round 79; R80 final fresh adversarial review pending** | Independent second 80-round Review → immediate fix → next-round sequence |
 | Packaged | **v2.0.5 candidate; exact-head regression now required** | Deterministic installable + complete-source double build |
-| Automated-QA Green | **Pending fresh exact-head result on corrected R79 source** | Historical gates + second-eighty gate + PHP 8.1/8.3 + secret/PII scan |
+| Automated-QA Green | **Pending fresh exact-head result after R79 corrective source `f209055bf3d3c2e78bc80db6d500aab552498fa3`** | Historical gates + second-eighty gate + PHP 8.1/8.3 + secret/PII scan |
 | Staging-Accepted | **Pending** | Hostinger real integration/browser/restore/rollback evidence |
 | Live-Deployed | **Pending** | Founder-approved controlled deployment |
 | Operational | **Pending** | Sustained monitoring/support/backup/incident/retirement evidence |
