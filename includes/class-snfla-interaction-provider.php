@@ -28,11 +28,13 @@ final class SNFLA_Interaction_Provider {
 
 	/** Called synchronously by File 21 while File 04 already owns the migration lock. */
 	public static function migrate( array $context ) {
+		$budget = self::budget( $context['max_records'] ?? self::DEFAULT_RECORD_BUDGET );
+		if ( $budget <= 0 ) { return array( 'status' => 'failed', 'migrated_records' => 0, 'migrated_metrics' => array(), 'skipped_records' => 0, 'processed_records' => 0, 'remaining' => true, 'errors' => array( 'interaction_budget_invalid' ) ); }
 		return self::run(
 			self::strict_positive_id( $context['legacy_id'] ?? 0 ),
 			self::strict_positive_id( $context['target_id'] ?? 0 ),
 			self::strict_positive_id( $context['actor_id'] ?? 0 ),
-			self::budget( $context['max_records'] ?? self::DEFAULT_RECORD_BUDGET )
+			$budget
 		);
 	}
 
@@ -64,7 +66,9 @@ final class SNFLA_Interaction_Provider {
 			if ( ! SNFLA_File21_Adapter::migration_target_valid( $legacy_id, $target_id ) ) {
 				return new WP_Error( 'snfla_interaction_resume_target_changed', 'The canonical File 21 target changed or lost migration provenance.', array( 'status' => 409 ) );
 			}
-			$result = self::run( $legacy_id, $target_id, $actor_id, self::budget( $max_records ) );
+			$budget = self::budget( $max_records );
+			if ( $budget <= 0 ) { return new WP_Error( 'snfla_interaction_budget_invalid', 'Interaction record budget must be an integer within the supported bound.', array( 'status' => 400 ) ); }
+			$result = self::run( $legacy_id, $target_id, $actor_id, $budget );
 			if ( is_wp_error( $result ) ) {
 				return $result;
 			}
@@ -108,7 +112,8 @@ final class SNFLA_Interaction_Provider {
 	}
 
 	private static function budget( $value ) {
-		return min( self::MAX_RECORD_BUDGET, max( self::PAGE_SIZE, absint( $value ) ) );
+		if ( ! is_int( $value ) || $value < 1 || $value > self::MAX_RECORD_BUDGET ) { return 0; }
+		return max( self::PAGE_SIZE, $value );
 	}
 
 	private static function run( $legacy_id, $target_id, $actor_id, $record_budget ) {
