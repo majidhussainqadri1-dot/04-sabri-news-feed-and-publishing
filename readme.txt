@@ -4,14 +4,14 @@ Tags: legacy migration, reconciliation, rollback, wordpress
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.0.4
+Stable tag: 2.0.5
 License: GPLv2 or later
 
 == Description ==
 
 File 04 is a temporary, write-disabled, auditable and reversible adapter from historical `snp_publication` records into canonical File 21. It does not own Home, News, publishing, ranking, comments, reactions, saves, reports, navigation, composition or search truth.
 
-Version 2.0.4 retains the full migration/rollback and Future18 scope, then applies a fresh sequential 80-round hardening audit across lifecycle integrity, schema verification, REST identity/idempotency, migration/reconciliation/rollback compensation, provider anti-replay, multisite safety, CLI/admin truthfulness, deterministic packaging and canonical ownership. Hostinger staging, live deployment and operational acceptance remain separate evidence gates.
+Version 2.0.5 retains the full migration/rollback and Future18 scope, then applies a fresh sequential 80-round hardening audit across lifecycle integrity, schema verification, REST identity/idempotency, migration/reconciliation/rollback compensation, provider anti-replay, multisite safety, CLI/admin truthfulness, deterministic packaging and canonical ownership. Hostinger staging, live deployment and operational acceptance remain separate evidence gates.
 
 == Installation ==
 
@@ -22,6 +22,11 @@ Version 2.0.4 retains the full migration/rollback and Future18 scope, then appli
 5. Do not deploy live, cut over or retire without required evidence and Founder approval.
 
 == Changelog ==
+
+= 2.0.5 =
+* Fresh second 80-round adversarial source audit after v2.0.4.
+* Hardened checkpoint IDs, taxonomy-read checksums, authenticated audit/status evidence, mapping identities/states/checksums, dry-run identity, interaction progress, File21 boundary IDs, run-ledger state, lifecycle version input, physical schema health, activation evidence/cron scheduling, and signed page-quarantine status.
+* A distinct second-eighty audit record/gate is being added while the historical first 80-round audit remains unchanged.
 
 = 2.0.4 =
 * Completed a fresh sequential 80-round Review → immediate correction → retest audit.

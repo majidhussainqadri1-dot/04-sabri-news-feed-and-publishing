@@ -4,7 +4,7 @@ import argparse, hashlib, json, shutil, subprocess, sys, tempfile, uuid, zipfile
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-VERSION='2.0.4'
+VERSION='2.0.5'
 PACKAGE_ROOT='04-sabri-news-feed-legacy-adapter'
 FIXED_DT=(2026,8,8,0,0,0)
 GENERATED_NAMES={'SOURCE-INVENTORY.tsv','CHECKSUMS.sha256','RELEASE-LOCK.json','PACKAGE-MANIFEST.json','PACKAGE-CHECKSUMS.sha256'}
@@ -178,7 +178,7 @@ def build(output:Path,source_output:Path):
           'known_unresolved_source_scope_blockers':0,
           'truthful_status':{
             'specified':'complete current source scope',
-            'coded':'v2.0.4 eighty-round hardened candidate',
+            'coded':'v2.0.5 eighty-round hardened candidate',
             'packaged':'reproducible candidate when this build succeeds',
             'automated_qa':'source gates executed by builder/CI',
             'staging_accepted':'pending',
@@ -251,8 +251,8 @@ def verify_only():
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.4.zip'))
-    ap.add_argument('--source-output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.4-complete-source.zip'))
+    ap.add_argument('--output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.5.zip'))
+    ap.add_argument('--source-output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.5-complete-source.zip'))
     ap.add_argument('--verify-only',action='store_true')
     args=ap.parse_args()
     if args.verify_only: verify_only(); return

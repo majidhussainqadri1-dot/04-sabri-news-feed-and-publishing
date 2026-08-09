@@ -38,7 +38,7 @@ record=t('EIGHTY-ROUND-HARDENING-AUDIT.md')
 all_php='\n'.join(p.read_text(encoding='utf-8') for p in ROOT.rglob('*.php') if '.git' not in p.parts and 'tests' not in p.parts)
 
 # R01-R10 evidence-integrity/lifecycle/activation controls.
-need("SNFLA_VERSION', '2.0.4'" in main and 'Version: 2.0.4' in main, 'v2.0.4 runtime metadata missing', f)
+need("SNFLA_VERSION', '2.0.5'" in main and 'Version: 2.0.5' in main, 'v2.0.5 runtime metadata missing', f)
 need("SNFLA_SCHEMA_VERSION', '1.3.0'" in main, 'storage schema must remain 1.3.0', f)
 need("'audit_written'" in plugin and "'ok'" in plugin and 'daily_integrity_evidence_failed' in plugin, 'R01 integrity persistence truth missing', f)
 need('state_valid()' in schema and 'self::version() >= 1' in schema and 'snfla_lifecycle_compensation_failed' in schema, 'R02-R03 lifecycle fail-closed/compensation missing', f)
@@ -78,9 +78,9 @@ need('function parse_ids' in cli and 'snfla_output_encoding_failed' in cli, 'R61
 need('fallback_evidence_valid' in admin and 'snfla_admin_mapping_query_failed' in admin, 'R63-R64 admin evidence/query error hardening missing', f)
 
 # R65 release/QA integration.
-need("VERSION='2.0.4'" in build and 'EIGHTY_ROUND_REVIEW_ROUNDS=80' in build, 'R65 builder must identify v2.0.4 and 80 fresh rounds', f)
+need("VERSION='2.0.5'" in build and 'EIGHTY_ROUND_REVIEW_ROUNDS=80' in build, 'R65 builder must identify v2.0.5 and 80 fresh rounds', f)
 need('run-eighty-round-hardening.py' in build and 'run-eighty-round-hardening.py' in workflow, 'R65 builder and CI must execute the permanent 80-round gate', f)
-need('Stable tag: 2.0.4' in t('readme.txt') and 'v2.0.4' in t('README.md') and 'v2.0.4' in status, 'R65 human release metadata must identify v2.0.4', f)
+need('Stable tag: 2.0.5' in t('readme.txt') and 'v2.0.5' in t('README.md') and 'v2.0.5' in status, 'R65 human release metadata must identify v2.0.5', f)
 
 # R66 — canonical ownership/no duplicate publication backend.
 need('File 21' in central and 'File 26' in central and 'wp_insert_post(' not in file21 and 'wp_insert_post(' not in future and 'wp_insert_post(' not in hard, 'R66 canonical ownership/duplicate backend regression', f)
@@ -108,7 +108,7 @@ need("php: ['8.1', '8.3']" in workflow, 'R76/R77 PHP 8.1/8.3 matrix regression',
 for token in ['focus-visible','min-height:44px','prefers-reduced-motion','forced-colors','direction:rtl']:
     need(token in css.replace(' ', '').lower() if token=='direction:rtl' else token in css, f'R78 accessibility/RTL guardrail missing: {token}', f)
 # R79 — deterministic package + secret/PII scan.
-need('Reproducible v2.0.4 package twice' in workflow and 'Secret and personal-data indicator scan' in workflow and 'cmp /tmp/file04-a.zip /tmp/file04-b.zip' in workflow, 'R79 deterministic/security release gate regression', f)
+need('Reproducible v2.0.5 package twice' in workflow and 'Secret and personal-data indicator scan' in workflow and 'cmp /tmp/file04-a.zip /tmp/file04-b.zip' in workflow, 'R79 deterministic/security release gate regression', f)
 # R80 — truthful source vs staging/live/ops boundary.
 need('staging_accepted_pending=true' in status and 'live_deployed=false' in status and 'operational=false' in status and "'production_ready'" in central, 'R80 lifecycle truth-boundary regression', f)
 

@@ -53,13 +53,13 @@ check('MAX_RECEIPTS' in future and 'MAX_CHECKPOINTS' in future, 'Evidence option
 check('Cache-Control' in future and 'no-store, no-cache, must-revalidate, private' in future, 'Future18 REST responses must be private/no-store.', fail)
 check('X-Robots-Tag' in future, 'Future18 REST responses must be noindex.', fail)
 
-# Plugin release is 2.0.4; the Future18 feature contract itself remains 2.0.0.
-check('Version: 2.0.4' in main and "SNFLA_VERSION', '2.0.4'" in main, 'Runtime must be promoted to second-audit patch 2.0.4.', fail)
+# Plugin release is 2.0.5; the Future18 feature contract itself remains 2.0.0.
+check('Version: 2.0.5' in main and "SNFLA_VERSION', '2.0.5'" in main, 'Runtime must be promoted to second-audit patch 2.0.5.', fail)
 check("SNFLA_SCHEMA_VERSION', '1.3.0'" in main, 'Hardening must not fabricate an unnecessary storage-schema bump.', fail)
 check('class-snfla-future18.php' in main and 'SNFLA_Future18::boot' in main, 'Future18 runtime must load and boot.', fail)
 check('class-snfla-post-audit-hardening.php' in main and 'SNFLA_Post_Audit_Hardening::boot' in main, 'Post-audit hardening runtime must load and boot.', fail)
 check('run-future18.py' in workflow, 'Exact-head CI must execute Future18 QA.', fail)
-check("VERSION='2.0.4'" in build and 'FUTURE18_COUNT=18' in build, 'Deterministic release builder must identify v2.0.4 and 18 enhancements.', fail)
+check("VERSION='2.0.5'" in build and 'FUTURE18_COUNT=18' in build, 'Deterministic release builder must identify v2.0.5 and 18 enhancements.', fail)
 check('future18' in build, 'Release manifest/lock must contain Future18 evidence.', fail)
 
 if fail:
@@ -68,4 +68,4 @@ if fail:
         print('-', item, file=sys.stderr)
     sys.exit(1)
 
-print('Future18 source checks passed: 18/18 capabilities, ownership boundaries, safety invariants, v2.0.4 second-audit wiring, traceability and deterministic-release integration.')
+print('Future18 source checks passed: 18/18 capabilities, ownership boundaries, safety invariants, v2.0.5 second-audit wiring, traceability and deterministic-release integration.')
