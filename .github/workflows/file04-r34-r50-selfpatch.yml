@@ -22,6 +22,8 @@ jobs:
         shell: bash
         run: |
           set +e
+          sed -i "s/'interaction_ledger' => \$progress ) ) {/'interaction_ledger' => \$progress ) ) ) {/" tools/apply-eighty-round-r34-r50.py
+          python3 -m py_compile tools/apply-eighty-round-r34-r50.py
           python3 tools/apply-eighty-round-r34-r50.py > /tmp/r34-r50.log 2>&1
           patch_rc=$?
           cat /tmp/r34-r50.log
