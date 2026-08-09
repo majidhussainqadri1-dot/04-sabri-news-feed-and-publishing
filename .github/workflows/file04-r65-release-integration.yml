@@ -1,0 +1,43 @@
+name: File04 eighty-round R65 release integration
+
+on:
+  push:
+    branches:
+      - audit-file-04-eighty-release
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: audit-file-04-eighty-release
+          persist-credentials: true
+      - name: Apply R65 release integration
+        run: python3 tools/apply-r65-release-integration.py
+      - name: Integrated source gates
+        run: |
+          php tests/run-unit.php
+          php tests/run-central-plan.php
+          python3 tests/run-architecture.py
+          python3 tests/run-file04-own-plan.py
+          python3 tests/run-future18.py
+          python3 tests/run-central-reviews.py
+          python3 tests/run-future18-reviews.py
+          python3 tests/run-ten-round-post-future18.py
+          python3 tests/run-second-ten-round-hardening.py
+          python3 tests/run-third-ten-round-hardening.py
+          python3 tests/run-eighty-round-hardening.py
+          python3 tools/build-release.py --verify-only
+          find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
+      - name: Commit R65 integration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests tools .github/workflows/file04-legacy-adapter-ci.yml readme.txt README.md STATUS.md EIGHTY-ROUND-HARDENING-AUDIT.md
+          git commit -m 'File 04 v2.0.4: complete R65 release and QA integration'
+          git push origin HEAD:audit-file-04-eighty-release
