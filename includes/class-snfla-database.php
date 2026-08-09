@@ -126,7 +126,9 @@ final class SNFLA_Database {
 
 	/** Public-safe page handover evidence without legacy page bodies or titles. */
 	public static function public_page_quarantine_status() {
-		$rows = get_option( 'snfla_legacy_page_quarantine', array() );
+		$handover = get_option( self::HANDOVER_OPTION, array() );
+		if ( ! SNFLA_Integrity::evidence_valid( $handover ) ) { return array(); }
+		$rows = isset( $handover['quarantined_pages'] ) && is_array( $handover['quarantined_pages'] ) ? $handover['quarantined_pages'] : array();
 		$result = array();
 		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
 			if ( ! is_array( $row ) ) { continue; }
