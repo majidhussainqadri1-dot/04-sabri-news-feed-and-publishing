@@ -24,7 +24,7 @@ final class SNFLA_CLI {
 	public function inventory( $args, $assoc ) {
 		unset( $args );
 		$actor = $this->actor( SNFLA_Capabilities::CAP_RUN );
-		$result = SNFLA_Inventory::lock( $actor, $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version() );
+		$result = SNFLA_Inventory::lock( $actor, $assoc['expected-state'] ?? SNFLA_Schema::state(), $this->expected_version( $assoc ) );
 		$this->output( $result );
 	}
 
@@ -32,7 +32,7 @@ final class SNFLA_CLI {
 	public function dry_run( $args, $assoc ) {
 		unset( $args );
 		$actor = $this->actor( SNFLA_Capabilities::CAP_RUN );
-		$result = SNFLA_Migration::dry_run( $actor, $assoc['limit'] ?? 100, $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version() );
+		$result = SNFLA_Migration::dry_run( $actor, $assoc['limit'] ?? 100, $assoc['expected-state'] ?? SNFLA_Schema::state(), $this->expected_version( $assoc ) );
 		$this->output( $result );
 	}
 
@@ -50,7 +50,7 @@ final class SNFLA_CLI {
 		$actor = $this->actor( SNFLA_Capabilities::CAP_RUN );
 		$ids = $this->parse_ids( $assoc['ids'] ?? '' );
 		$with_interactions = ! isset( $assoc['with-interactions'] ) || ! in_array( strtolower( (string) $assoc['with-interactions'] ), array( '0', 'false', 'no' ), true );
-		$result = SNFLA_Migration::migrate( $actor, $ids, $assoc['idempotency-key'] ?? '', $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version(), $with_interactions );
+		$result = SNFLA_Migration::migrate( $actor, $ids, $assoc['idempotency-key'] ?? '', $assoc['expected-state'] ?? SNFLA_Schema::state(), $this->expected_version( $assoc ), $with_interactions );
 		$this->output( $result );
 	}
 
@@ -66,7 +66,7 @@ final class SNFLA_CLI {
 				$assoc['reason-code'] ?? '',
 				$assoc['decision-reference'] ?? '',
 				$assoc['expected-state'] ?? SNFLA_Schema::state(),
-				$assoc['expected-version'] ?? SNFLA_Schema::version()
+				$this->expected_version( $assoc )
 			)
 		);
 	}
@@ -82,7 +82,7 @@ final class SNFLA_CLI {
 	public function reconcile( $args, $assoc ) {
 		unset( $args );
 		$actor = $this->actor( SNFLA_Capabilities::CAP_REVIEW );
-		$this->output( SNFLA_Reconciliation::run( $actor, $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version() ) );
+		$this->output( SNFLA_Reconciliation::run( $actor, $assoc['expected-state'] ?? SNFLA_Schema::state(), $this->expected_version( $assoc ) ) );
 	}
 
 
@@ -90,14 +90,14 @@ final class SNFLA_CLI {
 	public function cutover( $args, $assoc ) {
 		unset( $args );
 		$actor = $this->actor( SNFLA_Capabilities::CAP_REVIEW );
-		$this->output( SNFLA_Reconciliation::approve_cutover( $actor, $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version() ) );
+		$this->output( SNFLA_Reconciliation::approve_cutover( $actor, $assoc['expected-state'] ?? SNFLA_Schema::state(), $this->expected_version( $assoc ) ) );
 	}
 
 	/** Open a bounded signed read-only tombstone fallback window. */
 	public function fallback( $args, $assoc ) {
 		unset( $args );
 		$actor = $this->actor( SNFLA_Capabilities::CAP_REVIEW );
-		$this->output( SNFLA_Redirects::open_fallback( $actor, $assoc['hours'] ?? 24, $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version() ) );
+		$this->output( SNFLA_Redirects::open_fallback( $actor, $assoc['hours'] ?? 24, $assoc['expected-state'] ?? SNFLA_Schema::state(), $this->expected_version( $assoc ) ) );
 	}
 
 	/** Resolve one conflict only after its underlying defect is gone. */
@@ -112,14 +112,20 @@ final class SNFLA_CLI {
 		unset( $args );
 		$actor = $this->actor( SNFLA_Capabilities::CAP_RUN );
 		$ids = $this->parse_ids( $assoc['ids'] ?? '' );
-		$this->output( SNFLA_Rollback::execute( $actor, $ids, $assoc['idempotency-key'] ?? '', $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version(), ! empty( $assoc['restore-handover'] ), $assoc['handover-confirmation'] ?? '' ) );
+		$this->output( SNFLA_Rollback::execute( $actor, $ids, $assoc['idempotency-key'] ?? '', $assoc['expected-state'] ?? SNFLA_Schema::state(), $this->expected_version( $assoc ), ! empty( $assoc['restore-handover'] ), $assoc['handover-confirmation'] ?? '' ) );
 	}
 
 	/** Retire after all gates pass. */
 	public function retire( $args, $assoc ) {
 		unset( $args );
 		$actor = $this->actor( SNFLA_Capabilities::CAP_RETIRE );
-		$this->output( SNFLA_Retirement::retire( $actor, $assoc['confirmation'] ?? '', $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version() ) );
+		$this->output( SNFLA_Retirement::retire( $actor, $assoc['confirmation'] ?? '', $assoc['expected-state'] ?? SNFLA_Schema::state(), $this->expected_version( $assoc ) ) );
+	}
+
+	private function expected_version( array $assoc ) {
+		if ( ! isset( $assoc['expected-version'] ) ) { return SNFLA_Schema::version(); }
+		$raw=(string)$assoc['expected-version']; if ( 1!==preg_match('/^[1-9][0-9]*$/D',$raw) ) { WP_CLI::error('snfla_invalid_expected_version: expected-version must be a positive decimal integer.'); }
+		$value=(int)$raw; if($value<=0 || (string)$value!==$raw){ WP_CLI::error('snfla_invalid_expected_version'); } return $value;
 	}
 
 	private function actor( $capability ) {
