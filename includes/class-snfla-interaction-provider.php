@@ -232,7 +232,7 @@ final class SNFLA_Interaction_Provider {
 					break;
 				}
 				foreach ( $rows as $row ) {
-					$source_row_id = absint( $row['id'] ?? 0 );
+					$source_row_id = self::strict_positive_id( $row['id'] ?? 0 );
 					$report['processed']++;
 					$budget--;
 					if ( $source_row_id <= 0 ) {
