@@ -59,8 +59,11 @@ final class SNFLA_Future18 {
 			'legacy_ids' => array(
 				'required' => true,
 				'type' => 'array',
-				'items' => array( 'type' => 'integer' ),
-				'validate_callback' => static function ( $value ) { return is_array( $value ) && count( $value ) >= 1 && count( $value ) <= self::MAX_IDS; },
+				'items' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'validate_callback' => static function ( $value ) {
+					if ( ! is_array( $value ) || count( $value ) < 1 || count( $value ) > self::MAX_IDS ) { return false; }
+					$seen=array(); foreach ( $value as $id ) { if ( ! is_int( $id ) || $id <= 0 || isset($seen[$id]) ) { return false; } $seen[$id]=true; } return true;
+				},
 			),
 		);
 		self::route( '/future/registry', WP_REST_Server::READABLE, 'rest_registry', $read );
@@ -95,7 +98,7 @@ final class SNFLA_Future18 {
 	}
 
 	private static function id_arg() {
-		return array( 'required' => true, 'type' => 'integer', 'minimum' => 1, 'sanitize_callback' => 'absint' );
+		return array( 'required' => true, 'type' => 'integer', 'minimum' => 1, 'sanitize_callback' => static function( $value ){ return is_int($value) && $value>0 ? $value : 0; }, 'validate_callback' => static function( $value ){ return is_int($value) && $value>0; } );
 	}
 
 	private static function pair_args() {
