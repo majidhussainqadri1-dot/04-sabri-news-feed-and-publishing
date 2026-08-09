@@ -12,7 +12,7 @@ final class SNFLA_CLI {
 	public function status() {
 		$actor = SNFLA_Capabilities::current_read_actor( SNFLA_Capabilities::CAP_REVIEW );
 		if ( is_wp_error( $actor ) ) { WP_CLI::error( $actor->get_error_code() . ': ' . $actor->get_error_message() ); }
-		$request = new WP_REST_Request( 'GET', '/' . SNFLA_REST::NAMESPACE . '/status' );
+		$request = new WP_REST_Request( 'GET', '/' . SNFLA_REST::NS . '/status' );
 		$request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
 		$response = SNFLA_REST::status( $request );
 		$encoded = wp_json_encode( $response->get_data(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
@@ -35,7 +35,6 @@ final class SNFLA_CLI {
 		$result = SNFLA_Migration::dry_run( $actor, $assoc['limit'] ?? 100, $assoc['expected-state'] ?? SNFLA_Schema::state(), $this->expected_version( $assoc ) );
 		$this->output( $result );
 	}
-
 
 	/** Record a recent backup/restore proof bound to the locked source. */
 	public function backup_proof( $args, $assoc ) {
@@ -85,7 +84,6 @@ final class SNFLA_CLI {
 		$this->output( SNFLA_Reconciliation::run( $actor, $assoc['expected-state'] ?? SNFLA_Schema::state(), $this->expected_version( $assoc ) ) );
 	}
 
-
 	/** Approve canonical redirect cutover after fresh green reconciliation. */
 	public function cutover( $args, $assoc ) {
 		unset( $args );
@@ -129,30 +127,31 @@ final class SNFLA_CLI {
 	}
 
 	private function actor( $capability ) {
-		if ( ! SNFLA_Retirement::mutations_allowed() ) { WP_CLI::error( 'snfla_retired: The adapter is retired and mutation commands are disabled.' ); }
 		$actor = SNFLA_Capabilities::current_actor( $capability );
 		if ( is_wp_error( $actor ) ) { WP_CLI::error( $actor->get_error_code() . ': ' . $actor->get_error_message() ); }
 		return $actor;
 	}
 
-	private function parse_ids( $raw ) {
-		$parts = explode( ',', (string) $raw );
+	private function parse_ids( $csv ) {
+		$parts = explode( ',', (string) $csv );
 		$ids = array();
+		$seen = array();
 		foreach ( $parts as $part ) {
 			$part = trim( $part );
-			if ( 1 !== preg_match( '/^[1-9][0-9]*$/D', $part ) ) { WP_CLI::error( 'snfla_invalid_ids: IDs must be positive decimal integers.' ); }
+			if ( ! preg_match( '/^[1-9][0-9]*$/D', $part ) ) { WP_CLI::error( 'snfla_invalid_id: IDs must be positive decimal integers.' ); }
 			$id = (int) $part;
-			if ( isset( $ids[ $id ] ) ) { WP_CLI::error( 'snfla_duplicate_ids: Duplicate legacy IDs are not accepted.' ); }
-			$ids[ $id ] = $id;
+			if ( $id <= 0 || (string) $id !== $part || isset( $seen[ $id ] ) ) { WP_CLI::error( 'snfla_invalid_id: IDs must be positive, canonical and unique.' ); }
+			$seen[ $id ] = true;
+			$ids[] = $id;
 		}
-		if ( empty( $ids ) || count( $ids ) > SNFLA_Migration::MAX_BATCH ) { WP_CLI::error( 'snfla_invalid_ids: A non-empty bounded ID list is required.' ); }
-		return array_values( $ids );
+		if ( empty( $ids ) || count( $ids ) > SNFLA_Migration::MAX_BATCH ) { WP_CLI::error( 'snfla_invalid_id_batch: ID batch is empty or exceeds the supported bound.' ); }
+		return $ids;
 	}
 
 	private function output( $result ) {
 		if ( is_wp_error( $result ) ) { WP_CLI::error( $result->get_error_code() . ': ' . $result->get_error_message() ); }
-		$encoded = wp_json_encode( $result, JSON_UNESCAPED_SLASHES );
-		if ( ! is_string( $encoded ) ) { WP_CLI::error( 'snfla_output_encoding_failed: Result evidence could not be encoded safely.' ); }
-		WP_CLI::success( $encoded );
+		$encoded = wp_json_encode( $result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+		if ( ! is_string( $encoded ) ) { WP_CLI::error( 'snfla_output_encoding_failed: Result could not be encoded safely.' ); }
+		WP_CLI::line( $encoded );
 	}
 }
