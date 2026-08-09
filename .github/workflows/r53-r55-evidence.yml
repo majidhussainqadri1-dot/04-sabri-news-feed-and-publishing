@@ -1,0 +1,24 @@
+name: File04 R53-R55 evidence hardening
+on:
+  push:
+    branches: [audit-file-04-eighty-round-2]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with: {ref: audit-file-04-eighty-round-2, fetch-depth: 0}
+      - shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for n in 53 54 55; do
+            python3 tools/r53-r55-evidence.py "$n"
+            git add -A
+            git commit -m "80-round audit R${n}: immediate evidence hardening"
+          done
+          git push origin HEAD:audit-file-04-eighty-round-2
