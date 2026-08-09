@@ -1,0 +1,64 @@
+=== unit ===
+Deterministic unit checks passed (16 assertions).
+PASS: unit
+=== central ===
+Central-plan reconciliation checks passed: 71 CV requirements, 2 F04-CEN requirements and 15 AJ journeys traced without duplicate ownership.
+PASS: central
+=== architecture ===
+Architecture and ownership checks passed across 25 PHP files, including v2.0.4 second-audit hardening.
+PASS: architecture
+=== own-plan ===
+File 04 own-plan checks failed:
+- README must state the exact modern-plan applicability
+FAILED: own-plan (rc=1)
+=== future18 ===
+Future18 source checks passed: 18/18 capabilities, ownership boundaries, safety invariants, v2.0.4 second-audit wiring, traceability and deterministic-release integration.
+PASS: future18
+=== central-reviews ===
+File 04 own-plan checks failed:
+- README must state the exact modern-plan applicability
+Central-plan Review/Fix Round 1 — requirements, ownership and File 04 plan traceability: PASS (11 checks)
+Central-plan Review/Fix Round 2 — fresh adversarial/source regression: PASS (11 checks)
+Central-plan reconciliation checks passed: 71 CV requirements, 2 F04-CEN requirements and 15 AJ journeys traced without duplicate ownership.
+FAILED: central-reviews (rc=1)
+=== future18-reviews ===
+Future18 Review/Fix Round 1 — completeness, ownership, safety: PASS (8 checks)
+Future18 source checks passed: 18/18 capabilities, ownership boundaries, safety invariants, v2.0.4 second-audit wiring, traceability and deterministic-release integration.
+Future18 Review/Fix Round 2 — fresh adversarial release regression: PASS (8 checks)
+Two consecutive fresh Future18 review/fix/retest rounds passed with the v2.0.4 second-audit hardening present.
+PASS: future18-reviews
+=== first-ten ===
+Historical first ten-round post-Future18 guardrails remain present under v2.0.4.
+PASS: first-ten
+=== second-ten ===
+Second ten-round hardening gate failed:
+- Lifecycle invalid-state fail-closed control is missing.
+FAILED: second-ten (rc=1)
+=== third-ten ===
+Third ten-round hardening source gate passed for all ten implemented review controls and audit trace.
+PASS: third-ten
+=== eighty ===
+80-round hardening gate failed:
+- R57-R58 observability/system schema gate missing
+FAILED: eighty (rc=1)
+=== builder ===
+File 04 own-plan checks failed:
+- README must state the exact modern-plan applicability
+Traceback (most recent call last):
+  File "/home/runner/work/04-sabri-news-feed-and-publishing/04-sabri-news-feed-and-publishing/tools/build-release.py", line 260, in <module>
+    if __name__=='__main__': main()
+                             ^^^^^^
+  File "/home/runner/work/04-sabri-news-feed-and-publishing/04-sabri-news-feed-and-publishing/tools/build-release.py", line 258, in main
+    if args.verify_only: verify_only(); return
+                         ^^^^^^^^^^^^^
+  File "/home/runner/work/04-sabri-news-feed-and-publishing/04-sabri-news-feed-and-publishing/tools/build-release.py", line 232, in verify_only
+    first=build(a,sa); second=build(b,sb)
+          ^^^^^^^^^^^
+  File "/home/runner/work/04-sabri-news-feed-and-publishing/04-sabri-news-feed-and-publishing/tools/build-release.py", line 83, in build
+    run_source_gates()
+  File "/home/runner/work/04-sabri-news-feed-and-publishing/04-sabri-news-feed-and-publishing/tools/build-release.py", line 73, in run_source_gates
+    subprocess.run([sys.executable,str(ROOT/'tests/run-file04-own-plan.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/usr/bin/python3', '/home/runner/work/04-sabri-news-feed-and-publishing/04-sabri-news-feed-and-publishing/tests/run-file04-own-plan.py']' returned non-zero exit status 1.
+FAILED: builder (rc=1)
