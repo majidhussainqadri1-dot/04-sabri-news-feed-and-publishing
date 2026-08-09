@@ -667,6 +667,20 @@ final class SNFLA_Database {
 			'dry_run' => array( 'id','run_uuid','source_signature','legacy_id','source_checksum','target_type','eligible','conflict_codes_json','created_at' ),
 			'interaction_ledger' => array( 'id','legacy_id','target_id','kind','source_row_id','canonical_row_id','contribution_count','original_json','created_by_migration','status','created_at','updated_at' ),
 		);
+		$column_contracts = array(
+			'runs' => array(
+				'id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'run_uuid'=>array('/^char\(36\)$/','NO'), 'operation'=>array('/^varchar\(32\)$/','NO'), 'status'=>array('/^varchar\(24\)$/','NO'), 'actor_digest'=>array('/^char\(64\)$/','NO'), 'idempotency_hash'=>array('/^char\(64\)$/','NO'), 'source_signature'=>array('/^char\(64\)$/','NO'), 'checkpoint_json'=>array('/^longtext$/','NO'), 'summary_json'=>array('/^longtext$/','NO'), 'started_at'=>array('/^datetime$/','NO'), 'finished_at'=>array('/^datetime$/','YES') ),
+			'map' => array(
+				'id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'legacy_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'target_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO','0'), 'target_type'=>array('/^varchar\(32\)$/','NO',''), 'status'=>array('/^varchar\(32\)$/','NO'), 'source_checksum'=>array('/^char\(64\)$/','NO'), 'target_checksum'=>array('/^char\(64\)$/','NO',''), 'run_uuid'=>array('/^char\(36\)$/','NO'), 'interaction_ledger_json'=>array('/^longtext$/','NO'), 'last_error_code'=>array('/^varchar\(96\)$/','NO',''), 'created_at'=>array('/^datetime$/','NO'), 'updated_at'=>array('/^datetime$/','NO') ),
+			'conflicts' => array(
+				'id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'legacy_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO','0'), 'conflict_code'=>array('/^varchar\(96\)$/','NO'), 'severity'=>array('/^varchar\(16\)$/','NO'), 'fingerprint'=>array('/^char\(64\)$/','NO'), 'status'=>array('/^varchar\(20\)$/','NO','open'), 'redacted_context_json'=>array('/^longtext$/','NO'), 'run_uuid'=>array('/^char\(36\)$/','NO',''), 'created_at'=>array('/^datetime$/','NO'), 'resolved_at'=>array('/^datetime$/','YES') ),
+			'audit' => array(
+				'id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'event_uuid'=>array('/^char\(36\)$/','NO'), 'actor_digest'=>array('/^char\(64\)$/','NO'), 'action'=>array('/^varchar\(96\)$/','NO'), 'object_ref'=>array('/^varchar\(128\)$/','NO',''), 'context_json'=>array('/^longtext$/','NO'), 'prev_hash'=>array('/^char\(64\)$/','NO',''), 'event_hash'=>array('/^char\(64\)$/','NO'), 'created_at'=>array('/^datetime$/','NO') ),
+			'dry_run' => array(
+				'id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'run_uuid'=>array('/^char\(36\)$/','NO'), 'source_signature'=>array('/^char\(64\)$/','NO'), 'legacy_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'source_checksum'=>array('/^char\(64\)$/','NO'), 'target_type'=>array('/^varchar\(32\)$/','NO','auto'), 'eligible'=>array('/^tinyint(?:\(1\))? unsigned$/','NO','0'), 'conflict_codes_json'=>array('/^longtext$/','NO'), 'created_at'=>array('/^datetime$/','NO') ),
+			'interaction_ledger' => array(
+				'id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'legacy_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'target_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'kind'=>array('/^varchar\(24\)$/','NO'), 'source_row_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'canonical_row_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'contribution_count'=>array('/^bigint(?:\(20\))? unsigned$/','NO','0'), 'original_json'=>array('/^longtext$/','NO'), 'created_by_migration'=>array('/^tinyint(?:\(1\))? unsigned$/','NO','0'), 'status'=>array('/^varchar\(24\)$/','NO','active'), 'created_at'=>array('/^datetime$/','NO'), 'updated_at'=>array('/^datetime$/','NO') ),
+		);
 		$tables = self::tables();
 		$errors = array();
 		foreach ( $required as $key => $columns ) {
@@ -682,15 +696,21 @@ final class SNFLA_Database {
 				continue;
 			}
 			$wpdb->last_error = '';
-			$actual = array_map( 'strtolower', (array) $wpdb->get_col( "SHOW COLUMNS FROM `{$table}`", 0 ) );
-			if ( ! empty( $wpdb->last_error ) ) {
+			$column_rows = $wpdb->get_results( "SHOW COLUMNS FROM `{$table}`", ARRAY_A );
+			if ( ! is_array( $column_rows ) || ! empty( $wpdb->last_error ) ) {
 				$errors[] = $key . '_column_query_failed';
 				continue;
 			}
+			$actual = array(); $column_meta = array();
+			foreach ( $column_rows as $column_row ) { $field=strtolower((string)($column_row['Field']??'')); if(''===$field){continue;} $actual[]=$field; $column_meta[$field]=$column_row; }
 			foreach ( $columns as $column ) {
-				if ( ! in_array( strtolower( $column ), $actual, true ) ) {
-					$errors[] = $key . '_' . $column . '_missing';
-				}
+				$column = strtolower( $column );
+				if ( ! in_array( $column, $actual, true ) ) { $errors[] = $key . '_' . $column . '_missing'; continue; }
+				$rule = $column_contracts[$key][$column] ?? array(); $meta=$column_meta[$column];
+				$type=strtolower(trim((string)($meta['Type']??''))); $nullable=strtoupper((string)($meta['Null']??''));
+				if ( empty($rule) || 1 !== preg_match($rule[0],$type) ) { $errors[]=$key.'_'.$column.'_type_mismatch'; }
+				if ( isset($rule[1]) && $rule[1] !== $nullable ) { $errors[]=$key.'_'.$column.'_nullability_mismatch'; }
+				if ( array_key_exists(2,$rule) && (string)$rule[2] !== (string)($meta['Default']??'') ) { $errors[]=$key.'_'.$column.'_default_mismatch'; }
 			}
 		}
 		$required_indexes = array(
