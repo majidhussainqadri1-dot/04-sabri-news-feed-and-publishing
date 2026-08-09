@@ -101,6 +101,12 @@ final class SNFLA_Future18 {
 		return array( 'required' => true, 'type' => 'integer', 'minimum' => 1, 'sanitize_callback' => static function( $value ){ return is_int($value) && $value>0 ? $value : 0; }, 'validate_callback' => static function( $value ){ return is_int($value) && $value>0; } );
 	}
 
+	private static function strict_positive_id( $value ) {
+		if ( is_int( $value ) ) { return $value > 0 ? $value : 0; }
+		if ( ! is_string( $value ) || 1 !== preg_match( '/^[1-9][0-9]*$/D', $value ) ) { return 0; }
+		$parsed=(int)$value; return $parsed>0 && (string)$parsed===$value ? $parsed : 0;
+	}
+
 	private static function pair_args() {
 		return array( 'legacy_id' => self::id_arg(), 'target_id' => self::id_arg() );
 	}
@@ -274,7 +280,7 @@ final class SNFLA_Future18 {
 	}
 
 	public static function record_contract_baseline( $actor_id ) {
-		$actor_id = absint( $actor_id );
+		$actor_id = self::strict_positive_id( $actor_id );
 		$authorized = SNFLA_Capabilities::revalidate_actor( $actor_id, SNFLA_Capabilities::CAP_REVIEW );
 		if ( is_wp_error( $authorized ) ) { return $authorized; }
 		if ( ! SNFLA_Inventory::unchanged() ) {
@@ -309,7 +315,7 @@ final class SNFLA_Future18 {
 
 	/** F04-FUT-003 — exact textual/provenance fidelity plus optional semantic provider. */
 	public static function content_fidelity( $legacy_id, $target_id ) {
-		$legacy_id = absint( $legacy_id ); $target_id = absint( $target_id );
+		$legacy_id = self::strict_positive_id( $legacy_id ); $target_id = self::strict_positive_id( $target_id );
 		$source = get_post( $legacy_id ); $target = get_post( $target_id );
 		if ( ! $source instanceof WP_Post || SNFLA_Inventory::LEGACY_POST_TYPE !== $source->post_type || ! $target instanceof WP_Post ) { return new WP_Error( 'snfla_fidelity_record_missing', 'Both source and canonical target must exist.', array( 'status' => 404 ) ); }
 		if ( ! SNFLA_File21_Adapter::migration_target_valid( $legacy_id, $target_id ) ) { return new WP_Error( 'snfla_fidelity_target_invalid', 'The target is not a verified File 21 migration target for this source.', array( 'status' => 412 ) ); }
@@ -339,7 +345,7 @@ final class SNFLA_Future18 {
 
 	/** F04-FUT-004 — delegates rendering evidence to shell/visual owners; never renders a parallel public UI. */
 	public static function visual_diff( $legacy_id, $target_id ) {
-		$legacy_id = absint( $legacy_id ); $target_id = absint( $target_id );
+		$legacy_id = self::strict_positive_id( $legacy_id ); $target_id = self::strict_positive_id( $target_id );
 		if ( ! SNFLA_File21_Adapter::migration_target_valid( $legacy_id, $target_id ) ) { return new WP_Error( 'snfla_visual_target_invalid', 'A verified File 21 target is required.', array( 'status' => 412 ) ); }
 		$source_signature = (string) ( SNFLA_Inventory::locked()['source_signature'] ?? '' );
 		$request = array( 'feature_id' => 'F04-FUT-004', 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'required' => array( 'desktop', 'mobile', 'rtl', 'keyboard', 'zoom_200', 'reduced_motion', 'dom_semantics', 'accessibility_tree' ), 'source_signature' => $source_signature );
@@ -351,7 +357,7 @@ final class SNFLA_Future18 {
 
 	/** F04-FUT-005 — privacy-minimized source→identity/media/interaction→target lineage. */
 	public static function lineage_graph( $legacy_id ) {
-		$legacy_id = absint( $legacy_id ); $post = get_post( $legacy_id );
+		$legacy_id = self::strict_positive_id( $legacy_id ); $post = get_post( $legacy_id );
 		if ( ! $post instanceof WP_Post || SNFLA_Inventory::LEGACY_POST_TYPE !== $post->post_type ) { return new WP_Error( 'snfla_lineage_source_missing', 'Legacy source is unavailable.', array( 'status' => 404 ) ); }
 		$author = SNFLA_Plan_Completion::authorship_preflight( $legacy_id, $post->post_author );
 		$media = SNFLA_Plan_Completion::media_preflight( $legacy_id );
@@ -373,7 +379,7 @@ final class SNFLA_Future18 {
 
 	/** F04-FUT-006 — deterministic advisory risk; never authorizes migration by itself. */
 	public static function risk_score( $legacy_id ) {
-		$legacy_id = absint( $legacy_id ); $post = get_post( $legacy_id );
+		$legacy_id = self::strict_positive_id( $legacy_id ); $post = get_post( $legacy_id );
 		if ( ! $post instanceof WP_Post || SNFLA_Inventory::LEGACY_POST_TYPE !== $post->post_type ) { return new WP_Error( 'snfla_risk_source_missing', 'Legacy source is unavailable.', array( 'status' => 404 ) ); }
 		$reasons = array(); $score = 0;
 		$conflicts = SNFLA_Migration::candidate_conflicts( $post, $legacy_id );
@@ -411,7 +417,7 @@ final class SNFLA_Future18 {
 
 	/** F04-FUT-008 — compares read projections; contains no write path or dual-write behavior. */
 	public static function shadow_read( $legacy_id, $target_id, $actor_id = 0 ) {
-		$legacy_id = absint( $legacy_id ); $target_id = absint( $target_id );
+		$legacy_id = self::strict_positive_id( $legacy_id ); $target_id = self::strict_positive_id( $target_id );
 		$fidelity = self::content_fidelity( $legacy_id, $target_id ); if ( is_wp_error( $fidelity ) ) { return $fidelity; }
 		$provider = apply_filters( 'sabri_file21_shadow_read_v1', array( 'verified' => false ), array( 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'read_only' => true ) );
 		$result = array( 'feature_id' => 'F04-FUT-008', 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'read_only' => true, 'dual_write' => false, 'fidelity' => $fidelity, 'provider' => SNFLA_Audit::redact( is_array( $provider ) ? $provider : array() ), 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ) );
@@ -499,7 +505,7 @@ final class SNFLA_Future18 {
 
 	/** F04-FUT-011 — tamper-evident migration/reconciliation/rollback/cutover receipt. */
 	public static function create_receipt( $legacy_id, $target_id, $operation, $actor_id ) {
-		$legacy_id = absint( $legacy_id ); $target_id = absint( $target_id ); $operation = sanitize_key( $operation );
+		$legacy_id = self::strict_positive_id( $legacy_id ); $target_id = self::strict_positive_id( $target_id ); $operation = sanitize_key( $operation );
 		if ( ! in_array( $operation, array( 'migration', 'reconciliation', 'rollback', 'cutover' ), true ) ) { return new WP_Error( 'snfla_receipt_operation_invalid', 'Unsupported receipt operation.', array( 'status' => 400 ) ); }
 		$source_checksum = $legacy_id > 0 ? SNFLA_Checksum::post( $legacy_id ) : '';
 		$target_checksum = $target_id > 0 ? SNFLA_Checksum::migration_projection_checksum( $target_id, false ) : '';
@@ -583,7 +589,7 @@ final class SNFLA_Future18 {
 
 	/** F04-FUT-015 — Arabic/Urdu codepoint/bidi/diacritic fidelity without silent normalization. */
 	public static function unicode_fidelity( $legacy_id, $target_id ) {
-		$legacy_id = absint( $legacy_id ); $target_id = absint( $target_id ); $source = get_post( $legacy_id ); $target = get_post( $target_id );
+		$legacy_id = self::strict_positive_id( $legacy_id ); $target_id = self::strict_positive_id( $target_id ); $source = get_post( $legacy_id ); $target = get_post( $target_id );
 		if ( ! $source instanceof WP_Post || ! $target instanceof WP_Post ) { return new WP_Error( 'snfla_unicode_record_missing', 'Both source and target are required.', array( 'status' => 404 ) ); }
 		$source_text = (string) $source->post_title . "\n" . (string) $source->post_content; $target_text = (string) $target->post_title . "\n" . (string) $target->post_content;
 		$source_profile = self::unicode_profile( $source_text ); $target_profile = self::unicode_profile( $target_text );
