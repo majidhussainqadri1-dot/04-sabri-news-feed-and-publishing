@@ -158,9 +158,13 @@ final class SNFLA_Database {
 	}
 
 	public static function schema_healthy() {
+		static $verified_this_request = null;
 		if ( SNFLA_SCHEMA_VERSION !== (string) get_option( 'snfla_schema_version', '' ) ) { return false; }
-		$health = get_option( 'snfla_schema_health', array() );
-		return is_array( $health ) && ! empty( $health['ok'] );
+		if ( null !== $verified_this_request ) { return $verified_this_request; }
+		$verified = self::verify_schema();
+		$verified_this_request = ! is_wp_error( $verified );
+		self::persist_option( 'snfla_schema_health', array( 'ok' => $verified_this_request, 'code' => is_wp_error( $verified ) ? $verified->get_error_code() : '', 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ) ) );
+		return $verified_this_request;
 	}
 
 	private static function capture_activation_handover( $actor_id ) {
