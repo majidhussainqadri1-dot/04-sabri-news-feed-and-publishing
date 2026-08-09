@@ -5,6 +5,7 @@ final class SNFLA_Reconciliation {
 	const MAX_REPORT_AGE = DAY_IN_SECONDS;
 
 	public static function run( $actor_id, $expected_state, $expected_version ) {
+		if ( ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_reconciliation_version_invalid', 'Lifecycle version must be a canonical positive integer.', array( 'status' => 400 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) {
 			return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) );
 		}
@@ -14,7 +15,7 @@ final class SNFLA_Reconciliation {
 			if ( ! SNFLA_Inventory::unchanged() ) {
 				return new WP_Error( 'snfla_inventory_changed', 'The legacy source changed after inventory lock.', array( 'status' => 409 ) );
 			}
-			$state_check = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), absint( $expected_version ) );
+			$state_check = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), $expected_version );
 			if ( is_wp_error( $state_check ) ) { return $state_check; }
 
 			$source_total = 0;
@@ -119,7 +120,7 @@ final class SNFLA_Reconciliation {
 				$restored_previous = update_option( 'snfla_reconciliation_report', $previous_report, false ) || get_option( 'snfla_reconciliation_report', array() ) === $previous_report;
 				return new WP_Error( $restored_previous ? 'snfla_reconciliation_audit_failed' : 'snfla_reconciliation_compensation_failed', $restored_previous ? 'The reconciliation report was reverted because audit evidence could not be written.' : 'Reconciliation audit failed and the previous report could not be restored exactly.', array( 'status' => 500, 'manual_recovery_required' => ! $restored_previous ) );
 			}
-			$transition = SNFLA_Schema::transition( 'reconciliation', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'report_checksum' => $report['report_checksum'], 'report_uuid' => $report_uuid, 'green' => (bool) $report['green'] ) );
+			$transition = SNFLA_Schema::transition( 'reconciliation', sanitize_key( $expected_state ), $expected_version, $actor_id, array( 'report_checksum' => $report['report_checksum'], 'report_uuid' => $report_uuid, 'green' => (bool) $report['green'] ) );
 			if ( is_wp_error( $transition ) ) {
 				return $transition;
 			}
