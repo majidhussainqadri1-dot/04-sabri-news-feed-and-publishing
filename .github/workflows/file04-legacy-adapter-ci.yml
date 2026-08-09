@@ -1,4 +1,4 @@
-name: File 04 Legacy Adapter — Central Plan + Future18 + Eighty-Round Hardening CI
+name: File 04 Legacy Adapter — Central Plan + Future18 + Two-Eighty-Round Hardening CI
 
 on:
   pull_request:
@@ -37,8 +37,10 @@ jobs:
         run: python3 tests/run-second-ten-round-hardening.py
       - name: Third fresh ten-round hardening gate
         run: python3 tests/run-third-ten-round-hardening.py
-      - name: Fresh eighty-round hardening gate
+      - name: Historical first eighty-round hardening gate
         run: python3 tests/run-eighty-round-hardening.py
+      - name: Second fresh eighty-round hardening gate
+        run: python3 tests/run-second-eighty-round-hardening.py
       - name: Deterministic release evidence
         run: python3 tools/build-release.py --verify-only
       - name: Secret and personal-data indicator scan
@@ -105,5 +107,7 @@ jobs:
         run: python3 tests/run-second-ten-round-hardening.py
       - name: Third fresh ten-round hardening checks
         run: python3 tests/run-third-ten-round-hardening.py
-      - name: Fresh eighty-round hardening checks
+      - name: Historical first eighty-round hardening checks
         run: python3 tests/run-eighty-round-hardening.py
+      - name: Second fresh eighty-round hardening checks
+        run: python3 tests/run-second-eighty-round-hardening.py
