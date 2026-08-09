@@ -759,13 +759,17 @@ final class SNFLA_Database {
 
 	public static function acquire_lock( $name, $timeout = 5 ) {
 		global $wpdb;
-		$name = substr( $wpdb->prefix . 'snfla_' . sanitize_key( $name ), 0, 64 );
-		return 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s,%d)', $name, max( 0, absint( $timeout ) ) ) );
+		if ( ! is_string( $name ) || 1 !== preg_match( '/^[a-z0-9_]{1,40}$/D', $name ) || ! is_int( $timeout ) || $timeout < 0 || $timeout > 30 ) { return false; }
+		$lock_name = substr( $wpdb->prefix . 'snfla_' . $name, 0, 64 );
+		$wpdb->last_error=''; $result=$wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s,%d)', $lock_name, $timeout ) );
+		return empty($wpdb->last_error) && 1 === (int)$result;
 	}
 
 	public static function release_lock( $name ) {
 		global $wpdb;
-		$name = substr( $wpdb->prefix . 'snfla_' . sanitize_key( $name ), 0, 64 );
-		$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $name ) );
+		if ( ! is_string( $name ) || 1 !== preg_match( '/^[a-z0-9_]{1,40}$/D', $name ) ) { return false; }
+		$lock_name = substr( $wpdb->prefix . 'snfla_' . $name, 0, 64 );
+		$wpdb->last_error=''; $result=$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
+		return empty($wpdb->last_error) && 1 === (int)$result;
 	}
 }
