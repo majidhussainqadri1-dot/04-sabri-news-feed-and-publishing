@@ -139,8 +139,7 @@ final class SNFLA_Database {
 
 	public static function maybe_upgrade() {
 		$stored_version = (string) get_option( 'snfla_schema_version', '' );
-		$health = get_option( 'snfla_schema_health', array() );
-		if ( SNFLA_SCHEMA_VERSION === $stored_version && is_array( $health ) && ! empty( $health['ok'] ) ) { return; }
+		if ( SNFLA_SCHEMA_VERSION === $stored_version && self::schema_healthy() ) { return; }
 		if ( ! self::acquire_lock( 'schema_upgrade', 5 ) ) {
 			self::persist_option( 'snfla_schema_health', array( 'ok' => false, 'code' => 'snfla_schema_upgrade_locked', 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ) ) );
 			return;
