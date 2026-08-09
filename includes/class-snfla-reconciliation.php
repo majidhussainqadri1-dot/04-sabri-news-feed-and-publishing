@@ -182,11 +182,12 @@ final class SNFLA_Reconciliation {
 	}
 
 	public static function approve_cutover( $actor_id, $expected_state, $expected_version ) {
+		if ( ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_cutover_version_invalid', 'Lifecycle version must be a canonical positive integer.', array( 'status' => 400 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) { return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) ); }
 		try {
 			$authorized_actor = SNFLA_Capabilities::revalidate_actor( $actor_id, SNFLA_Capabilities::CAP_REVIEW );
 			if ( is_wp_error( $authorized_actor ) ) { return $authorized_actor; }
-			$state_check = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), absint( $expected_version ) );
+			$state_check = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), $expected_version );
 			if ( is_wp_error( $state_check ) ) { return $state_check; }
 			$report = self::report();
 			if ( ! self::validate_current_report( $report ) ) { return new WP_Error( 'snfla_reconciliation_not_green', 'A fresh, complete, untampered green reconciliation report with zero conflicts is required.', array( 'status' => 412 ) ); }
@@ -216,7 +217,7 @@ final class SNFLA_Reconciliation {
 			if ( ! SNFLA_Audit::record( 'redirect_cutover_side_effects_completed', $actor_id, $side_effect_evidence, 'cutover:' . $locked['source_signature'] ) ) {
 				return new WP_Error( 'snfla_cutover_side_effect_audit_failed', 'Cache/search preparation completed but its audit evidence could not be written.', array( 'status' => 500 ) );
 			}
-			$transition = SNFLA_Schema::transition( 'redirect_cutover', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'reconciliation_checksum' => $report['report_checksum'] ?? '', 'final_delta_signature' => $locked['source_signature'], 'cache_provider' => sanitize_key( (string) ( $cache_evidence['provider_id'] ?? '' ) ), 'search_provider' => sanitize_key( (string) ( $search_evidence['provider_id'] ?? '' ) ) ) );
+			$transition = SNFLA_Schema::transition( 'redirect_cutover', sanitize_key( $expected_state ), $expected_version, $actor_id, array( 'reconciliation_checksum' => $report['report_checksum'] ?? '', 'final_delta_signature' => $locked['source_signature'], 'cache_provider' => sanitize_key( (string) ( $cache_evidence['provider_id'] ?? '' ) ), 'search_provider' => sanitize_key( (string) ( $search_evidence['provider_id'] ?? '' ) ) ) );
 			if ( is_wp_error( $transition ) ) { return $transition; }
 			return $transition;
 		} finally {
