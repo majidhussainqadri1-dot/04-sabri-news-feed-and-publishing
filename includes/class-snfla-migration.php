@@ -499,7 +499,8 @@ final class SNFLA_Migration {
 	}
 
 	public static function migrate( $actor_id, array $legacy_ids, $idempotency_key, $expected_state, $expected_version, $with_interactions = true ) {
-		$legacy_ids = SNFLA_Integrity::normalized_ids( $legacy_ids, self::MAX_BATCH );
+		$legacy_ids = SNFLA_Integrity::strict_positive_ids( $legacy_ids, self::MAX_BATCH );
+		if ( is_wp_error( $legacy_ids ) ) { return new WP_Error( 'snfla_invalid_migration_batch', 'Migration IDs must be positive, unique and canonical.', array( 'status' => 400 ) ); }
 		if ( empty( $legacy_ids ) ) { return new WP_Error( 'snfla_empty_batch', 'Select at least one legacy publication.', array( 'status' => 400 ) ); }
 		$authorized_actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_RUN );
 		if ( is_wp_error( $authorized_actor ) || absint( $authorized_actor ) !== absint( $actor_id ) ) { return new WP_Error( 'snfla_canonical_migration_capability_missing', 'File 21 canonical migration capability and fresh File 00 authority are required.', array( 'status' => 403 ) ); }
