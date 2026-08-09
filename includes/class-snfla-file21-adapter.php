@@ -22,6 +22,9 @@ final class SNFLA_File21_Adapter {
 	}
 
 	public static function migrate( array $legacy_ids, $actor_id, $with_interactions = true ) {
+		$legacy_ids = self::strict_id_batch( $legacy_ids );
+		$actor_id = self::strict_positive_id( $actor_id );
+		if ( empty( $legacy_ids ) || $actor_id <= 0 ) { return new WP_Error( 'snfla_file21_contract_ids_invalid', 'Canonical File 21 migration requires positive unique IDs and actor identity.' ); }
 		if ( ! SNFLA_Capabilities::file21_ready() ) {
 			return new WP_Error( 'snfla_file21_unavailable', 'Canonical File 21 migration services are unavailable.' );
 		}
@@ -58,6 +61,9 @@ final class SNFLA_File21_Adapter {
 	}
 
 	public static function rollback( array $legacy_ids, $actor_id ) {
+		$legacy_ids = self::strict_id_batch( $legacy_ids );
+		$actor_id = self::strict_positive_id( $actor_id );
+		if ( empty( $legacy_ids ) || $actor_id <= 0 ) { return new WP_Error( 'snfla_file21_contract_ids_invalid', 'Canonical File 21 rollback requires positive unique IDs and actor identity.' ); }
 		if ( ! SNFLA_Capabilities::file21_ready() ) {
 			return new WP_Error( 'snfla_file21_unavailable', 'Canonical File 21 rollback services are unavailable.' );
 		}
@@ -68,6 +74,13 @@ final class SNFLA_File21_Adapter {
 		$legacy_id = self::strict_positive_id( $legacy_id );
 		if ( $legacy_id <= 0 || ! SNFLA_Capabilities::file21_ready() ) { return 0; }
 		return self::strict_positive_id( \Sabri\HomeNewsFeed\LegacyPublicationMigration::target_for( $legacy_id ) );
+	}
+
+	private static function strict_id_batch( array $ids ) {
+		if ( empty( $ids ) || count( $ids ) > SNFLA_Migration::MAX_BATCH ) { return array(); }
+		$out=array(); $seen=array();
+		foreach ( $ids as $raw ) { $id=self::strict_positive_id( $raw ); if ( $id<=0 || isset( $seen[$id] ) ) { return array(); } $seen[$id]=true; $out[]=$id; }
+		return $out;
 	}
 
 	private static function strict_positive_id( $value ) {
