@@ -64,7 +64,7 @@ jobs:
               if re.search(pat,data): print('Possible',label,'in',p);sys.exit(1)
           print('Credential and personal-data indicator scan passed.')
           PY
-      - name: Reproducible v2.0.4 package twice
+      - name: Reproducible v2.0.5 package twice
         run: |
           python3 tools/build-release.py --output /tmp/file04-a.zip --source-output /tmp/file04-source-a.zip > /tmp/a.json
           python3 tools/build-release.py --output /tmp/file04-b.zip --source-output /tmp/file04-source-b.zip > /tmp/b.json
