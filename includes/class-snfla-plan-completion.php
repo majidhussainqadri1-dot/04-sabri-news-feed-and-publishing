@@ -44,7 +44,15 @@ final class SNFLA_Plan_Completion {
 						'type' => 'array',
 						'items' => array( 'type' => 'integer' ),
 						'validate_callback' => static function ( $value ) {
-							return is_array( $value ) && count( $value ) >= 1 && count( $value ) <= SNFLA_Migration::MAX_BATCH;
+							if ( ! is_array( $value ) || count( $value ) < 1 || count( $value ) > SNFLA_Migration::MAX_BATCH ) { return false; }
+							$seen = array();
+							foreach ( $value as $id ) {
+								if ( ! is_int( $id ) && ! ( is_string( $id ) && preg_match( '/^[1-9][0-9]*$/D', $id ) ) ) { return false; }
+								$id = (int) $id;
+								if ( $id <= 0 || isset( $seen[ $id ] ) ) { return false; }
+								$seen[ $id ] = true;
+							}
+							return true;
 						},
 					),
 				),
@@ -124,12 +132,15 @@ final class SNFLA_Plan_Completion {
 		$placeholder = false;
 
 		if ( ! $user ) {
+			$placeholder_request = array( 'file_number' => '04', 'legacy_id' => $legacy_id, 'legacy_author_id' => $author_id );
+			$placeholder_request['request_digest'] = SNFLA_Checksum::hash( $placeholder_request );
 			$replacement = apply_filters(
 				'sabri_file00_legacy_author_placeholder_v1',
 				array( 'verified' => false ),
-				array( 'file_number' => '04', 'legacy_id' => $legacy_id, 'legacy_author_id' => $author_id )
+				$placeholder_request
 			);
-			if ( ! is_array( $replacement ) || empty( $replacement['verified'] ) || empty( $replacement['user_id'] ) || empty( $replacement['platform_uuid'] ) ) {
+			$placeholder_bound = is_array( $replacement ) && ! empty( $replacement['provider_id'] ) && absint( $replacement['legacy_id'] ?? 0 ) === $legacy_id && absint( $replacement['legacy_author_id'] ?? -1 ) === $author_id && ! empty( $replacement['request_digest'] ) && hash_equals( (string) $placeholder_request['request_digest'], (string) $replacement['request_digest'] );
+			if ( ! is_array( $replacement ) || ! $placeholder_bound || empty( $replacement['verified'] ) || empty( $replacement['user_id'] ) || empty( $replacement['platform_uuid'] ) ) {
 				return new WP_Error( 'snfla_author_placeholder_contract_required', 'A deleted or unknown legacy author requires a File 00 governed placeholder contract; File 04 will not guess attribution.', array( 'status' => 412, 'legacy_id' => $legacy_id ) );
 			}
 			$author_id = absint( $replacement['user_id'] );
@@ -214,7 +225,7 @@ final class SNFLA_Plan_Completion {
 			$value = get_post_meta( $legacy_id, $key, true );
 			$present = is_array( $value ) ? ! empty( $value ) : ( is_object( $value ) || '' !== trim( (string) $value ) );
 			if ( $present ) {
-				$refs[] = array( 'reference_id' => 'meta:' . $key, 'type' => 'legacy_reference', 'meta_key' => $key, 'value_digest' => hash( 'sha256', wp_json_encode( SNFLA_Audit::redact( $value ) ) ?: $key ) );
+				$refs[] = array( 'reference_id' => 'meta:' . $key, 'type' => 'legacy_reference', 'meta_key' => $key, 'value_digest' => SNFLA_Checksum::hash( SNFLA_Audit::redact( $value ) ) );
 			}
 		}
 		if ( empty( $refs ) ) {
@@ -239,7 +250,9 @@ final class SNFLA_Plan_Completion {
 		$request['request_digest'] = SNFLA_Checksum::hash( $request );
 		$evidence = apply_filters( 'sabri_file21_legacy_media_preflight_v1', array( 'verified' => false ), $request );
 		$provider_bound = is_array( $evidence ) && ! empty( $evidence['source_signature'] ) && ! empty( $evidence['request_digest'] ) && hash_equals( $source_signature, (string) $evidence['source_signature'] ) && hash_equals( (string) $request['request_digest'], (string) $evidence['request_digest'] );
-		if ( ! is_array( $evidence ) || ! $provider_bound || empty( $evidence['verified'] ) || empty( $evidence['provider_id'] ) || empty( $evidence['ownership_verified'] ) || empty( $evidence['rights_or_license_verified'] ) || empty( $evidence['alt_policy_verified'] ) || empty( $evidence['duplicate_hash_checked'] ) || ! array_key_exists( 'broken_links', $evidence ) || 0 !== absint( $evidence['broken_links'] ) ) {
+		$verified_at = is_array( $evidence ) && ! empty( $evidence['verified_at_utc'] ) ? strtotime( (string) $evidence['verified_at_utc'] . ' UTC' ) : false;
+		$broken_links = is_array( $evidence ) && array_key_exists( 'broken_links', $evidence ) ? filter_var( $evidence['broken_links'], FILTER_VALIDATE_INT ) : false;
+		if ( ! is_array( $evidence ) || ! $provider_bound || empty( $evidence['verified'] ) || empty( $evidence['provider_id'] ) || empty( $evidence['ownership_verified'] ) || empty( $evidence['rights_or_license_verified'] ) || empty( $evidence['alt_policy_verified'] ) || empty( $evidence['duplicate_hash_checked'] ) || 0 !== $broken_links || false === $verified_at || $verified_at < time() - 15 * MINUTE_IN_SECONDS || $verified_at > time() + 300 ) {
 			return new WP_Error( 'snfla_file21_media_contract_required', 'Media/reference migration requires a current File 21 provider attestation for rights, ownership, alt policy, duplicate hashes and broken links.', array( 'status' => 412, 'legacy_id' => $legacy_id ) );
 		}
 		$accepted = array_values( array_unique( array_map( 'sanitize_text_field', (array) ( $evidence['accepted_reference_ids'] ?? array() ) ) ) );
@@ -286,8 +299,15 @@ final class SNFLA_Plan_Completion {
 	/** Verify canonical post-migration media/reference coverage or force rollback. */
 	public static function verify_file21_result( array $legacy_ids, $result, $actor_id ) {
 		if ( is_wp_error( $result ) || ! is_array( $result ) ) { return $result; }
+		$requested = SNFLA_Integrity::normalized_ids( $legacy_ids, SNFLA_Migration::MAX_BATCH );
 		$migrated = (array) ( $result['migrated'] ?? array() );
-		foreach ( $legacy_ids as $legacy_id ) {
+		$returned = SNFLA_Integrity::normalized_ids( array_keys( $migrated ), SNFLA_Migration::MAX_BATCH );
+		$unexpected = array_values( array_diff( $returned, $requested ) );
+		if ( ! empty( $unexpected ) ) {
+			do_action( 'snfla_operational_alert_v1', array( 'code' => 'file21_unexpected_migration_result_ids', 'severity' => 'critical', 'unexpected_count' => count( $unexpected ) ) );
+			return new WP_Error( 'snfla_file21_unexpected_result_ids', 'Canonical File 21 returned migration results for legacy IDs that were not requested; File 04 refused to persist them.', array( 'status' => 502, 'unexpected_count' => count( $unexpected ) ) );
+		}
+		foreach ( $requested as $legacy_id ) {
 			$legacy_id = absint( $legacy_id );
 			if ( ! isset( $migrated[ $legacy_id ] ) ) { continue; }
 			$target_id = absint( $migrated[ $legacy_id ]['target_id'] ?? 0 );
@@ -302,7 +322,9 @@ final class SNFLA_Plan_Completion {
 				$verify_request
 			);
 			$verify_bound = is_array( $verify ) && ! empty( $verify['source_signature'] ) && ! empty( $verify['request_digest'] ) && hash_equals( (string) $verify_request['source_signature'], (string) $verify['source_signature'] ) && hash_equals( (string) $verify_request['request_digest'], (string) $verify['request_digest'] );
-			if ( ! is_array( $verify ) || ! $verify_bound || empty( $verify['verified'] ) || empty( $verify['provider_id'] ) || absint( $verify['target_id'] ?? 0 ) !== $target_id || absint( $verify['verified_reference_count'] ?? -1 ) !== absint( $preflight['reference_count'] ) ) {
+			$verify_time = is_array( $verify ) && ! empty( $verify['verified_at_utc'] ) ? strtotime( (string) $verify['verified_at_utc'] . ' UTC' ) : false;
+			$verified_count = is_array( $verify ) && array_key_exists( 'verified_reference_count', $verify ) ? filter_var( $verify['verified_reference_count'], FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 0 ) ) ) : false;
+			if ( ! is_array( $verify ) || ! $verify_bound || empty( $verify['verified'] ) || empty( $verify['provider_id'] ) || absint( $verify['target_id'] ?? 0 ) !== $target_id || false === $verified_count || $verified_count !== absint( $preflight['reference_count'] ) || false === $verify_time || $verify_time < time() - 15 * MINUTE_IN_SECONDS || $verify_time > time() + 300 ) {
 				$containment = $target_id > 0 ? SNFLA_File21_Adapter::contain_orphan_target( $legacy_id, $target_id, $actor_id, 'media_reference_post_migration_unverified' ) : null;
 				return new WP_Error( 'snfla_file21_media_post_migration_unverified', 'Canonical File 21 media/reference migration could not be verified; the target was contained where possible.', array( 'status' => 412, 'legacy_id' => $legacy_id, 'target_id' => $target_id, 'contained' => is_array( $containment ) && ! empty( $containment['contained'] ) ) );
 			}
@@ -402,10 +424,14 @@ final class SNFLA_Plan_Completion {
 			$analysis
 		);
 		$analysis['analysis_checksum'] = SNFLA_Checksum::hash( $analysis );
+		$previous_analysis = get_option( self::ANALYSIS_OPTION, array() );
 		if ( ! update_option( self::ANALYSIS_OPTION, $analysis, false ) && get_option( self::ANALYSIS_OPTION, array() ) !== $analysis ) {
 			return new WP_Error( 'snfla_dry_run_analysis_persist_failed', 'The dry-run planning analysis could not be persisted.', array( 'status' => 500 ) );
 		}
-		SNFLA_Audit::record( 'dry_run_analysis_completed', $actor_id, array( 'run_uuid' => $analysis['run_uuid'], 'analysis_checksum' => $analysis['analysis_checksum'], 'source_signature' => $analysis['source_signature'] ), 'dry-run-analysis:' . $analysis['run_uuid'] );
+		if ( ! SNFLA_Audit::record( 'dry_run_analysis_completed', $actor_id, array( 'run_uuid' => $analysis['run_uuid'], 'analysis_checksum' => $analysis['analysis_checksum'], 'source_signature' => $analysis['source_signature'] ), 'dry-run-analysis:' . $analysis['run_uuid'] ) ) {
+			$restored_previous = update_option( self::ANALYSIS_OPTION, $previous_analysis, false ) || get_option( self::ANALYSIS_OPTION, array() ) === $previous_analysis;
+			return new WP_Error( $restored_previous ? 'snfla_dry_run_analysis_audit_failed' : 'snfla_dry_run_analysis_compensation_failed', $restored_previous ? 'The dry-run analysis was reverted because its audit event could not be written.' : 'Dry-run analysis audit failed and previous evidence could not be restored exactly.', array( 'status' => 500, 'manual_recovery_required' => ! $restored_previous ) );
+		}
 		return $analysis;
 	}
 
@@ -420,6 +446,7 @@ final class SNFLA_Plan_Completion {
 		if ( empty( $dry['run_uuid'] ) || empty( $analysis['run_uuid'] ) || ! hash_equals( (string) $dry['run_uuid'], (string) $analysis['run_uuid'] ) || empty( $dry['source_signature'] ) || ! hash_equals( (string) $dry['source_signature'], (string) ( $analysis['source_signature'] ?? '' ) ) ) {
 			return array();
 		}
+		if ( ! SNFLA_Audit::has_event( 'dry_run_analysis_completed', 'dry-run-analysis:' . (string) $analysis['run_uuid'], 'analysis_checksum', $expected_checksum ) ) { return array(); }
 		return $analysis;
 	}
 

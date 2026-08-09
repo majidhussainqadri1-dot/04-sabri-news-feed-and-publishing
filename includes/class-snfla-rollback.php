@@ -161,7 +161,7 @@ final class SNFLA_Rollback {
 				global $wpdb;
 				$tables    = SNFLA_Database::tables();
 				$wpdb->last_error = '';
-				$remaining_raw = $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['map']} WHERE status IN ('migrated','interaction_pending','conflict','rollback_conflict','publication_rolled_back_interactions_pending')" );
+				$remaining_raw = $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['map']} WHERE status NOT IN ('rolled_back','quarantined')" );
 				if ( ! empty( $wpdb->last_error ) || null === $remaining_raw ) {
 					SNFLA_Migration::finish_run( $run_uuid, 'partial', array( 'error' => 'handover_remaining_query_failed' ) );
 					return new WP_Error( 'snfla_handover_remaining_query_failed', 'Full handover restore was blocked because remaining mappings could not be verified.', array( 'status' => 500 ) );
@@ -234,8 +234,12 @@ final class SNFLA_Rollback {
 			$status    = is_array( $map ) ? sanitize_key( $map['status'] ?? '' ) : '';
 			$allowed   = array( 'migrated', 'interaction_pending', 'conflict', 'publication_rolled_back_interactions_pending', 'rollback_conflict' );
 			if ( ! is_array( $map ) || $target_id <= 0 || ! in_array( $status, $allowed, true ) ) { $blocked[ $legacy_id ] = 'mapping_unavailable'; continue; }
+			$progress = SNFLA_Mapping::progress_checked( $legacy_id );
+			if ( is_wp_error( $progress ) ) { $blocked[ $legacy_id ] = 'interaction_progress_corrupt'; continue; }
 			$post = get_post( $target_id );
-			if ( ! $post instanceof WP_Post || ! SNFLA_File21_Adapter::migration_target_valid( $legacy_id, $target_id ) ) { $blocked[ $legacy_id ] = 'target_provenance_failed'; continue; }
+			$publication_already_rolled = in_array( $status, array( 'publication_rolled_back_interactions_pending', 'rollback_conflict' ), true ) && 0 === SNFLA_File21_Adapter::target_for( $legacy_id );
+			$target_valid = $publication_already_rolled ? SNFLA_File21_Adapter::rolled_back_target_valid( $legacy_id, $target_id ) : SNFLA_File21_Adapter::migration_target_valid( $legacy_id, $target_id );
+			if ( ! $post instanceof WP_Post || ! $target_valid ) { $blocked[ $legacy_id ] = 'target_provenance_failed'; continue; }
 			$current_checksum = SNFLA_Checksum::migration_projection_checksum( $target_id, false );
 			if ( '' === $current_checksum || empty( $map['target_checksum'] ) || ! hash_equals( (string) $map['target_checksum'], $current_checksum ) ) {
 				$blocked[ $legacy_id ] = 'target_modified_after_migration';

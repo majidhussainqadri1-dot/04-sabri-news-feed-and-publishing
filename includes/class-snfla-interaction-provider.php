@@ -579,7 +579,7 @@ final class SNFLA_Interaction_Provider {
 				}
 				if ( 'views' === $kind ) {
 					$original       = json_decode( (string) ( $ledger['original_json'] ?? '{}' ), true );
-					$original       = is_array( $original ) ? $original : array();
+					if ( ! is_array( $original ) || JSON_ERROR_NONE !== json_last_error() ) { $issues[] = 'interaction_ledger_original_corrupt'; continue; }
 					$baseline       = isset( $original['baseline'] ) && is_array( $original['baseline'] ) ? $original['baseline'] : array();
 					$baseline_count = ! empty( $ledger['created_by_migration'] ) ? 0 : max( 1, absint( $baseline['view_count'] ?? 1 ) );
 					$contribution = SNFLA_Mapping::interaction_contribution_total( $legacy_id, 'views', $canonical_id );
@@ -635,7 +635,7 @@ final class SNFLA_Interaction_Provider {
 				if ( ! empty( $wpdb->last_error ) ) { $errors[] = 'interaction_rollback_query_' . $kind; continue; }
 				if ( ! is_array( $canonical ) || ! self::row_belongs_to_target( $kind, $canonical, $target_id ) ) { $errors[] = 'interaction_rollback_provenance_' . $kind; continue; }
 				$original = json_decode( (string) ( $row['original_json'] ?? '{}' ), true );
-				$original = is_array( $original ) ? $original : array();
+				if ( ! is_array( $original ) || JSON_ERROR_NONE !== json_last_error() ) { $errors[] = 'interaction_ledger_original_corrupt'; continue; }
 				$baseline = isset( $original['baseline'] ) && is_array( $original['baseline'] ) ? $original['baseline'] : array();
 				if ( ! empty( $row['created_by_migration'] ) || ! empty( $original['created_by_migration'] ) ) {
 					$restore = array( 'status' => $fallback[ $kind ] );

@@ -83,6 +83,19 @@ final class SNFLA_File21_Adapter {
 			&& SNFLA_Inventory::LEGACY_POST_TYPE === (string) get_post_meta( $target_id, '_sabri_hnf_legacy_source_type', true );
 	}
 
+	public static function rolled_back_target_valid( $legacy_id, $target_id ) {
+		$legacy_id = absint( $legacy_id );
+		$target_id = absint( $target_id );
+		$post = $target_id > 0 ? get_post( $target_id ) : null;
+		return $legacy_id > 0
+			&& $post instanceof WP_Post
+			&& in_array( $post->post_type, array( 'post', 'sabri_news' ), true )
+			&& 'private' === (string) $post->post_status
+			&& 0 === self::target_for( $legacy_id )
+			&& absint( get_post_meta( $target_id, '_sabri_hnf_legacy_source_id', true ) ) === $legacy_id
+			&& SNFLA_Inventory::LEGACY_POST_TYPE === (string) get_post_meta( $target_id, '_sabri_hnf_legacy_source_type', true );
+	}
+
 	/**
 	 * Contain a File 21 migration target only through File 21's canonical
 	 * rollback command. File 04 never writes File 21 posts or tables directly.

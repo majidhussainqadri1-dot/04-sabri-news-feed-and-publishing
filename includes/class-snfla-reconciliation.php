@@ -116,8 +116,8 @@ final class SNFLA_Reconciliation {
 			}
 			$object_ref = 'reconciliation:' . $report_uuid;
 			if ( ! SNFLA_Audit::record( 'reconciliation_completed', $actor_id, array( 'source_total' => $source_total, 'verified_mappings' => $verified, 'issue_count' => $issue_count, 'open_conflicts' => $open_conflicts, 'green' => $report['green'], 'complete_scan' => true, 'final_delta_matches_lock' => $report['final_delta_matches_lock'], 'report_checksum' => $report['report_checksum'] ), $object_ref ) ) {
-				update_option( 'snfla_reconciliation_report', $previous_report, false );
-				return new WP_Error( 'snfla_reconciliation_audit_failed', 'The reconciliation report was reverted because audit evidence could not be written.', array( 'status' => 500 ) );
+				$restored_previous = update_option( 'snfla_reconciliation_report', $previous_report, false ) || get_option( 'snfla_reconciliation_report', array() ) === $previous_report;
+				return new WP_Error( $restored_previous ? 'snfla_reconciliation_audit_failed' : 'snfla_reconciliation_compensation_failed', $restored_previous ? 'The reconciliation report was reverted because audit evidence could not be written.' : 'Reconciliation audit failed and the previous report could not be restored exactly.', array( 'status' => 500, 'manual_recovery_required' => ! $restored_previous ) );
 			}
 			$transition = SNFLA_Schema::transition( 'reconciliation', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'report_checksum' => $report['report_checksum'], 'report_uuid' => $report_uuid, 'green' => (bool) $report['green'] ) );
 			if ( is_wp_error( $transition ) ) {

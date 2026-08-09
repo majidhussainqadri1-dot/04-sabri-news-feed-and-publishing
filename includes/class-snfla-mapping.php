@@ -284,20 +284,19 @@ final class SNFLA_Mapping {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
 		$run_uuid = sanitize_text_field( (string) $run_uuid );
-		if ( '' === $run_uuid ) {
-			return true;
-		}
-		$updated = $wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$t['conflicts']} SET status='superseded',resolved_at=%s WHERE run_uuid=%s AND status='open'",
-				gmdate( 'Y-m-d H:i:s' ),
-				$run_uuid
-			)
-		);
-		if ( false === $updated ) {
-			return false;
-		}
-		return 0 === (int) $updated || SNFLA_Audit::record( 'previous_dry_run_conflicts_superseded', $actor_id, array( 'run_uuid' => $run_uuid, 'count' => (int) $updated ), 'dry-run:' . $run_uuid );
+		if ( '' === $run_uuid ) { return true; }
+		$wpdb->last_error = '';
+		$ids = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$t['conflicts']} WHERE run_uuid=%s AND status='open' ORDER BY id ASC", $run_uuid ) );
+		if ( ! is_array( $ids ) || ! empty( $wpdb->last_error ) ) { return false; }
+		$ids = array_values( array_filter( array_map( 'absint', $ids ) ) );
+		if ( empty( $ids ) ) { return true; }
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		$args = array_merge( array( gmdate( 'Y-m-d H:i:s' ) ), $ids );
+		$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['conflicts']} SET status='superseded',resolved_at=%s WHERE status='open' AND id IN ({$placeholders})", $args ) );
+		if ( false === $updated || (int) $updated !== count( $ids ) ) { return false; }
+		if ( SNFLA_Audit::record( 'previous_dry_run_conflicts_superseded', $actor_id, array( 'run_uuid' => $run_uuid, 'count' => count( $ids ) ), 'dry-run:' . $run_uuid ) ) { return true; }
+		$wpdb->query( $wpdb->prepare( "UPDATE {$t['conflicts']} SET status='open',resolved_at=NULL WHERE status='superseded' AND id IN ({$placeholders})", $ids ) );
+		return false;
 	}
 
 	public static function open_conflict( $legacy_id, $code, $severity, array $context, $run_uuid = '' ) {
@@ -327,17 +326,21 @@ final class SNFLA_Mapping {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
 		$codes = array_values( array_unique( array_filter( array_map( 'sanitize_key', $codes ) ) ) );
-		if ( empty( $codes ) ) {
-			return true;
-		}
+		if ( empty( $codes ) ) { return true; }
 		$placeholders = implode( ',', array_fill( 0, count( $codes ), '%s' ) );
-		$args = array_merge( array( gmdate( 'Y-m-d H:i:s' ), absint( $legacy_id ) ), $codes );
-		$sql = "UPDATE {$t['conflicts']} SET status='resolved',resolved_at=%s WHERE legacy_id=%d AND status='open' AND conflict_code IN ({$placeholders})";
-		$updated = $wpdb->query( $wpdb->prepare( $sql, $args ) );
-		if ( false === $updated ) {
-			return false;
-		}
-		return SNFLA_Audit::record( 'system_conflicts_resolved', $actor_id, array( 'legacy_id' => absint( $legacy_id ), 'codes' => $codes, 'resolution' => sanitize_key( $resolution ) ), 'legacy:' . absint( $legacy_id ) );
+		$select_args = array_merge( array( absint( $legacy_id ) ), $codes );
+		$wpdb->last_error = '';
+		$ids = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$t['conflicts']} WHERE legacy_id=%d AND status='open' AND conflict_code IN ({$placeholders}) ORDER BY id ASC", $select_args ) );
+		if ( ! is_array( $ids ) || ! empty( $wpdb->last_error ) ) { return false; }
+		$ids = array_values( array_filter( array_map( 'absint', $ids ) ) );
+		if ( empty( $ids ) ) { return true; }
+		$id_placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		$update_args = array_merge( array( gmdate( 'Y-m-d H:i:s' ) ), $ids );
+		$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['conflicts']} SET status='resolved',resolved_at=%s WHERE status='open' AND id IN ({$id_placeholders})", $update_args ) );
+		if ( false === $updated || (int) $updated !== count( $ids ) ) { return false; }
+		if ( SNFLA_Audit::record( 'system_conflicts_resolved', $actor_id, array( 'legacy_id' => absint( $legacy_id ), 'codes' => $codes, 'resolution' => sanitize_key( $resolution ), 'count' => count( $ids ) ), 'legacy:' . absint( $legacy_id ) ) ) { return true; }
+		$reverted = $wpdb->query( $wpdb->prepare( "UPDATE {$t['conflicts']} SET status='open',resolved_at=NULL WHERE status='resolved' AND id IN ({$id_placeholders})", $ids ) );
+		return false;
 	}
 
 	/** Stream the complete migration/quarantine route disposition manifest in bounded pages. */

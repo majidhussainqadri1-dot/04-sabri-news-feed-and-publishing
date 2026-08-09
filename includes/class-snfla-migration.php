@@ -641,8 +641,19 @@ final class SNFLA_Migration {
 				}
 			}
 			foreach ( $resumable as $legacy_id => $code ) {
-				$current = SNFLA_Mapping::get( $legacy_id );
-				SNFLA_Mapping::upsert( $legacy_id, array( 'target_id' => SNFLA_File21_Adapter::target_for( $legacy_id ), 'target_type' => $current['target_type'] ?? '', 'status' => 'interaction_pending', 'source_checksum' => SNFLA_Checksum::post( $legacy_id ), 'target_checksum' => $current['target_checksum'] ?? '', 'run_uuid' => $run_uuid, 'last_error_code' => $code, 'interaction_ledger' => SNFLA_Mapping::progress( $legacy_id ) ) );
+				$current = SNFLA_Mapping::get_checked( $legacy_id );
+				$progress = SNFLA_Mapping::progress_checked( $legacy_id );
+				if ( is_wp_error( $current ) || is_wp_error( $progress ) ) {
+					$ledger_code = is_wp_error( $current ) ? $current->get_error_code() : $progress->get_error_code();
+					$mapping_failures[ $legacy_id ] = $ledger_code;
+					SNFLA_Mapping::open_conflict( $legacy_id, $ledger_code, 'blocker', array( 'legacy_id' => $legacy_id, 'resumable' => true ), $run_uuid );
+					continue;
+				}
+				if ( ! SNFLA_Mapping::upsert( $legacy_id, array( 'target_id' => SNFLA_File21_Adapter::target_for( $legacy_id ), 'target_type' => $current['target_type'] ?? '', 'status' => 'interaction_pending', 'source_checksum' => SNFLA_Checksum::post( $legacy_id ), 'target_checksum' => $current['target_checksum'] ?? '', 'run_uuid' => $run_uuid, 'last_error_code' => $code, 'interaction_ledger' => $progress ) ) ) {
+					$mapping_failures[ $legacy_id ] = 'interaction_progress_persist_failed';
+					SNFLA_Mapping::open_conflict( $legacy_id, 'interaction_progress_persist_failed', 'blocker', array( 'legacy_id' => $legacy_id, 'resumable' => true ), $run_uuid );
+					continue;
+				}
 				SNFLA_Mapping::open_conflict( $legacy_id, 'interaction_migration_incomplete', 'high', array( 'legacy_id' => $legacy_id, 'resumable' => true ), $run_uuid );
 			}
 			$conflict_outcomes = array_merge( (array) ( $result['skipped'] ?? array() ), $warnings, $mapping_failures );
