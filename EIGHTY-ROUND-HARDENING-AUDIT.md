@@ -72,21 +72,25 @@
 | 63 | Admin signed evidence display | **Defect.** Raw invalid fallback/retirement evidence could be shown as if meaningful. Invalid evidence is explicitly marked and hidden. |
 | 64 | Admin ledger DB read errors | **Defect.** Mapping/conflict DB failures could display as empty data. Admin now surfaces explicit read errors. |
 | 65 | Release / QA integration | **Defect.** Runtime had moved to 2.0.4 while builder, WordPress stable tag, docs and historical/current QA gates still expected 2.0.3; CI failed. Harmonized release metadata, builder, CI and tests and added this permanent 80-round gate. |
-| 66 | Canonical ownership / duplicate-backend regression | **PENDING — fresh review not pre-certified.** |
-| 67 | File21 command/write boundary | **PENDING — fresh review not pre-certified.** |
-| 68 | File26 search/discovery boundary | **PENDING — fresh review not pre-certified.** |
-| 69 | Authentication / CSRF / current-action authority | **PENDING — fresh review not pre-certified.** |
-| 70 | Privacy / PII / redaction / signed-evidence display | **PENDING — fresh review not pre-certified.** |
-| 71 | Bounded queries / keyset traversal / performance | **PENDING — fresh review not pre-certified.** |
-| 72 | Idempotency / locks / resumability | **PENDING — fresh review not pre-certified.** |
-| 73 | Backup / restore / rollback compensation | **PENDING — fresh review not pre-certified.** |
-| 74 | Redirect / fallback / loop / privacy behavior | **PENDING — fresh review not pre-certified.** |
-| 75 | Quarantine / source-only / sensitive containment | **PENDING — fresh review not pre-certified.** |
-| 76 | PHP 8.1 compatibility | **PENDING — fresh review not pre-certified.** |
-| 77 | PHP 8.3 compatibility | **PENDING — fresh review not pre-certified.** |
-| 78 | Accessibility / RTL / localization | **PENDING — fresh review not pre-certified.** |
-| 79 | Deterministic packaging / secret-PII scan | **PENDING — fresh review not pre-certified.** |
-| 80 | Final exact-head architecture / lifecycle truth | **PENDING — fresh review not pre-certified.** |
+| 66 | Canonical ownership / duplicate-backend regression | **No new defect.** File21/File26/File20/File25/File24 ownership remained intact and no duplicate File04 publication backend was introduced. |
+| 67 | File21 command/write boundary | **No new defect.** Migration/rollback remains through canonical File21 commands; no direct File21 post/table writes were introduced. |
+| 68 | File26 search/discovery boundary | **No new defect.** File26 remains the read-only legacy-resolution/search handoff owner; File04 did not acquire ranking or search truth. |
+| 69 | Authentication / CSRF / current-action authority | **No new defect.** REST nonce enforcement, authenticated actors, File00 current-action authority and deny-only capability extension remained intact. |
+| 70 | Privacy / PII / redaction / signed-evidence display | **No new defect.** Redaction, signed evidence validation and invalid-evidence hiding remained fail-closed. |
+| 71 | Bounded queries / keyset traversal / performance | **No new defect.** Bounded batches, keyset traversal and no `OFFSET`/unbounded migration traversal remained intact. |
+| 72 | Idempotency / locks / resumability | **No new defect.** Exact idempotency hashes, operation/migration locks and resumable checkpoints remained intact. |
+| 73 | Backup / restore / rollback compensation | **No new defect.** Backup proof, restore binding, rollback safeguards and verified compensation/manual-recovery paths remained intact. |
+| 74 | Redirect / fallback / loop / privacy behavior | **No new defect.** Fallback still requires File21 outage plus prior migrated provenance; same-origin/different-path loop protection, no-store and noindex remained intact. |
+| 75 | Quarantine / source-only / sensitive containment | **No new defect.** Source-only quarantine remained non-public/fail-closed and sensitive migration containment did not regress. |
+| 76 | PHP 8.1 compatibility | **No new defect.** PHP 8.1 syntax/unit/plan/Future18 and all hardening gates passed. |
+| 77 | PHP 8.3 compatibility | **No new defect.** PHP 8.3 syntax/unit/plan/Future18 and all hardening gates passed. |
+| 78 | Accessibility / RTL / localization | **No new source defect.** Focus visibility, minimum control sizing, reduced-motion, forced-colors and RTL source guardrails remained present. Real browser/screen-reader acceptance remains an external staging gate. |
+| 79 | Deterministic packaging / secret-PII scan | **No new defect.** Secret/PII scan passed and two independent v2.0.4 package builds were byte-identical. |
+| 80 | Final exact-head architecture / lifecycle truth | **No new defect.** Final source architecture stayed within File04 ownership and continued to separate repository/source completion from Staging-Accepted, Live-Deployed and Operational status. |
+
+## Final eighty-round result
+
+Genuine repository/source defects were found in **Rounds 1–65** and each was corrected before the next fresh round. **Rounds 66–80 found no new repository/source defect.** Therefore this audit contains **65 defect rounds** and **15 clean rounds**.
 
 ## Evidence boundary
 
