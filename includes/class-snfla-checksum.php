@@ -30,12 +30,6 @@ final class SNFLA_Checksum {
 		if ( is_string( $encoded ) ) {
 			return $encoded;
 		}
-
-		// Never collapse distinct unencodable evidence to hash(''). The fallback
-		// is deterministic because canonicalize() sorts associative keys and
-		// converts objects/resources to inert scalar/array representations first.
-		// This path is encoding-only; no unserialize operation exists anywhere in
-		// the adapter, so legacy payloads cannot execute object magic methods.
 		return 'snfla-ser-v1:' . base64_encode( serialize( $canonical ) );
 	}
 
@@ -54,13 +48,14 @@ final class SNFLA_Checksum {
 			if ( 0 === strpos( $key, '_edit_' ) || '_wp_old_slug' === $key ) {
 				continue;
 			}
-			// Hash exact stored strings. Never unserialize untrusted legacy metadata,
-			// because object payloads can execute magic methods during inventory.
 			$canonical_meta[ (string) $key ] = array_values( array_map( 'strval', (array) $values ) );
 		}
 		ksort( $canonical_meta );
 		$terms = wp_get_object_terms( $post->ID, 'snp_topic', array( 'fields' => 'slugs' ) );
-		$terms = is_wp_error( $terms ) ? array() : array_values( array_map( 'sanitize_title', (array) $terms ) );
+		if ( is_wp_error( $terms ) ) {
+			return '';
+		}
+		$terms = array_values( array_map( 'sanitize_title', (array) $terms ) );
 		sort( $terms, SORT_STRING );
 		$thumbnail_id = absint( get_post_meta( $post->ID, '_thumbnail_id', true ) );
 
@@ -92,7 +87,10 @@ final class SNFLA_Checksum {
 		}
 		$taxonomy = $source ? 'snp_topic' : ( 'sabri_news' === $post->post_type ? 'sabri_news_topic' : 'post_tag' );
 		$terms = taxonomy_exists( $taxonomy ) ? wp_get_object_terms( $post->ID, $taxonomy, array( 'fields' => 'names' ) ) : array();
-		$terms = is_wp_error( $terms ) ? array() : array_values( array_map( 'sanitize_text_field', (array) $terms ) );
+		if ( is_wp_error( $terms ) ) {
+			return array();
+		}
+		$terms = array_values( array_map( 'sanitize_text_field', (array) $terms ) );
 		sort( $terms, SORT_NATURAL | SORT_FLAG_CASE );
 		$comment_projection = self::comment_projection_digest( $post->ID, (bool) $source );
 		if ( is_wp_error( $comment_projection ) ) { return array(); }
@@ -138,7 +136,6 @@ final class SNFLA_Checksum {
 			&& hash_equals( self::hash( $source ), self::hash( $target ) );
 	}
 
-	/** Stream approved comments into a deterministic bounded-memory digest. */
 	private static function comment_projection_digest( $post_id, $source ) {
 		global $wpdb;
 		$post_id    = absint( $post_id );
