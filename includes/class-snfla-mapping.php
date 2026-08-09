@@ -5,12 +5,22 @@ final class SNFLA_Mapping {
 	public static function get_checked( $legacy_id ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
+		$legacy_id = self::strict_positive_id( $legacy_id );
+		if ( $legacy_id <= 0 ) { return new WP_Error( 'snfla_invalid_legacy_id', 'A canonical positive legacy ID is required.', array( 'status' => 400 ) ); }
 		$wpdb->last_error = '';
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['map']} WHERE legacy_id=%d", absint( $legacy_id ) ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['map']} WHERE legacy_id=%d", $legacy_id ), ARRAY_A );
 		if ( ! empty( $wpdb->last_error ) ) {
 			return new WP_Error( 'snfla_mapping_query_failed', 'The legacy mapping ledger could not be read safely.', array( 'status' => 500 ) );
 		}
 		return is_array( $row ) ? $row : array();
+	}
+
+
+	private static function strict_positive_id( $value ) {
+		if ( is_int( $value ) ) { return $value > 0 ? $value : 0; }
+		if ( ! is_string( $value ) || 1 !== preg_match( '/^[1-9][0-9]*$/D', $value ) ) { return 0; }
+		$parsed = (int) $value;
+		return $parsed > 0 && (string) $parsed === $value ? $parsed : 0;
 	}
 
 	public static function get( $legacy_id ) {
@@ -61,7 +71,8 @@ final class SNFLA_Mapping {
 	public static function delete( $legacy_id ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
-		return false !== $wpdb->delete( $t['map'], array( 'legacy_id' => absint( $legacy_id ) ), array( '%d' ) );
+		$legacy_id = self::strict_positive_id( $legacy_id );
+		return $legacy_id > 0 && false !== $wpdb->delete( $t['map'], array( 'legacy_id' => $legacy_id ), array( '%d' ) );
 	}
 
 	public static function open_conflict_codes( $legacy_id ) {
