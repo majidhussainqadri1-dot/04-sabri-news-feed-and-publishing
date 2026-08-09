@@ -10,6 +10,9 @@ final class SNFLA_Audit {
 		global $wpdb;
 		$t       = SNFLA_Database::tables();
 		$action  = sanitize_key( $action );
+		if ( '' === $action ) {
+			return false;
+		}
 		$context = self::redact( is_array( $context ) ? $context : array() );
 		$context_json = wp_json_encode( $context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 		if ( ! is_string( $context_json ) ) {
@@ -108,13 +111,16 @@ final class SNFLA_Audit {
 		global $wpdb;
 		$t          = SNFLA_Database::tables();
 		$action     = sanitize_key( $action );
+		if ( '' === $action ) {
+			return false;
+		}
 		$object_ref = sanitize_text_field( $object_ref );
 		$cursor     = PHP_INT_MAX;
 		do {
 			$wpdb->last_error = '';
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
-					"SELECT id,context_json FROM {$t['audit']} WHERE action=%s AND object_ref=%s AND id<%d ORDER BY id DESC LIMIT %d",
+					"SELECT id,event_uuid,actor_digest,action,object_ref,context_json,prev_hash,event_hash,created_at FROM {$t['audit']} WHERE action=%s AND object_ref=%s AND id<%d ORDER BY id DESC LIMIT %d",
 					$action,
 					$object_ref,
 					$cursor,
@@ -128,7 +134,7 @@ final class SNFLA_Audit {
 			foreach ( $rows as $row ) {
 				$cursor  = min( $cursor, absint( $row['id'] ?? 0 ) );
 				$context = json_decode( (string) ( $row['context_json'] ?? '' ), true );
-				if ( ! is_array( $context ) || JSON_ERROR_NONE !== json_last_error() ) {
+				if ( ! is_array( $context ) || JSON_ERROR_NONE !== json_last_error() || ! self::event_row_authentic( $row, $context ) ) {
 					return false;
 				}
 				if ( '' === $context_key ) {
@@ -140,6 +146,25 @@ final class SNFLA_Audit {
 			}
 		} while ( count( $rows ) === 500 && $cursor > 0 );
 		return false;
+	}
+
+	private static function event_row_authentic( array $row, array $context ) {
+		$event_hash = strtolower( (string) ( $row['event_hash'] ?? '' ) );
+		$prev_hash  = strtolower( (string) ( $row['prev_hash'] ?? '' ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $event_hash ) || ( '' !== $prev_hash && 1 !== preg_match( '/^[a-f0-9]{64}$/D', $prev_hash ) ) ) {
+			return false;
+		}
+		$payload = array(
+			'event_uuid'   => (string) ( $row['event_uuid'] ?? '' ),
+			'actor_digest' => (string) ( $row['actor_digest'] ?? '' ),
+			'action'       => (string) ( $row['action'] ?? '' ),
+			'object_ref'   => (string) ( $row['object_ref'] ?? '' ),
+			'context'      => $context,
+			'prev_hash'    => $prev_hash,
+			'created_at'   => (string) ( $row['created_at'] ?? '' ),
+		);
+		$actual = hash_hmac( 'sha256', SNFLA_Checksum::encode( $payload ), wp_salt( 'auth' ) );
+		return hash_equals( $event_hash, $actual );
 	}
 
 	public static function redact( array $context, $depth = 0 ) {

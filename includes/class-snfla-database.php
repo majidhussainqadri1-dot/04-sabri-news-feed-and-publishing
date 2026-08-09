@@ -72,8 +72,9 @@ final class SNFLA_Database {
 		} elseif ( SNFLA_Schema::version() < 1 ) {
 			self::compensate_or_fail( $snapshot, $actor_id, new WP_Error( 'snfla_lifecycle_version_corrupt', 'A corrupt persisted lifecycle version blocks activation.' ) );
 		}
-		self::persist_option( 'snfla_schema_version', SNFLA_SCHEMA_VERSION );
-		self::persist_option( 'snfla_plugin_version', SNFLA_VERSION );
+		if ( ! self::persist_option( 'snfla_schema_version', SNFLA_SCHEMA_VERSION ) || ! self::persist_option( 'snfla_plugin_version', SNFLA_VERSION ) || ! self::persist_option( 'snfla_schema_health', array( 'ok' => true, 'code' => '', 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ) ) ) ) {
+			self::compensate_or_fail( $snapshot, $actor_id, new WP_Error( 'snfla_activation_version_evidence_failed', 'Activation version/schema-health evidence could not be persisted.' ) );
+		}
 
 		$final_handover = $snapshot;
 		$final_handover['deactivated_plugins'] = $deactivated;
@@ -87,7 +88,10 @@ final class SNFLA_Database {
 		SNFLA_Plugin::instance()->register_legacy_schema();
 		self::refresh_runtime_state();
 		if ( 'retired' !== (string) get_option( SNFLA_Schema::STATE_OPTION, 'legacy_active' ) && ! wp_next_scheduled( 'snfla_daily_integrity_check' ) ) {
-			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'snfla_daily_integrity_check' );
+			$scheduled = wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'snfla_daily_integrity_check', array(), true );
+			if ( is_wp_error( $scheduled ) || false === $scheduled ) {
+				self::compensate_or_fail( $snapshot, $actor_id, new WP_Error( 'snfla_integrity_schedule_failed', 'The mandatory daily integrity check could not be scheduled.' ) );
+			}
 		}
 		if ( ! SNFLA_Audit::record( 'adapter_activation_handover_completed', $actor_id, array( 'plugin_count' => count( $deactivated ), 'page_count' => count( $page_quarantine ), 'schema_version' => SNFLA_SCHEMA_VERSION ) ) ) {
 			self::compensate_or_fail( $snapshot, $actor_id, new WP_Error( 'snfla_activation_audit_failed', 'Activation was reverted because its audit evidence could not be written.' ) );
@@ -122,7 +126,9 @@ final class SNFLA_Database {
 
 	/** Public-safe page handover evidence without legacy page bodies or titles. */
 	public static function public_page_quarantine_status() {
-		$rows = get_option( 'snfla_legacy_page_quarantine', array() );
+		$handover = get_option( self::HANDOVER_OPTION, array() );
+		if ( ! SNFLA_Integrity::evidence_valid( $handover ) ) { return array(); }
+		$rows = isset( $handover['quarantined_pages'] ) && is_array( $handover['quarantined_pages'] ) ? $handover['quarantined_pages'] : array();
 		$result = array();
 		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
 			if ( ! is_array( $row ) ) { continue; }
@@ -139,8 +145,7 @@ final class SNFLA_Database {
 
 	public static function maybe_upgrade() {
 		$stored_version = (string) get_option( 'snfla_schema_version', '' );
-		$health = get_option( 'snfla_schema_health', array() );
-		if ( SNFLA_SCHEMA_VERSION === $stored_version && is_array( $health ) && ! empty( $health['ok'] ) ) { return; }
+		if ( SNFLA_SCHEMA_VERSION === $stored_version && self::schema_healthy() ) { return; }
 		if ( ! self::acquire_lock( 'schema_upgrade', 5 ) ) {
 			self::persist_option( 'snfla_schema_health', array( 'ok' => false, 'code' => 'snfla_schema_upgrade_locked', 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ) ) );
 			return;
@@ -158,9 +163,13 @@ final class SNFLA_Database {
 	}
 
 	public static function schema_healthy() {
+		static $verified_this_request = null;
 		if ( SNFLA_SCHEMA_VERSION !== (string) get_option( 'snfla_schema_version', '' ) ) { return false; }
-		$health = get_option( 'snfla_schema_health', array() );
-		return is_array( $health ) && ! empty( $health['ok'] );
+		if ( null !== $verified_this_request ) { return $verified_this_request; }
+		$verified = self::verify_schema();
+		$verified_this_request = ! is_wp_error( $verified );
+		self::persist_option( 'snfla_schema_health', array( 'ok' => $verified_this_request, 'code' => is_wp_error( $verified ) ? $verified->get_error_code() : '', 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ) ) );
+		return $verified_this_request;
 	}
 
 	private static function capture_activation_handover( $actor_id ) {
@@ -658,6 +667,20 @@ final class SNFLA_Database {
 			'dry_run' => array( 'id','run_uuid','source_signature','legacy_id','source_checksum','target_type','eligible','conflict_codes_json','created_at' ),
 			'interaction_ledger' => array( 'id','legacy_id','target_id','kind','source_row_id','canonical_row_id','contribution_count','original_json','created_by_migration','status','created_at','updated_at' ),
 		);
+		$column_contracts = array(
+			'runs' => array(
+				'id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'run_uuid'=>array('/^char\(36\)$/','NO'), 'operation'=>array('/^varchar\(32\)$/','NO'), 'status'=>array('/^varchar\(24\)$/','NO'), 'actor_digest'=>array('/^char\(64\)$/','NO'), 'idempotency_hash'=>array('/^char\(64\)$/','NO'), 'source_signature'=>array('/^char\(64\)$/','NO'), 'checkpoint_json'=>array('/^longtext$/','NO'), 'summary_json'=>array('/^longtext$/','NO'), 'started_at'=>array('/^datetime$/','NO'), 'finished_at'=>array('/^datetime$/','YES') ),
+			'map' => array(
+				'id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'legacy_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'target_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO','0'), 'target_type'=>array('/^varchar\(32\)$/','NO',''), 'status'=>array('/^varchar\(32\)$/','NO'), 'source_checksum'=>array('/^char\(64\)$/','NO'), 'target_checksum'=>array('/^char\(64\)$/','NO',''), 'run_uuid'=>array('/^char\(36\)$/','NO'), 'interaction_ledger_json'=>array('/^longtext$/','NO'), 'last_error_code'=>array('/^varchar\(96\)$/','NO',''), 'created_at'=>array('/^datetime$/','NO'), 'updated_at'=>array('/^datetime$/','NO') ),
+			'conflicts' => array(
+				'id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'legacy_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO','0'), 'conflict_code'=>array('/^varchar\(96\)$/','NO'), 'severity'=>array('/^varchar\(16\)$/','NO'), 'fingerprint'=>array('/^char\(64\)$/','NO'), 'status'=>array('/^varchar\(20\)$/','NO','open'), 'redacted_context_json'=>array('/^longtext$/','NO'), 'run_uuid'=>array('/^char\(36\)$/','NO',''), 'created_at'=>array('/^datetime$/','NO'), 'resolved_at'=>array('/^datetime$/','YES') ),
+			'audit' => array(
+				'id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'event_uuid'=>array('/^char\(36\)$/','NO'), 'actor_digest'=>array('/^char\(64\)$/','NO'), 'action'=>array('/^varchar\(96\)$/','NO'), 'object_ref'=>array('/^varchar\(128\)$/','NO',''), 'context_json'=>array('/^longtext$/','NO'), 'prev_hash'=>array('/^char\(64\)$/','NO',''), 'event_hash'=>array('/^char\(64\)$/','NO'), 'created_at'=>array('/^datetime$/','NO') ),
+			'dry_run' => array(
+				'id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'run_uuid'=>array('/^char\(36\)$/','NO'), 'source_signature'=>array('/^char\(64\)$/','NO'), 'legacy_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'source_checksum'=>array('/^char\(64\)$/','NO'), 'target_type'=>array('/^varchar\(32\)$/','NO','auto'), 'eligible'=>array('/^tinyint(?:\(1\))? unsigned$/','NO','0'), 'conflict_codes_json'=>array('/^longtext$/','NO'), 'created_at'=>array('/^datetime$/','NO') ),
+			'interaction_ledger' => array(
+				'id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'legacy_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'target_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'kind'=>array('/^varchar\(24\)$/','NO'), 'source_row_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'canonical_row_id'=>array('/^bigint(?:\(20\))? unsigned$/','NO'), 'contribution_count'=>array('/^bigint(?:\(20\))? unsigned$/','NO','0'), 'original_json'=>array('/^longtext$/','NO'), 'created_by_migration'=>array('/^tinyint(?:\(1\))? unsigned$/','NO','0'), 'status'=>array('/^varchar\(24\)$/','NO','active'), 'created_at'=>array('/^datetime$/','NO'), 'updated_at'=>array('/^datetime$/','NO') ),
+		);
 		$tables = self::tables();
 		$errors = array();
 		foreach ( $required as $key => $columns ) {
@@ -673,15 +696,21 @@ final class SNFLA_Database {
 				continue;
 			}
 			$wpdb->last_error = '';
-			$actual = array_map( 'strtolower', (array) $wpdb->get_col( "SHOW COLUMNS FROM `{$table}`", 0 ) );
-			if ( ! empty( $wpdb->last_error ) ) {
+			$column_rows = $wpdb->get_results( "SHOW COLUMNS FROM `{$table}`", ARRAY_A );
+			if ( ! is_array( $column_rows ) || ! empty( $wpdb->last_error ) ) {
 				$errors[] = $key . '_column_query_failed';
 				continue;
 			}
+			$actual = array(); $column_meta = array();
+			foreach ( $column_rows as $column_row ) { $field=strtolower((string)($column_row['Field']??'')); if(''===$field){continue;} $actual[]=$field; $column_meta[$field]=$column_row; }
 			foreach ( $columns as $column ) {
-				if ( ! in_array( strtolower( $column ), $actual, true ) ) {
-					$errors[] = $key . '_' . $column . '_missing';
-				}
+				$column = strtolower( $column );
+				if ( ! in_array( $column, $actual, true ) ) { $errors[] = $key . '_' . $column . '_missing'; continue; }
+				$rule = $column_contracts[$key][$column] ?? array(); $meta=$column_meta[$column];
+				$type=strtolower(trim((string)($meta['Type']??''))); $nullable=strtoupper((string)($meta['Null']??''));
+				if ( empty($rule) || 1 !== preg_match($rule[0],$type) ) { $errors[]=$key.'_'.$column.'_type_mismatch'; }
+				if ( isset($rule[1]) && $rule[1] !== $nullable ) { $errors[]=$key.'_'.$column.'_nullability_mismatch'; }
+				if ( array_key_exists(2,$rule) && (string)$rule[2] !== (string)($meta['Default']??'') ) { $errors[]=$key.'_'.$column.'_default_mismatch'; }
 			}
 		}
 		$required_indexes = array(
@@ -703,16 +732,18 @@ final class SNFLA_Database {
 			foreach ( $rows as $index ) {
 				$name = (string) ( $index['Key_name'] ?? '' );
 				if ( '' === $name ) { continue; }
-				if ( ! isset( $actual_indexes[ $name ] ) ) { $actual_indexes[ $name ] = array( 'unique' => 0 === absint( $index['Non_unique'] ?? 1 ), 'columns' => array() ); }
+				if ( ! isset( $actual_indexes[ $name ] ) ) { $actual_indexes[ $name ] = array( 'unique' => 0 === absint( $index['Non_unique'] ?? 1 ), 'columns' => array(), 'sub_parts' => array() ); }
 				$seq = max( 1, absint( $index['Seq_in_index'] ?? 1 ) );
 				$actual_indexes[ $name ]['columns'][ $seq ] = strtolower( (string) ( $index['Column_name'] ?? '' ) );
+				$actual_indexes[ $name ]['sub_parts'][ $seq ] = isset( $index['Sub_part'] ) ? absint( $index['Sub_part'] ) : 0;
 			}
-			foreach ( $actual_indexes as &$index ) { ksort( $index['columns'], SORT_NUMERIC ); $index['columns'] = array_values( $index['columns'] ); } unset( $index );
+			foreach ( $actual_indexes as &$index ) { ksort( $index['columns'], SORT_NUMERIC ); ksort( $index['sub_parts'], SORT_NUMERIC ); $index['columns'] = array_values( $index['columns'] ); $index['sub_parts'] = array_values( $index['sub_parts'] ); } unset( $index );
 			foreach ( $index_rules as $name => $rule ) {
 				$must_be_unique = ! empty( $rule[0] ); $required_columns = array_map( 'strtolower', (array) ( $rule[1] ?? array() ) );
 				if ( ! array_key_exists( $name, $actual_indexes ) ) { $errors[] = $key . '_' . $name . '_index_missing'; }
 				elseif ( $must_be_unique && empty( $actual_indexes[ $name ]['unique'] ) ) { $errors[] = $key . '_' . $name . '_unique_missing'; }
 				elseif ( $required_columns !== $actual_indexes[ $name ]['columns'] ) { $errors[] = $key . '_' . $name . '_columns_mismatch'; }
+				elseif ( array_filter( $actual_indexes[ $name ]['sub_parts'] ) ) { $errors[] = $key . '_' . $name . '_prefix_index_not_allowed'; }
 			}
 		}
 		return empty( $errors ) ? true : new WP_Error( 'snfla_schema_verification_failed', 'File 04 database schema verification failed.', array( 'errors' => array_values( array_unique( $errors ) ) ) );
@@ -728,13 +759,19 @@ final class SNFLA_Database {
 
 	public static function acquire_lock( $name, $timeout = 5 ) {
 		global $wpdb;
-		$name = substr( $wpdb->prefix . 'snfla_' . sanitize_key( $name ), 0, 64 );
-		return 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s,%d)', $name, max( 0, absint( $timeout ) ) ) );
+		if ( ! is_string( $name ) || 1 !== preg_match( '/^[a-z0-9_]{1,40}$/D', $name ) || ! is_int( $timeout ) || $timeout < 0 || $timeout > 30 ) { return false; }
+		$lock_name = substr( $wpdb->prefix . 'snfla_' . $name, 0, 64 );
+		$wpdb->last_error=''; $result=$wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s,%d)', $lock_name, $timeout ) );
+		return empty($wpdb->last_error) && 1 === (int)$result;
 	}
 
 	public static function release_lock( $name ) {
 		global $wpdb;
-		$name = substr( $wpdb->prefix . 'snfla_' . sanitize_key( $name ), 0, 64 );
-		$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $name ) );
+		if ( ! is_string( $name ) || 1 !== preg_match( '/^[a-z0-9_]{1,40}$/D', $name ) ) { return false; }
+		$lock_name = substr( $wpdb->prefix . 'snfla_' . $name, 0, 64 );
+		$wpdb->last_error=''; $result=$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
+		$released = empty($wpdb->last_error) && 1 === (int)$result;
+		if ( ! $released ) { do_action( 'snfla_operational_alert_v1', 'database_lock_release_failed', 'critical', array( 'lock_digest' => hash('sha256',$lock_name) ) ); }
+		return $released;
 	}
 }

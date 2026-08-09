@@ -5,6 +5,7 @@ final class SNFLA_Migration {
 	const MAX_BATCH = 100;
 
 	public static function dry_run( $actor_id, $limit = 500, $expected_state = 'inventory_locked', $expected_version = 1 ) {
+		if ( ! is_int( $limit ) || $limit < 50 || $limit > 1000 || ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_dry_run_parameters_invalid', 'Dry-run limit and lifecycle version must be canonical bounded integers.', array( 'status' => 400 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) {
 			return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) );
 		}
@@ -25,10 +26,10 @@ final class SNFLA_Migration {
 				return new WP_Error( 'snfla_inventory_signature_invalid', 'The locked inventory signature is invalid.', array( 'status' => 412 ) );
 			}
 			if ( ! SNFLA_Inventory::unchanged() ) { return new WP_Error( 'snfla_inventory_changed_after_lock', 'The legacy source changed while waiting for the migration lock.', array( 'status' => 409 ) ); }
-			$state_recheck = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), absint( $expected_version ) );
+			$state_recheck = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), $expected_version );
 			if ( is_wp_error( $state_recheck ) ) { return $state_recheck; }
 			$run_uuid = wp_generate_uuid4();
-			$batch_size = min( 1000, max( 50, absint( $limit ) ) );
+			$batch_size = $limit;
 			$totals = array( 'candidate_count' => 0, 'eligible_count' => 0, 'conflict_count' => 0, 'already_migrated' => 0 );
 			$status_counts = array();
 			$conflict_counts = array();
@@ -87,7 +88,7 @@ final class SNFLA_Migration {
 				SNFLA_Mapping::clear_dry_run_rows( $run_uuid );
 				return new WP_Error( 'snfla_dry_run_persist_failed', 'The dry-run report could not be persisted.', array( 'status' => 500 ) );
 			}
-			$transition = SNFLA_Schema::transition( 'dry_run_ready', $expected_state, absint( $expected_version ), $actor_id, array( 'report_checksum' => $report['report_checksum'], 'run_uuid' => $run_uuid, 'complete_scan' => true ) );
+			$transition = SNFLA_Schema::transition( 'dry_run_ready', $expected_state, $expected_version, $actor_id, array( 'report_checksum' => $report['report_checksum'], 'run_uuid' => $run_uuid, 'complete_scan' => true ) );
 			if ( is_wp_error( $transition ) ) {
 				update_option( SNFLA_Schema::DRY_RUN_OPTION, $previous, false );
 				SNFLA_Mapping::clear_dry_run_rows( $run_uuid );
@@ -354,7 +355,8 @@ final class SNFLA_Migration {
 	}
 
 	public static function quarantine_disposition( $actor_id, array $legacy_ids, $reason_code, $decision_reference, $expected_state, $expected_version ) {
-		$legacy_ids = SNFLA_Integrity::normalized_ids( $legacy_ids, self::MAX_BATCH );
+		$legacy_ids = SNFLA_Integrity::strict_positive_ids( $legacy_ids, self::MAX_BATCH );
+		if ( is_wp_error( $legacy_ids ) ) { return new WP_Error( 'snfla_invalid_quarantine_batch', 'Quarantine IDs must be positive, unique and canonical.', array( 'status' => 400 ) ); }
 		$reason_code = sanitize_key( (string) $reason_code );
 		$allowed_reasons = array( 'approved_source_only_retention', 'approved_privacy_exclusion', 'approved_data_quality_exclusion' );
 		$decision_reference = trim( (string) $decision_reference );
@@ -367,7 +369,7 @@ final class SNFLA_Migration {
 		try {
 			$authorized_actor = SNFLA_Capabilities::revalidate_actor( $actor_id, SNFLA_Capabilities::CAP_REVIEW );
 			if ( is_wp_error( $authorized_actor ) ) { return $authorized_actor; }
-			$state = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), absint( $expected_version ) );
+			$state = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), $expected_version );
 			if ( is_wp_error( $state ) ) { return $state; }
 			if ( ! in_array( SNFLA_Schema::state(), array( 'dry_run_ready', 'batch_migration', 'reconciliation' ), true ) ) {
 				return new WP_Error( 'snfla_quarantine_state_invalid', 'Quarantine dispositions are allowed only before redirect cutover.', array( 'status' => 409 ) );
@@ -498,10 +500,12 @@ final class SNFLA_Migration {
 	}
 
 	public static function migrate( $actor_id, array $legacy_ids, $idempotency_key, $expected_state, $expected_version, $with_interactions = true ) {
-		$legacy_ids = SNFLA_Integrity::normalized_ids( $legacy_ids, self::MAX_BATCH );
+		if ( ! is_int( $actor_id ) || $actor_id <= 0 || ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_migration_identity_or_version_invalid', 'Migration actor and lifecycle version must be canonical positive integers.', array( 'status' => 400 ) ); }
+		$legacy_ids = SNFLA_Integrity::strict_positive_ids( $legacy_ids, self::MAX_BATCH );
+		if ( is_wp_error( $legacy_ids ) ) { return new WP_Error( 'snfla_invalid_migration_batch', 'Migration IDs must be positive, unique and canonical.', array( 'status' => 400 ) ); }
 		if ( empty( $legacy_ids ) ) { return new WP_Error( 'snfla_empty_batch', 'Select at least one legacy publication.', array( 'status' => 400 ) ); }
 		$authorized_actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_RUN );
-		if ( is_wp_error( $authorized_actor ) || absint( $authorized_actor ) !== absint( $actor_id ) ) { return new WP_Error( 'snfla_canonical_migration_capability_missing', 'File 21 canonical migration capability and fresh File 00 authority are required.', array( 'status' => 403 ) ); }
+		if ( is_wp_error( $authorized_actor ) || $authorized_actor !== $actor_id ) { return new WP_Error( 'snfla_canonical_migration_capability_missing', 'File 21 canonical migration capability and fresh File 00 authority are required.', array( 'status' => 403 ) ); }
 		if ( ! self::backup_proof_valid() ) { return new WP_Error( 'snfla_backup_proof_required', 'A recent backup and restore proof is required before migration.', array( 'status' => 412 ) ); }
 		if ( ! SNFLA_Inventory::unchanged() ) { return new WP_Error( 'snfla_inventory_changed', 'The legacy source changed after inventory lock.', array( 'status' => 409 ) ); }
 		$dry = get_option( SNFLA_Schema::DRY_RUN_OPTION, array() );
@@ -535,7 +539,7 @@ final class SNFLA_Migration {
 		if ( ! SNFLA_Database::acquire_lock( 'migration', 5 ) ) { SNFLA_Database::release_lock( 'operation' ); return new WP_Error( 'snfla_migration_locked', 'Another migration operation is already running.', array( 'status' => 423 ) ); }
 		try {
 			$authorized_actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_RUN );
-			if ( is_wp_error( $authorized_actor ) || absint( $authorized_actor ) !== absint( $actor_id ) ) {
+			if ( is_wp_error( $authorized_actor ) || $authorized_actor !== $actor_id ) {
 				return new WP_Error( 'snfla_canonical_migration_capability_changed', 'Migration authority changed while waiting for the operation lock.', array( 'status' => 403 ) );
 			}
 			if ( ! self::backup_proof_valid() ) {
@@ -544,7 +548,7 @@ final class SNFLA_Migration {
 			if ( ! SNFLA_Inventory::unchanged() ) {
 				return new WP_Error( 'snfla_inventory_changed_after_lock', 'The legacy source changed while waiting for the migration lock.', array( 'status' => 409 ) );
 			}
-			$state_recheck = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), absint( $expected_version ) );
+			$state_recheck = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), $expected_version );
 			if ( is_wp_error( $state_recheck ) ) { return $state_recheck; }
 
 			$locked = SNFLA_Inventory::locked();
@@ -569,7 +573,7 @@ final class SNFLA_Migration {
 			if ( ! self::create_run( $run_uuid, 'migrate', 'running', $actor_id, $idempotency_hash, (string) $locked['source_signature'], array( 'legacy_ids' => $legacy_ids ) ) ) {
 				return new WP_Error( 'snfla_run_create_failed', 'The migration run ledger could not be created.', array( 'status' => 500 ) );
 			}
-			$transition = SNFLA_Schema::transition( 'batch_migration', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'batch_size' => count( $legacy_ids ), 'run_uuid' => $run_uuid ) );
+			$transition = SNFLA_Schema::transition( 'batch_migration', sanitize_key( $expected_state ), $expected_version, $actor_id, array( 'batch_size' => count( $legacy_ids ), 'run_uuid' => $run_uuid ) );
 			if ( is_wp_error( $transition ) ) {
 				self::finish_run( $run_uuid, 'failed', array( 'error' => $transition->get_error_code() ) );
 				return $transition;
@@ -760,6 +764,7 @@ final class SNFLA_Migration {
 		$uuid = sanitize_text_field( (string) $uuid );
 		$operation = sanitize_key( $operation );
 		$status = sanitize_key( $status );
+		if ( 1 !== preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/Di', $uuid ) || ! in_array( $operation, array( 'migrate', 'rollback' ), true ) || 'running' !== $status ) { return false; }
 		$idempotency_hash = strtolower( sanitize_text_field( (string) $idempotency_hash ) );
 		$signature = strtolower( sanitize_text_field( (string) $signature ) );
 		$checkpoint_json = wp_json_encode( SNFLA_Checksum::canonicalize( $checkpoint ) );
@@ -778,10 +783,13 @@ final class SNFLA_Migration {
 	public static function finish_run( $uuid, $status, array $summary ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
+		$uuid = sanitize_text_field( (string) $uuid );
+		$status = sanitize_key( $status );
+		if ( 1 !== preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/Di', $uuid ) || ! in_array( $status, array( 'completed', 'partial', 'failed', 'audit_failed', 'interrupted' ), true ) ) { return false; }
 		$summary_json = wp_json_encode( SNFLA_Audit::redact( $summary ) );
 		if ( false === $summary_json ) { return false; }
 		$wpdb->last_error = '';
-		$result = $wpdb->update( $t['runs'], array( 'status' => sanitize_key( $status ), 'summary_json' => $summary_json, 'finished_at' => gmdate( 'Y-m-d H:i:s' ) ), array( 'run_uuid' => sanitize_text_field( $uuid ) ), array( '%s', '%s', '%s' ), array( '%s' ) );
+		$result = $wpdb->update( $t['runs'], array( 'status' => $status, 'summary_json' => $summary_json, 'finished_at' => gmdate( 'Y-m-d H:i:s' ) ), array( 'run_uuid' => $uuid ), array( '%s', '%s', '%s' ), array( '%s' ) );
 		return false !== $result && empty( $wpdb->last_error ) && ( 0 < (int) $result || self::run_has_status( $uuid, $status ) );
 	}
 
@@ -796,12 +804,16 @@ final class SNFLA_Migration {
 	public static function existing_run( $operation, $idempotency_hash ) {
 		global $wpdb;
 		$t = SNFLA_Database::tables();
+		$operation = sanitize_key( $operation );
+		$idempotency_hash = strtolower( (string) $idempotency_hash );
+		if ( ! in_array( $operation, array( 'migrate', 'rollback' ), true ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $idempotency_hash ) ) { return new WP_Error( 'snfla_run_ledger_identity_invalid', 'Run-ledger lookup identity is invalid.', array( 'status' => 400 ) ); }
 		$wpdb->last_error = '';
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT run_uuid,operation,status,source_signature,checkpoint_json,summary_json,started_at,finished_at FROM {$t['runs']} WHERE operation=%s AND idempotency_hash=%s LIMIT 1", sanitize_key( $operation ), strtolower( sanitize_text_field( (string) $idempotency_hash ) ) ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT run_uuid,operation,status,source_signature,checkpoint_json,summary_json,started_at,finished_at FROM {$t['runs']} WHERE operation=%s AND idempotency_hash=%s LIMIT 1", $operation, $idempotency_hash ), ARRAY_A );
 		if ( ! empty( $wpdb->last_error ) ) {
 			return new WP_Error( 'snfla_run_ledger_query_failed', 'The operation run ledger could not be read safely.', array( 'status' => 500 ) );
 		}
 		if ( ! is_array( $row ) ) { return array(); }
+		if ( 1 !== preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/Di', (string) ( $row['run_uuid'] ?? '' ) ) || (string) ( $row['operation'] ?? '' ) !== $operation || ! in_array( (string) ( $row['status'] ?? '' ), array( 'running', 'completed', 'partial', 'failed', 'audit_failed', 'interrupted' ), true ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $row['source_signature'] ?? '' ) ) ) { return new WP_Error( 'snfla_run_ledger_corrupt', 'The operation run ledger contains invalid identity or state evidence.', array( 'status' => 500 ) ); }
 		$row['checkpoint'] = json_decode( (string) $row['checkpoint_json'], true );
 		$row['summary'] = json_decode( (string) $row['summary_json'], true );
 		if ( ! is_array( $row['checkpoint'] ) || ! is_array( $row['summary'] ) ) {

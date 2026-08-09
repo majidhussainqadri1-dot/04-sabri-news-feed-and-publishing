@@ -1,0 +1,47 @@
+name: File04 R79 exact-head full regression
+on:
+  push:
+    branches: [audit-file-04-eighty-round-2]
+permissions:
+  contents: read
+jobs:
+  source-regression:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1','8.3']
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: PHP syntax
+        run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
+      - name: Unit checks
+        run: php tests/run-unit.php
+      - name: Central plan
+        run: php tests/run-central-plan.php
+      - name: Architecture
+        run: python3 tests/run-architecture.py
+      - name: File04 own plan
+        run: python3 tests/run-file04-own-plan.py
+      - name: Future18
+        run: python3 tests/run-future18.py
+      - name: Future18 reviews
+        run: python3 tests/run-future18-reviews.py
+      - name: Historical first ten
+        run: python3 tests/run-ten-round-post-future18.py
+      - name: Second ten
+        run: python3 tests/run-second-ten-round-hardening.py
+      - name: Third ten
+        run: python3 tests/run-third-ten-round-hardening.py
+      - name: Historical first eighty
+        run: python3 tests/run-eighty-round-hardening.py
+      - name: Second fresh eighty through R79
+        run: python3 tests/run-second-eighty-round-hardening.py
+      - name: Deterministic release evidence
+        run: python3 tools/build-release.py --verify-only

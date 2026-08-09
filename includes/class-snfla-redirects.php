@@ -137,22 +137,23 @@ final class SNFLA_Redirects {
 	}
 
 	public static function open_fallback( $actor_id, $hours, $expected_state, $expected_version ) {
+		if ( ! is_int( $hours ) || $hours < 1 || $hours > 168 || ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_fallback_parameters_invalid', 'Fallback hours and lifecycle version must be canonical bounded integers.', array( 'status' => 400 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) {
 			return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) );
 		}
 		try {
 			$authorized_actor = SNFLA_Capabilities::revalidate_actor( $actor_id, SNFLA_Capabilities::CAP_REVIEW );
 			if ( is_wp_error( $authorized_actor ) ) { return $authorized_actor; }
-			$state_check = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), absint( $expected_version ) );
+			$state_check = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), $expected_version );
 			if ( is_wp_error( $state_check ) ) { return $state_check; }
 			if ( ! SNFLA_Reconciliation::validate_current_report() ) {
 				return new WP_Error( 'snfla_reconciliation_not_green', 'A fresh green reconciliation report is required before opening fallback.', array( 'status' => 412 ) );
 			}
-			$hours = min( 168, max( 1, absint( $hours ) ) );
+			$hours = $hours;
 			$window = SNFLA_Integrity::sign_evidence( array( 'opened_at_utc' => gmdate( 'Y-m-d H:i:s' ), 'expires_at_utc' => gmdate( 'Y-m-d H:i:s', time() + $hours * HOUR_IN_SECONDS ), 'hours' => $hours, 'read_only' => true, 'tombstone_only' => false, 'public_source_fallback' => true, 'reconciliation_checksum' => SNFLA_Reconciliation::report()['report_checksum'] ?? '' ) );
 			$previous = get_option( SNFLA_Schema::FALLBACK_OPTION, array() );
 			if ( ! update_option( SNFLA_Schema::FALLBACK_OPTION, $window, false ) ) { return new WP_Error( 'snfla_fallback_persist_failed', 'The fallback window could not be persisted.', array( 'status' => 500 ) ); }
-			$transition = SNFLA_Schema::transition( 'read_only_fallback', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'hours' => $hours, 'fallback_checksum' => SNFLA_Checksum::hash( $window ) ) );
+			$transition = SNFLA_Schema::transition( 'read_only_fallback', sanitize_key( $expected_state ), $expected_version, $actor_id, array( 'hours' => $hours, 'fallback_checksum' => SNFLA_Checksum::hash( $window ) ) );
 			if ( is_wp_error( $transition ) ) { update_option( SNFLA_Schema::FALLBACK_OPTION, $previous, false ); return $transition; }
 			return array( 'window' => $window, 'lifecycle' => $transition );
 		} finally {

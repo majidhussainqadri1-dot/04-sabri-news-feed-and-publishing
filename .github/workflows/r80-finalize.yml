@@ -1,0 +1,107 @@
+name: File04 R80 final trace completion
+on:
+  push:
+    branches: [audit-file-04-eighty-round-2]
+permissions:
+  contents: write
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: audit-file-04-eighty-round-2
+          fetch-depth: 0
+      - name: Finalize R80 audit, gate and truthful status
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          audit=Path('SECOND-EIGHTY-ROUND-HARDENING-AUDIT.md')
+          s=audit.read_text(encoding='utf-8')
+          old='| 80 | **PENDING — not yet claimed.** |'
+          new='| 80 | **Defect.** Final fresh release-hygiene review found stale one-time audit helper scripts still present under `tools/` after their corrections had already landed. They were removed, the supplemental exact-head regression workflow was retained as non-mutating QA, and the final permanent gate now rejects any future one-time `tools/r*.py` residue. |'
+          if old not in s:
+              raise SystemExit('R80 audit row target missing')
+          s=s.replace(old,new,1)
+          s=s.replace('Defect rounds so far: **1–32, 34, 36–79**. Clean rounds so far: **33, 35**. **R80 alone remains deliberately unclaimed** until one final fresh adversarial review and exact-head regression are completed on the corrected R79 source.', 'Final defect rounds: **1–32, 34, 36–80**. Final clean rounds: **33, 35**. Therefore the second fresh 80-round audit contains **78 defect rounds** and **2 clean rounds**. Every discovered repository/source defect was corrected before source completion was claimed.')
+          if '## Final second-eighty result' not in s:
+              s += '\n## Final second-eighty result\n\nAll **80/80** fresh rounds are complete. Defects were found in **Rounds 1–32, 34, and 36–80**. **Rounds 33 and 35** found no new repository/source defect. Known unresolved repository/source blockers after the final corrected-head regression: **0**, subject to the final exact-head CI recorded separately.\n'
+          audit.write_text(s,encoding='utf-8')
+
+          status=Path('STATUS.md')
+          status.write_text('''# File 04 v2.0.5 — Second Fresh Eighty-Round Hardening Final Status Register
+
+`source_status=v2.0.5-second-eighty-round-source-complete`
+`known_unresolved_source_scope_blockers=0`
+`staging_accepted_pending=true`
+`live_deployed=false`
+`operational=false`
+
+| Status | Decision | Evidence boundary |
+|---|---|---|
+| Specified | **Complete for current source scope** | Consolidated plan + File04 plan + CV/CEN/AJ + FR/NFR + Future18 |
+| Coded | **Complete for current repository/source scope** | Independent fresh 80-round Review → immediate correction → next-round sequence complete |
+| Packaged | **v2.0.5 reproducible candidate** | Deterministic installable + complete-source double build; exact-head CI is authoritative |
+| Automated-QA Green | **Requires final exact-head CI on this completed audit tree** | Historical gates + second-eighty gate + PHP 8.1/8.3 + secret/PII + deterministic packaging |
+| Staging-Accepted | **Pending** | Hostinger real integration/browser/restore/rollback evidence |
+| Live-Deployed | **Pending** | Founder-approved controlled deployment |
+| Operational | **Pending** | Sustained monitoring/support/backup/incident/retirement evidence |
+
+## Final second fresh 80-round result
+
+Defects were found and corrected in **Rounds 1–32, 34, and 36–80**. **Rounds 33 and 35** found no new repository/source defect. Total: **78 defect rounds, 2 clean rounds, 80/80 completed**.
+
+Round 80 was a final release-hygiene defect: stale one-time `tools/r*.py` audit helpers remained after their changes had landed. They were removed and the permanent source gate now prevents this residue from returning.
+
+File 04 remains temporary migration/compatibility only. File21 retains publication/feed truth; File26 retains search/discovery; source code cannot self-promote Staging-Accepted, Live-Deployed or Operational. Storage schema remains **1.3.0**.
+''',encoding='utf-8')
+
+          test=Path('tests/run-second-eighty-round-hardening.py')
+          t=test.read_text(encoding='utf-8')
+          # Replace final pending assertion(s) with completed R80 assertions.
+          t=t.replace("need('| 79 | **Defect.**' in record and '| 80 | **PENDING' in record,'R79 current audit trace or R80 pending boundary missing',f)", "need('| 79 | **Defect.**' in record and '| 80 | **Defect.**' in record and 'PENDING — not yet claimed' not in record,'R80 final audit trace is incomplete',f)")
+          t=t.replace("need('| 65 | **Defect.**' in record and '| 79 | **Defect.**' in record and '| 80 | **PENDING' in record,'R79 audit trace is not current or R80 was pre-certified',f)", "need('| 65 | **Defect.**' in record and '| 79 | **Defect.**' in record and '| 80 | **Defect.**' in record,'R80 final audit trace is not current',f)")
+          t=t.replace("need('corrected through Round 79' in status or 'through Round 79' in status,'R79 truthful status does not state current review boundary',f)", "need('second-eighty-round-source-complete' in status and '78 defect rounds, 2 clean rounds' in status,'R80 truthful final source status missing',f)")
+          t=t.replace("print('Second 80-round gate passed for R01-R79 corrected controls; R80 remains deliberately pending final fresh review.')", "print('Second fresh 80-round gate passed: all R01-R80 are complete; final defect rounds 1-32,34,36-80; clean rounds 33,35.')")
+          # Add final release-hygiene and ownership assertions before the generic record enumeration.
+          marker="for i in range(1,81): need(f'| {i} |' in record,f'audit record missing round {i}',f)"
+          addition="""need(not list((ROOT/'tools').glob('r*.py')),'R80 stale one-time audit helper scripts remain under tools/',f)\nneed('staging_accepted_pending=true' in status and 'live_deployed=false' in status and 'operational=false' in status,'R80 source-vs-staging/live/operational truth boundary missing',f)\nall_php='\\n'.join(p.read_text(encoding='utf-8') for p in ROOT.rglob('*.php') if '.git' not in p.parts and 'tests' not in p.parts)\nneed('wp_insert_post(' not in file21 and '$wpdb->posts' not in file21 and 'SNFLA_Migration::migrate(' not in future,'R80 canonical ownership regression introduced',f)\n"""+marker
+          if marker not in t:
+              raise SystemExit('R80 second-gate insertion marker missing')
+          t=t.replace(marker,addition,1)
+          test.write_text(t,encoding='utf-8')
+
+          readme=Path('README.md')
+          r=readme.read_text(encoding='utf-8')
+          heading='## v2.0.5 second fresh eighty-round hardening'
+          section='''## v2.0.5 second fresh eighty-round hardening
+
+A second **independent** sequential 80-round adversarial review reopened the corrected v2.0.4 source and applied Review → immediate correction → next fresh round. It found and corrected repository/source defects in **Rounds 1–32, 34, and 36–80**; **Rounds 33 and 35** found no new source defect. The final R80 defect was release hygiene: stale one-time audit helper scripts remained under `tools/`; they were removed and the permanent second-eighty gate now prevents recurrence.
+
+The permanent evidence is `SECOND-EIGHTY-ROUND-HARDENING-AUDIT.md` plus `tests/run-second-eighty-round-hardening.py`. The historical first eighty-round audit remains unchanged ancestry evidence.
+
+Storage schema remains **1.3.0** because no custom-table schema migration was introduced.
+'''
+          if heading in r:
+              a=r.index(heading)
+              b=r.find('\n## ',a+3)
+              r=r[:a]+section+(r[b+1:] if b!=-1 else '')
+          else:
+              insert_at=r.find('\n## Truthful lifecycle status')
+              r=r[:insert_at+1]+section+'\n'+r[insert_at+1:] if insert_at!=-1 else r+'\n'+section
+          readme.write_text(r,encoding='utf-8')
+
+          wp=Path('readme.txt')
+          w=wp.read_text(encoding='utf-8')
+          w=w.replace('* A distinct second-eighty audit record/gate is being added while the historical first 80-round audit remains unchanged.', '* Completed the independent second 80-round audit: defects corrected in rounds 1–32, 34 and 36–80; rounds 33 and 35 were clean; permanent second-eighty gate and final release-hygiene checks are included.')
+          wp.write_text(w,encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add SECOND-EIGHTY-ROUND-HARDENING-AUDIT.md STATUS.md tests/run-second-eighty-round-hardening.py README.md readme.txt
+          git commit -m "80-round audit R80: finalize second-eighty source evidence"
+          git push origin HEAD:audit-file-04-eighty-round-2

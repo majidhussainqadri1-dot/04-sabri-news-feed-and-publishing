@@ -28,18 +28,21 @@ final class SNFLA_Interaction_Provider {
 
 	/** Called synchronously by File 21 while File 04 already owns the migration lock. */
 	public static function migrate( array $context ) {
+		$budget = self::budget( $context['max_records'] ?? self::DEFAULT_RECORD_BUDGET );
+		if ( $budget <= 0 ) { return array( 'status' => 'failed', 'migrated_records' => 0, 'migrated_metrics' => array(), 'skipped_records' => 0, 'processed_records' => 0, 'remaining' => true, 'errors' => array( 'interaction_budget_invalid' ) ); }
 		return self::run(
-			absint( $context['legacy_id'] ?? 0 ),
-			absint( $context['target_id'] ?? 0 ),
-			absint( $context['actor_id'] ?? 0 ),
-			self::budget( $context['max_records'] ?? self::DEFAULT_RECORD_BUDGET )
+			self::strict_positive_id( $context['legacy_id'] ?? 0 ),
+			self::strict_positive_id( $context['target_id'] ?? 0 ),
+			self::strict_positive_id( $context['actor_id'] ?? 0 ),
+			$budget
 		);
 	}
 
 	/** Resume a previously bounded interaction import without re-importing recorded source rows. */
 	public static function resume( $actor_id, $legacy_id, $max_records = self::DEFAULT_RECORD_BUDGET ) {
-		$legacy_id = absint( $legacy_id );
-		$actor_id  = absint( $actor_id );
+		$legacy_id = self::strict_positive_id( $legacy_id );
+		$actor_id  = self::strict_positive_id( $actor_id );
+		if ( $legacy_id <= 0 || $actor_id <= 0 ) { return new WP_Error( 'snfla_interaction_resume_identity_invalid', 'Canonical positive actor and legacy IDs are required.', array( 'status' => 400 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) {
 			return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) );
 		}
@@ -63,7 +66,9 @@ final class SNFLA_Interaction_Provider {
 			if ( ! SNFLA_File21_Adapter::migration_target_valid( $legacy_id, $target_id ) ) {
 				return new WP_Error( 'snfla_interaction_resume_target_changed', 'The canonical File 21 target changed or lost migration provenance.', array( 'status' => 409 ) );
 			}
-			$result = self::run( $legacy_id, $target_id, $actor_id, self::budget( $max_records ) );
+			$budget = self::budget( $max_records );
+			if ( $budget <= 0 ) { return new WP_Error( 'snfla_interaction_budget_invalid', 'Interaction record budget must be an integer within the supported bound.', array( 'status' => 400 ) ); }
+			$result = self::run( $legacy_id, $target_id, $actor_id, $budget );
 			if ( is_wp_error( $result ) ) {
 				return $result;
 			}
@@ -99,8 +104,16 @@ final class SNFLA_Interaction_Provider {
 		}
 	}
 
+	private static function strict_positive_id( $value ) {
+		if ( is_int( $value ) ) { return $value > 0 ? $value : 0; }
+		if ( ! is_string( $value ) || 1 !== preg_match( '/^[1-9][0-9]*$/D', $value ) ) { return 0; }
+		$parsed = (int) $value;
+		return $parsed > 0 && (string) $parsed === $value ? $parsed : 0;
+	}
+
 	private static function budget( $value ) {
-		return min( self::MAX_RECORD_BUDGET, max( self::PAGE_SIZE, absint( $value ) ) );
+		if ( ! is_int( $value ) || $value < 1 || $value > self::MAX_RECORD_BUDGET ) { return 0; }
+		return max( self::PAGE_SIZE, $value );
 	}
 
 	private static function run( $legacy_id, $target_id, $actor_id, $record_budget ) {
@@ -187,15 +200,24 @@ final class SNFLA_Interaction_Provider {
 		);
 	}
 
+	private static function progress_state_valid( array $state ) {
+		if ( isset( $state['cursor'] ) && ( ! is_int( $state['cursor'] ) || $state['cursor'] < 0 ) ) { return false; }
+		foreach ( array( 'complete', 'meta_complete' ) as $flag ) { if ( isset( $state[ $flag ] ) && ! is_bool( $state[ $flag ] ) ) { return false; } }
+		return true;
+	}
+
 	private static function migrate_kind( $kind, $legacy_id, $target_id, $budget, array &$progress ) {
 		global $wpdb;
 		$legacy_table = $wpdb->prefix . 'snp_' . $kind;
+		$wpdb->last_error = '';
 		$exists       = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $legacy_table ) ) );
+		if ( ! empty( $wpdb->last_error ) ) { return array( 'processed' => 0, 'migrated' => 0, 'skipped' => 0, 'remaining' => true, 'errors' => array( 'interaction_source_schema_query_failed_' . $kind ) ); }
 		$has_table    = $exists === $legacy_table;
 		$state        = isset( $progress['interaction_progress'][ $kind ] ) && is_array( $progress['interaction_progress'][ $kind ] ) ? $progress['interaction_progress'][ $kind ] : array();
-		$cursor       = absint( $state['cursor'] ?? 0 );
-		$meta_complete = 'views' !== $kind || ! empty( $state['meta_complete'] );
 		$report       = array( 'processed' => 0, 'migrated' => 0, 'skipped' => 0, 'remaining' => false, 'errors' => array() );
+		if ( ! self::progress_state_valid( $state ) ) { $report['errors'][] = 'interaction_progress_state_corrupt'; return $report; }
+		$cursor       = isset( $state['cursor'] ) ? (int) $state['cursor'] : 0;
+		$meta_complete = 'views' !== $kind || ( isset( $state['meta_complete'] ) && true === $state['meta_complete'] );
 		$fatal        = false;
 
 		if ( $has_table ) {
@@ -212,7 +234,7 @@ final class SNFLA_Interaction_Provider {
 					break;
 				}
 				foreach ( $rows as $row ) {
-					$source_row_id = absint( $row['id'] ?? 0 );
+					$source_row_id = self::strict_positive_id( $row['id'] ?? 0 );
 					$report['processed']++;
 					$budget--;
 					if ( $source_row_id <= 0 ) {

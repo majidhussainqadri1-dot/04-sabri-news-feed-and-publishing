@@ -6,10 +6,12 @@ final class SNFLA_Rollback {
 	const MAX_BATCH = 100;
 
 	public static function execute( $actor_id, array $legacy_ids, $idempotency_key, $expected_state, $expected_version, $restore_handover = false, $handover_confirmation = '' ) {
-		$legacy_ids = SNFLA_Integrity::normalized_ids( $legacy_ids, self::MAX_BATCH );
+		if ( ! is_int( $actor_id ) || $actor_id <= 0 || ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_rollback_identity_or_version_invalid', 'Rollback actor and lifecycle version must be canonical positive integers.', array( 'status' => 400 ) ); }
+		$legacy_ids = SNFLA_Integrity::strict_positive_ids( $legacy_ids, self::MAX_BATCH );
+		if ( is_wp_error( $legacy_ids ) ) { return new WP_Error( 'snfla_invalid_rollback_batch', 'Rollback IDs must be positive, unique and canonical.', array( 'status' => 400 ) ); }
 		if ( empty( $legacy_ids ) ) { return new WP_Error( 'snfla_empty_rollback_batch', 'Select at least one migrated legacy publication.', array( 'status' => 400 ) ); }
 		$authorized_actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_RUN );
-		if ( is_wp_error( $authorized_actor ) || absint( $authorized_actor ) !== absint( $actor_id ) ) { return new WP_Error( 'snfla_canonical_migration_capability_missing', 'File 21 canonical migration capability and fresh File 00 authority are required.', array( 'status' => 403 ) ); }
+		if ( is_wp_error( $authorized_actor ) || $authorized_actor !== $actor_id ) { return new WP_Error( 'snfla_canonical_migration_capability_missing', 'File 21 canonical migration capability and fresh File 00 authority are required.', array( 'status' => 403 ) ); }
 		if ( ! SNFLA_Migration::backup_proof_valid() ) { return new WP_Error( 'snfla_backup_proof_required', 'A recent backup and restore proof is required.', array( 'status' => 412 ) ); }
 		$state_check = SNFLA_Schema::assert_current( $expected_state, $expected_version );
 		if ( is_wp_error( $state_check ) ) { return $state_check; }
@@ -32,7 +34,7 @@ final class SNFLA_Rollback {
 		$run_uuid = wp_generate_uuid4();
 		try {
 			$authorized_actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_RUN );
-			if ( is_wp_error( $authorized_actor ) || absint( $authorized_actor ) !== absint( $actor_id ) ) {
+			if ( is_wp_error( $authorized_actor ) || $authorized_actor !== $actor_id ) {
 				return new WP_Error( 'snfla_rollback_authority_changed', 'Rollback authority changed while waiting for the operation lock.', array( 'status' => 403 ) );
 			}
 			if ( ! SNFLA_Migration::backup_proof_valid() ) {
@@ -251,6 +253,23 @@ final class SNFLA_Rollback {
 			if ( 0 === $canonical_target && ! in_array( $status, array( 'publication_rolled_back_interactions_pending', 'rollback_conflict' ), true ) ) { $blocked[ $legacy_id ] = 'unexpected_file21_mapping_absence'; }
 		}
 		return empty( $blocked ) ? true : new WP_Error( 'snfla_rollback_conflict', 'Rollback stopped because one or more targets are unavailable, changed, or have inconsistent File 21 mapping state.', array( 'status' => 409, 'blocked' => $blocked ) );
+	}
+
+	public static function proof_current() {
+		$proof = self::proof();
+		if ( ! SNFLA_Integrity::evidence_valid( $proof ) ) { return false; }
+		$locked = SNFLA_Inventory::locked();
+		$source_signature = strtolower( (string) ( $locked['source_signature'] ?? '' ) );
+		$proof_signature = strtolower( (string) ( $proof['source_signature'] ?? '' ) );
+		$performed = ! empty( $proof['performed_at_utc'] ) ? strtotime( (string) $proof['performed_at_utc'] . ' UTC' ) : false;
+		$run_uuid = (string) ( $proof['run_uuid'] ?? '' );
+		return 1 === preg_match( '/^[a-f0-9]{64}$/D', $source_signature )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $proof_signature )
+			&& hash_equals( $source_signature, $proof_signature )
+			&& SNFLA_Inventory::unchanged()
+			&& false !== $performed && $performed >= time() - 7 * DAY_IN_SECONDS && $performed <= time() + 300
+			&& 1 === preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/Di', $run_uuid )
+			&& SNFLA_Audit::has_event( 'rollback_completed', '', 'run_uuid', $run_uuid );
 	}
 
 	public static function proof() {

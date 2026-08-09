@@ -62,7 +62,7 @@ final class SNFLA_Schema {
 		try {
 			$to               = sanitize_key( $to );
 			$expected_state   = sanitize_key( $expected_state );
-			$expected_version = absint( $expected_version );
+			if ( ! is_int( $expected_version ) || $expected_version < 1 || ! is_int( $actor_id ) || $actor_id <= 0 ) { return new WP_Error( 'snfla_lifecycle_identity_or_version_invalid', 'Lifecycle actor/version must be canonical positive integers.', array( 'status' => 400 ) ); }
 			$current          = self::state();
 			$version          = self::version();
 			if ( self::INVALID_STATE === $current || $version < 1 ) {
@@ -91,7 +91,9 @@ final class SNFLA_Schema {
 			if ( ! $recorded ) {
 				update_option( self::STATE_OPTION, $current, false );
 				update_option( self::STATE_VERSION_OPTION, $version, false );
-				return new WP_Error( 'snfla_lifecycle_audit_failed', 'The lifecycle transition was rolled back because audit evidence could not be written.', array( 'status' => 500 ) );
+				$restored = self::state() === $current && self::version() === $version;
+				if ( ! $restored ) { do_action( 'snfla_operational_alert_v1', 'lifecycle_audit_compensation_failed', 'critical', array( 'expected_state' => $current, 'expected_version' => $version ) ); }
+				return new WP_Error( $restored ? 'snfla_lifecycle_audit_failed' : 'snfla_lifecycle_compensation_failed', $restored ? 'The lifecycle transition was rolled back because audit evidence could not be written.' : 'Audit persistence failed and the previous lifecycle state/version could not be restored exactly.', array( 'status' => 500, 'manual_recovery_required' => ! $restored ) );
 			}
 			return array( 'state' => $to, 'version' => $version + 1 );
 		} finally {
@@ -101,7 +103,7 @@ final class SNFLA_Schema {
 
 	public static function assert_current( $expected_state, $expected_version ) {
 		$expected_state   = sanitize_key( $expected_state );
-		$expected_version = absint( $expected_version );
+		if ( ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_lifecycle_version_invalid', 'Lifecycle version must be a canonical positive integer.', array( 'status' => 400 ) ); }
 		$current = self::state();
 		if ( self::INVALID_STATE === $current || self::version() < 1 ) {
 			return new WP_Error( 'snfla_lifecycle_state_invalid', 'The persisted lifecycle state is invalid. Repair is required before continuing.', array( 'status' => 412 ) );
@@ -114,7 +116,7 @@ final class SNFLA_Schema {
 
 	public static function recover_to_batch( $expected_state, $expected_version, $actor_id, $context = array() ) {
 		$expected_state   = sanitize_key( $expected_state );
-		$expected_version = absint( $expected_version );
+		if ( ! is_int( $expected_version ) || $expected_version < 1 || ! is_int( $actor_id ) || $actor_id <= 0 ) { return new WP_Error( 'snfla_lifecycle_identity_or_version_invalid', 'Lifecycle recovery actor/version must be canonical positive integers.', array( 'status' => 400 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'lifecycle', 5 ) ) {
 			return new WP_Error( 'snfla_lifecycle_locked', 'Another lifecycle transition is running.', array( 'status' => 423 ) );
 		}
@@ -142,7 +144,9 @@ final class SNFLA_Schema {
 			if ( ! SNFLA_Audit::record( 'lifecycle_recovered_to_batch', $actor_id, $payload ) ) {
 				update_option( self::STATE_OPTION, $current, false );
 				update_option( self::STATE_VERSION_OPTION, $version, false );
-				return new WP_Error( 'snfla_lifecycle_audit_failed', 'Rollback recovery was reverted because audit evidence could not be written.', array( 'status' => 500 ) );
+				$restored = self::state() === $current && self::version() === $version;
+				if ( ! $restored ) { do_action( 'snfla_operational_alert_v1', 'lifecycle_recovery_audit_compensation_failed', 'critical', array( 'expected_state' => $current, 'expected_version' => $version ) ); }
+				return new WP_Error( $restored ? 'snfla_lifecycle_audit_failed' : 'snfla_lifecycle_compensation_failed', $restored ? 'Rollback recovery was reverted because audit evidence could not be written.' : 'Rollback-recovery audit failed and the prior lifecycle pair could not be restored exactly.', array( 'status' => 500, 'manual_recovery_required' => ! $restored ) );
 			}
 			return array( 'state' => 'batch_migration', 'version' => $version + 1 );
 		} finally {
