@@ -56,12 +56,12 @@ final class SNFLA_Admin {
 			switch ( $tab ) {
 				case 'inventory': self::json_block( SNFLA_Inventory::locked() ); break;
 				case 'dry-run': self::json_block( get_option( SNFLA_Schema::DRY_RUN_OPTION, array() ) ); break;
-				case 'mapping': self::table_block( $wpdb->get_results( "SELECT legacy_id,target_id,target_type,status,source_checksum,target_checksum,run_uuid,last_error_code,updated_at FROM {$t['map']} ORDER BY legacy_id ASC LIMIT 500", ARRAY_A ) ); break;
-				case 'conflicts': self::table_block( $wpdb->get_results( "SELECT id,legacy_id,conflict_code,severity,status,run_uuid,created_at,resolved_at FROM {$t['conflicts']} ORDER BY status ASC,severity DESC,id DESC LIMIT 500", ARRAY_A ) ); break;
-				case 'redirects': self::json_block( array( 'state' => $status['state'], 'fallback_window' => get_option( SNFLA_Schema::FALLBACK_OPTION, array() ), 'policy' => 'Same-origin 302 redirects only during cutover/fallback; permanent redirects or gone responses must be handed to a verified canonical route owner before retirement.' ) ); break;
+				case 'mapping': $wpdb->last_error=''; $rows=$wpdb->get_results( "SELECT legacy_id,target_id,target_type,status,source_checksum,target_checksum,run_uuid,last_error_code,updated_at FROM {$t['map']} ORDER BY legacy_id ASC LIMIT 500", ARRAY_A ); self::table_block( empty( $wpdb->last_error ) ? $rows : new WP_Error( 'snfla_admin_mapping_query_failed', 'Mapping ledger could not be read safely.' ) ); break;
+				case 'conflicts': $wpdb->last_error=''; $rows=$wpdb->get_results( "SELECT id,legacy_id,conflict_code,severity,status,run_uuid,created_at,resolved_at FROM {$t['conflicts']} ORDER BY status ASC,severity DESC,id DESC LIMIT 500", ARRAY_A ); self::table_block( empty( $wpdb->last_error ) ? $rows : new WP_Error( 'snfla_admin_conflict_query_failed', 'Conflict ledger could not be read safely.' ) ); break;
+				case 'redirects': $fallback=get_option( SNFLA_Schema::FALLBACK_OPTION, array() ); self::json_block( array( 'state' => $status['state'], 'fallback_evidence_valid' => SNFLA_Integrity::evidence_valid( $fallback ), 'fallback_window' => SNFLA_Integrity::evidence_valid( $fallback ) ? $fallback : array( 'invalid_evidence' => true ), 'policy' => 'Same-origin 302 redirects only during cutover/fallback; permanent redirects or gone responses must be handed to a verified canonical route owner before retirement.' ) ); break;
 				case 'reconciliation': self::json_block( SNFLA_Reconciliation::report() ); break;
 				case 'rollback': self::json_block( SNFLA_Rollback::proof() ); break;
-				case 'retirement': self::json_block( array( 'required_confirmation' => SNFLA_Retirement::CONFIRMATION, 'evidence' => get_option( SNFLA_Schema::RETIREMENT_OPTION, array() ), 'source_deletion' => 'Never automatic' ) ); break;
+				case 'retirement': $retirement=get_option( SNFLA_Schema::RETIREMENT_OPTION, array() ); self::json_block( array( 'required_confirmation' => SNFLA_Retirement::CONFIRMATION, 'evidence_valid' => SNFLA_Integrity::evidence_valid( $retirement ), 'evidence' => SNFLA_Integrity::evidence_valid( $retirement ) ? $retirement : array( 'invalid_evidence' => true ), 'source_deletion' => 'Never automatic' ) ); break;
 				default: self::json_block( array( 'status' => $status, 'file21' => SNFLA_File21_Adapter::status(), 'backup_proof_valid' => SNFLA_Migration::backup_proof_valid(), 'reconciliation' => SNFLA_Reconciliation::report(), 'rest_namespace' => SNFLA_REST::NAMESPACE, 'legacy_page_quarantine' => SNFLA_Database::public_page_quarantine_status(), 'runbook' => 'MIGRATION-RUNBOOK.md and ROLLBACK-RUNBOOK.md' ) );
 			}
 			?>
@@ -76,6 +76,7 @@ final class SNFLA_Admin {
 	}
 
 	private static function table_block( $rows ) {
+		if ( is_wp_error( $rows ) ) { echo '<p class="notice notice-error">' . esc_html( $rows->get_error_message() ) . '</p>'; return; }
 		$rows = is_array( $rows ) ? $rows : array();
 		if ( empty( $rows ) ) { echo '<p>No records.</p>'; return; }
 		echo '<div class="snfla-table-wrap"><table class="widefat striped"><thead><tr>';

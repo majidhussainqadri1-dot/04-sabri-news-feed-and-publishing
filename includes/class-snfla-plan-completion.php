@@ -300,12 +300,20 @@ final class SNFLA_Plan_Completion {
 	public static function verify_file21_result( array $legacy_ids, $result, $actor_id ) {
 		if ( is_wp_error( $result ) || ! is_array( $result ) ) { return $result; }
 		$requested = SNFLA_Integrity::normalized_ids( $legacy_ids, SNFLA_Migration::MAX_BATCH );
+		$requested_set = array_fill_keys( $requested, true );
 		$migrated = (array) ( $result['migrated'] ?? array() );
-		$returned = SNFLA_Integrity::normalized_ids( array_keys( $migrated ), SNFLA_Migration::MAX_BATCH );
-		$unexpected = array_values( array_diff( $returned, $requested ) );
-		if ( ! empty( $unexpected ) ) {
-			do_action( 'snfla_operational_alert_v1', array( 'code' => 'file21_unexpected_migration_result_ids', 'severity' => 'critical', 'unexpected_count' => count( $unexpected ) ) );
-			return new WP_Error( 'snfla_file21_unexpected_result_ids', 'Canonical File 21 returned migration results for legacy IDs that were not requested; File 04 refused to persist them.', array( 'status' => 502, 'unexpected_count' => count( $unexpected ) ) );
+		foreach ( array( 'migrated', 'skipped', 'warnings' ) as $collection ) {
+			$collection_rows = (array) ( $result[ $collection ] ?? array() );
+			foreach ( $collection_rows as $returned_id => $row ) {
+				$valid_id = filter_var( $returned_id, FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 1 ) ) );
+				if ( false === $valid_id || ! isset( $requested_set[ (int) $valid_id ] ) ) {
+					do_action( 'snfla_operational_alert_v1', array( 'code' => 'file21_unexpected_migration_result_ids', 'severity' => 'critical', 'collection' => $collection ) );
+					return new WP_Error( 'snfla_file21_unexpected_result_ids', 'Canonical File 21 returned migration result IDs outside the requested batch; File 04 refused to persist them.', array( 'status' => 502, 'collection' => $collection ) );
+				}
+				if ( 'migrated' === $collection && ! is_array( $row ) ) {
+					return new WP_Error( 'snfla_file21_migrated_row_invalid', 'Canonical File 21 returned a malformed migrated result row.', array( 'status' => 502, 'legacy_id' => (int) $valid_id ) );
+				}
+			}
 		}
 		foreach ( $requested as $legacy_id ) {
 			$legacy_id = absint( $legacy_id );
@@ -357,8 +365,9 @@ final class SNFLA_Plan_Completion {
 		if ( ! empty( $wpdb->last_error ) || ! is_numeric( $attachment_count ) ) { return new WP_Error( 'snfla_dry_run_attachment_count_failed', 'Legacy attachment counts could not be measured safely.', array( 'status' => 500 ) ); }
 		$attachment_count = max( 0, (int) $attachment_count );
 		$attachment_bytes = apply_filters( 'snfla_storage_estimate_media_bytes_v1', null, $attachment_count, SNFLA_Inventory::locked() );
-		if ( $attachment_count > 0 && ! is_numeric( $attachment_bytes ) ) { return new WP_Error( 'snfla_media_storage_estimate_provider_required', 'A bounded storage provider estimate is required for legacy attachments; File 04 will not perform an unbounded filesystem scan.', array( 'status' => 412, 'attachment_count' => $attachment_count ) ); }
-		$parts['attachment_bytes'] = max( 0, (int) $attachment_bytes );
+		$attachment_bytes_number = is_numeric( $attachment_bytes ) ? (float) $attachment_bytes : null;
+		if ( $attachment_count > 0 && ( null === $attachment_bytes_number || ! is_finite( $attachment_bytes_number ) || $attachment_bytes_number < 0 ) ) { return new WP_Error( 'snfla_media_storage_estimate_provider_required', 'A bounded non-negative finite storage provider estimate is required for legacy attachments; File 04 will not guess or perform an unbounded filesystem scan.', array( 'status' => 412, 'attachment_count' => $attachment_count ) ); }
+		$parts['attachment_bytes'] = null === $attachment_bytes_number ? 0 : (int) ceil( $attachment_bytes_number );
 		$parts['attachment_count'] = $attachment_count;
 		$source_bytes = $parts['publication_bytes'] + $parts['meta_bytes'] + $parts['comment_bytes'] + $parts['attachment_bytes'];
 		$items = absint( $totals['candidate_count'] ?? 0 );
@@ -453,11 +462,13 @@ final class SNFLA_Plan_Completion {
 	public static function system_check() {
 		$checks = array();
 		$checks['runtime'] = array( 'status' => version_compare( PHP_VERSION, '8.1', '>=' ) ? 'pass' : 'blocker', 'php' => PHP_VERSION, 'wordpress' => get_bloginfo( 'version' ), 'required_php' => '>=8.1', 'staging_target' => 'WordPress 7.0.1 / PHP 8.3.x fresh re-verification required' );
+		$checks['schema'] = array( 'status' => SNFLA_Database::schema_healthy() ? 'pass' : 'blocker', 'expected_schema_version' => SNFLA_SCHEMA_VERSION, 'stored_schema_version' => (string) get_option( 'snfla_schema_version', '' ) );
 		$checks['file21'] = array_merge( array( 'status' => SNFLA_Capabilities::file21_ready() ? 'pass' : 'blocker' ), SNFLA_File21_Adapter::status() );
 		$file26_manifest = SNFLA_Central_Plan::module_manifest();
 		$file26_request = array( 'consumer' => 'File 04', 'purpose' => 'legacy_resolution_search_handoff', 'manifest_digest' => SNFLA_Checksum::hash( $file26_manifest ) );
 		$file26 = apply_filters( 'sabri_file26_accept_file04_contract_v1', array( 'accepted' => false, 'status' => 'unknown' ), $file26_request );
-		$file26_bound = is_array( $file26 ) && ! empty( $file26['accepted'] ) && ! empty( $file26['provider_id'] ) && ! empty( $file26['manifest_digest'] ) && hash_equals( (string) $file26_request['manifest_digest'], (string) $file26['manifest_digest'] );
+		$file26_verified_at = is_array( $file26 ) && ! empty( $file26['verified_at_utc'] ) ? strtotime( (string) $file26['verified_at_utc'] . ' UTC' ) : false;
+		$file26_bound = is_array( $file26 ) && ! empty( $file26['accepted'] ) && ! empty( $file26['provider_id'] ) && ! empty( $file26['manifest_digest'] ) && hash_equals( (string) $file26_request['manifest_digest'], (string) $file26['manifest_digest'] ) && false !== $file26_verified_at && $file26_verified_at >= time() - 15 * MINUTE_IN_SECONDS && $file26_verified_at <= time() + 300;
 		$checks['file26'] = array( 'status' => $file26_bound ? 'pass' : 'unknown', 'request_digest' => $file26_request['manifest_digest'], 'evidence' => SNFLA_Audit::redact( is_array( $file26 ) ? $file26 : array() ) );
 		$checks['inventory'] = array( 'status' => SNFLA_Inventory::unchanged() ? 'pass' : 'blocker', 'locked' => ! empty( SNFLA_Inventory::locked() ) );
 		$analysis = self::current_dry_run_analysis();
@@ -511,7 +522,8 @@ final class SNFLA_Plan_Completion {
 		$metrics = is_array( $metrics ) ? $metrics : array();
 		$metrics[] = $row;
 		if ( count( $metrics ) > self::MAX_METRICS ) { $metrics = array_slice( $metrics, -1 * self::MAX_METRICS ); }
-		update_option( self::METRICS_OPTION, $metrics, false );
+		$metrics_persisted = update_option( self::METRICS_OPTION, $metrics, false ) || get_option( self::METRICS_OPTION, array() ) === $metrics;
+		if ( ! $metrics_persisted ) { do_action( 'snfla_operational_alert_v1', array( 'owner' => 'File 04 release operator', 'severity' => 'high', 'code' => 'metrics_persist_failed', 'route' => $route, 'trace_safe' => true ) ); }
 		$threshold = (float) apply_filters( 'snfla_rest_p95_budget_ms', 2000.0, $route );
 		if ( $status >= 500 || $duration_ms > $threshold ) {
 			do_action( 'snfla_operational_alert_v1', array( 'owner' => 'File 04 release operator', 'severity' => $status >= 500 ? 'high' : 'medium', 'code' => $status >= 500 ? 'rest_error' : 'latency_budget_exceeded', 'route' => $route, 'duration_ms' => round( $duration_ms, 3 ), 'status' => $status, 'trace_safe' => true ) );

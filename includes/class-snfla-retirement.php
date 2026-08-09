@@ -159,13 +159,17 @@ final class SNFLA_Retirement {
 		if ( ! function_exists( 'deactivate_plugins' ) || ! function_exists( 'plugin_basename' ) || ! function_exists( 'is_plugin_active' ) ) { return false; }
 		$plugin  = plugin_basename( SNFLA_FILE );
 		$network = function_exists( 'is_multisite' ) && is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $plugin );
-		if ( ! is_plugin_active( $plugin ) && ! $network ) { return true; }
-		deactivate_plugins( $plugin, true, $network );
-		return $network ? ! is_plugin_active_for_network( $plugin ) : ! is_plugin_active( $plugin );
+		if ( $network ) {
+			do_action( 'snfla_operational_alert_v1', array( 'code' => 'network_retirement_requires_network_operator', 'severity' => 'high' ) );
+			return false;
+		}
+		if ( ! is_plugin_active( $plugin ) ) { return true; }
+		deactivate_plugins( $plugin, true, false );
+		return ! is_plugin_active( $plugin );
 	}
 
 	public static function mutations_allowed() {
 		$state = SNFLA_Schema::state();
-		return in_array( $state, SNFLA_Schema::states(), true ) && 'retired' !== $state;
+		return SNFLA_Schema::state_valid() && 'retired' !== $state;
 	}
 }

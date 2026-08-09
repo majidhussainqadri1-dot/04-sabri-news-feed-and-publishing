@@ -708,8 +708,12 @@ final class SNFLA_Migration {
 	private static function quarantine_batch( array $legacy_ids, $code, $run_uuid ) {
 		$code = sanitize_key( $code ) ?: 'migration_failed';
 		foreach ( SNFLA_Integrity::normalized_ids( $legacy_ids, self::MAX_BATCH ) as $legacy_id ) {
-			$current = SNFLA_Mapping::get( $legacy_id );
-			SNFLA_Mapping::upsert(
+			$current = SNFLA_Mapping::get_checked( $legacy_id );
+			if ( is_wp_error( $current ) ) {
+				do_action( 'snfla_operational_alert_v1', array( 'code' => 'quarantine_mapping_read_failed', 'severity' => 'critical', 'legacy_id' => $legacy_id ) );
+				continue;
+			}
+			$persisted = SNFLA_Mapping::upsert(
 				$legacy_id,
 				array(
 					'target_id'       => absint( $current['target_id'] ?? SNFLA_File21_Adapter::target_for( $legacy_id ) ),
@@ -721,6 +725,9 @@ final class SNFLA_Migration {
 					'last_error_code' => $code,
 				)
 			);
+			if ( ! $persisted ) {
+				do_action( 'snfla_operational_alert_v1', array( 'code' => 'quarantine_mapping_write_failed', 'severity' => 'critical', 'legacy_id' => $legacy_id ) );
+			}
 			SNFLA_Mapping::open_conflict( $legacy_id, $code, 'blocker', array( 'legacy_id' => $legacy_id, 'run_uuid' => $run_uuid ), $run_uuid );
 		}
 	}

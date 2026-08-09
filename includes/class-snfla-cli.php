@@ -12,7 +12,9 @@ final class SNFLA_CLI {
 	public function status() {
 		$request = new WP_REST_Request( 'GET', '/' . SNFLA_REST::NAMESPACE . '/status' );
 		$response = SNFLA_REST::status( $request );
-		WP_CLI::line( wp_json_encode( $response->get_data(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
+		$encoded = wp_json_encode( $response->get_data(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+		if ( ! is_string( $encoded ) ) { WP_CLI::error( 'snfla_output_encoding_failed: Status evidence could not be encoded safely.' ); }
+		WP_CLI::line( $encoded );
 	}
 
 	/** Lock exact inventory. */
@@ -43,7 +45,7 @@ final class SNFLA_CLI {
 	public function migrate( $args, $assoc ) {
 		unset( $args );
 		$actor = $this->actor( SNFLA_Capabilities::CAP_RUN );
-		$ids = array_filter( array_map( 'absint', explode( ',', (string) ( $assoc['ids'] ?? '' ) ) ) );
+		$ids = $this->parse_ids( $assoc['ids'] ?? '' );
 		$with_interactions = ! isset( $assoc['with-interactions'] ) || ! in_array( strtolower( (string) $assoc['with-interactions'] ), array( '0', 'false', 'no' ), true );
 		$result = SNFLA_Migration::migrate( $actor, $ids, $assoc['idempotency-key'] ?? '', $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version(), $with_interactions );
 		$this->output( $result );
@@ -53,7 +55,7 @@ final class SNFLA_CLI {
 	public function quarantine( $args, $assoc ) {
 		unset( $args );
 		$actor = $this->actor( SNFLA_Capabilities::CAP_REVIEW );
-		$ids = array_filter( array_map( 'absint', explode( ',', (string) ( $assoc['ids'] ?? '' ) ) ) );
+		$ids = $this->parse_ids( $assoc['ids'] ?? '' );
 		$this->output(
 			SNFLA_Migration::quarantine_disposition(
 				$actor,
@@ -106,7 +108,7 @@ final class SNFLA_CLI {
 	public function rollback( $args, $assoc ) {
 		unset( $args );
 		$actor = $this->actor( SNFLA_Capabilities::CAP_RUN );
-		$ids = array_filter( array_map( 'absint', explode( ',', (string) ( $assoc['ids'] ?? '' ) ) ) );
+		$ids = $this->parse_ids( $assoc['ids'] ?? '' );
 		$this->output( SNFLA_Rollback::execute( $actor, $ids, $assoc['idempotency-key'] ?? '', $assoc['expected-state'] ?? SNFLA_Schema::state(), $assoc['expected-version'] ?? SNFLA_Schema::version(), ! empty( $assoc['restore-handover'] ), $assoc['handover-confirmation'] ?? '' ) );
 	}
 
@@ -124,8 +126,24 @@ final class SNFLA_CLI {
 		return $actor;
 	}
 
+	private function parse_ids( $raw ) {
+		$parts = explode( ',', (string) $raw );
+		$ids = array();
+		foreach ( $parts as $part ) {
+			$part = trim( $part );
+			if ( 1 !== preg_match( '/^[1-9][0-9]*$/D', $part ) ) { WP_CLI::error( 'snfla_invalid_ids: IDs must be positive decimal integers.' ); }
+			$id = (int) $part;
+			if ( isset( $ids[ $id ] ) ) { WP_CLI::error( 'snfla_duplicate_ids: Duplicate legacy IDs are not accepted.' ); }
+			$ids[ $id ] = $id;
+		}
+		if ( empty( $ids ) || count( $ids ) > SNFLA_Migration::MAX_BATCH ) { WP_CLI::error( 'snfla_invalid_ids: A non-empty bounded ID list is required.' ); }
+		return array_values( $ids );
+	}
+
 	private function output( $result ) {
 		if ( is_wp_error( $result ) ) { WP_CLI::error( $result->get_error_code() . ': ' . $result->get_error_message() ); }
-		WP_CLI::success( wp_json_encode( $result, JSON_UNESCAPED_SLASHES ) );
+		$encoded = wp_json_encode( $result, JSON_UNESCAPED_SLASHES );
+		if ( ! is_string( $encoded ) ) { WP_CLI::error( 'snfla_output_encoding_failed: Result evidence could not be encoded safely.' ); }
+		WP_CLI::success( $encoded );
 	}
 }

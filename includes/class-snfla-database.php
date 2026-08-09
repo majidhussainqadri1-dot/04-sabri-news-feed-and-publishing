@@ -138,7 +138,9 @@ final class SNFLA_Database {
 	}
 
 	public static function maybe_upgrade() {
-		if ( SNFLA_SCHEMA_VERSION === (string) get_option( 'snfla_schema_version', '' ) ) { return; }
+		$stored_version = (string) get_option( 'snfla_schema_version', '' );
+		$health = get_option( 'snfla_schema_health', array() );
+		if ( SNFLA_SCHEMA_VERSION === $stored_version && is_array( $health ) && ! empty( $health['ok'] ) ) { return; }
 		if ( ! self::acquire_lock( 'schema_upgrade', 5 ) ) {
 			self::persist_option( 'snfla_schema_health', array( 'ok' => false, 'code' => 'snfla_schema_upgrade_locked', 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ) ) );
 			return;
@@ -158,7 +160,7 @@ final class SNFLA_Database {
 	public static function schema_healthy() {
 		if ( SNFLA_SCHEMA_VERSION !== (string) get_option( 'snfla_schema_version', '' ) ) { return false; }
 		$health = get_option( 'snfla_schema_health', array() );
-		return ! is_array( $health ) || ! array_key_exists( 'ok', $health ) || ! empty( $health['ok'] );
+		return is_array( $health ) && ! empty( $health['ok'] );
 	}
 
 	private static function capture_activation_handover( $actor_id ) {
