@@ -8,7 +8,18 @@ final class SNFLA_REST {
 		register_rest_route( self::NS, '/status', array( 'methods' => WP_REST_Server::READABLE, 'permission_callback' => array( __CLASS__, 'can_read' ), 'callback' => array( __CLASS__, 'status' ) ) );
 		register_rest_route( self::NS, '/inventory/capture', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'capture_inventory' ), 'args' => self::state_args() ) );
 		register_rest_route( self::NS, '/dry-run', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'dry_run' ), 'args' => array_merge( self::state_args(), array( 'force' => array( 'type' => 'boolean', 'default' => false ) ) ) ) );
-		register_rest_route( self::NS, '/backup-proof', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'backup_proof' ), 'args' => array_merge( self::state_args(), array( 'backup_id' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ), 'restore_id' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ), 'snapshot_checksum' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ), 'environment' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_key' ) ) ) ) );
+		register_rest_route( self::NS, '/backup-proof', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'backup_proof' ), 'args' => array(
+			'reference' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ),
+			'checksum' => array( 'required' => true, 'type' => 'string', 'validate_callback' => static function($v){ return is_string($v) && 1===preg_match('/^[a-f0-9]{64}$/Di',$v); } ),
+			'created_at_utc' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ),
+			'restore_reference' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ),
+			'restore_checksum' => array( 'required' => true, 'type' => 'string', 'validate_callback' => static function($v){ return is_string($v) && 1===preg_match('/^[a-f0-9]{64}$/Di',$v); } ),
+			'restored_at_utc' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ),
+			'restored_source_signature' => array( 'required' => true, 'type' => 'string', 'validate_callback' => static function($v){ return is_string($v) && 1===preg_match('/^[a-f0-9]{64}$/Di',$v); } ),
+			'restored_post_count' => array( 'required' => true, 'type' => 'integer', 'minimum' => 0 ),
+			'restored_comment_count' => array( 'required' => true, 'type' => 'integer', 'minimum' => 0 ),
+			'restored_table_counts' => array( 'required' => true, 'type' => 'object' ),
+		) ) );
 		register_rest_route( self::NS, '/migrate', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'migrate' ), 'args' => array_merge( self::state_args(), self::id_args(), array( 'idempotency_key' => self::opaque_idempotency_arg() ) ) ) );
 		register_rest_route( self::NS, '/reconcile', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'reconcile' ), 'args' => self::state_args() ) );
 		register_rest_route( self::NS, '/cutover', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'cutover' ), 'args' => self::state_args() ) );
@@ -107,7 +118,8 @@ final class SNFLA_REST {
 	public static function backup_proof( WP_REST_Request $request ) {
 		$actor = self::can_run( $request );
 		if ( is_wp_error( $actor ) ) { return self::failure( $actor ); }
-		return self::result( 'snfla_backup_proof_recorded', SNFLA_Migration::record_backup_proof( $actor, $request->get_param( 'backup_id' ), $request->get_param( 'restore_id' ), $request->get_param( 'snapshot_checksum' ), $request->get_param( 'environment' ), $request->get_param( 'expected_state' ), $request->get_param( 'expected_version' ) ) );
+		$evidence=array(); foreach(array('reference','checksum','created_at_utc','restore_reference','restore_checksum','restored_at_utc','restored_source_signature','restored_post_count','restored_comment_count','restored_table_counts') as $key){$evidence[$key]=$request->get_param($key);} 
+		return self::result( 'snfla_backup_proof_recorded', SNFLA_Migration::record_backup_proof( $actor, $evidence ) );
 	}
 
 	public static function migrate( WP_REST_Request $request ) {
