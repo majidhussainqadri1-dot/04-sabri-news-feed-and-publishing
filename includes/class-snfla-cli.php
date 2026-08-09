@@ -10,7 +10,10 @@ final class SNFLA_CLI {
 
 	/** Show status. */
 	public function status() {
+		$actor = SNFLA_Capabilities::current_read_actor( SNFLA_Capabilities::CAP_REVIEW );
+		if ( is_wp_error( $actor ) ) { WP_CLI::error( $actor->get_error_code() . ': ' . $actor->get_error_message() ); }
 		$request = new WP_REST_Request( 'GET', '/' . SNFLA_REST::NAMESPACE . '/status' );
+		$request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
 		$response = SNFLA_REST::status( $request );
 		$encoded = wp_json_encode( $response->get_data(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
 		if ( ! is_string( $encoded ) ) { WP_CLI::error( 'snfla_output_encoding_failed: Status evidence could not be encoded safely.' ); }
