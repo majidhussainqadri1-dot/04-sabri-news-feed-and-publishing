@@ -67,7 +67,28 @@ final class SNFLA_File21_Adapter {
 		if ( ! SNFLA_Capabilities::file21_ready() ) {
 			return new WP_Error( 'snfla_file21_unavailable', 'Canonical File 21 rollback services are unavailable.' );
 		}
-		return \Sabri\HomeNewsFeed\LegacyPublicationRollback::rollback_selected( $legacy_ids, absint( $actor_id ) );
+		$result = \Sabri\HomeNewsFeed\LegacyPublicationRollback::rollback_selected( $legacy_ids, $actor_id );
+		if ( is_wp_error( $result ) ) { return $result; }
+		if ( ! is_array( $result ) ) { return new WP_Error( 'snfla_file21_rollback_result_invalid', 'File 21 rollback returned an invalid result envelope.' ); }
+		$allowed = array_fill_keys( $legacy_ids, true );
+		$rolled = isset( $result['rolled_back'] ) && is_array( $result['rolled_back'] ) ? $result['rolled_back'] : array();
+		foreach ( $rolled as $raw_legacy_id => $row ) {
+			$legacy_id = self::strict_positive_id( $raw_legacy_id );
+			$target_id = is_array( $row ) ? self::strict_positive_id( $row['target_id'] ?? 0 ) : 0;
+			if ( $legacy_id <= 0 || ! isset( $allowed[ $legacy_id ] ) || $target_id <= 0 || ! self::rolled_back_target_valid( $legacy_id, $target_id ) ) {
+				return new WP_Error( 'snfla_file21_rollback_result_unverified', 'File 21 rollback returned an unexpected or unverifiable rolled-back target.' );
+			}
+		}
+		foreach ( array( 'skipped', 'already_rolled_back' ) as $collection ) {
+			if ( ! isset( $result[ $collection ] ) ) { continue; }
+			if ( ! is_array( $result[ $collection ] ) ) { return new WP_Error( 'snfla_file21_rollback_result_invalid' ); }
+			foreach ( $result[ $collection ] as $key => $value ) {
+				$candidate = is_int( $key ) || ( is_string( $key ) && ctype_digit( $key ) ) ? $key : ( is_array( $value ) ? ( $value['legacy_id'] ?? 0 ) : $value );
+				$id = self::strict_positive_id( $candidate );
+				if ( $id <= 0 || ! isset( $allowed[ $id ] ) ) { return new WP_Error( 'snfla_file21_rollback_unexpected_result_ids' ); }
+			}
+		}
+		return $result;
 	}
 
 	public static function target_for( $legacy_id ) {
