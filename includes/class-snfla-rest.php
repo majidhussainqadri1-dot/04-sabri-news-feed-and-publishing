@@ -23,7 +23,7 @@ final class SNFLA_REST {
 		register_rest_route( self::NS, '/migrate', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'migrate' ), 'args' => array_merge( self::state_args(), self::id_args(), array( 'idempotency_key' => self::opaque_idempotency_arg() ) ) ) );
 		register_rest_route( self::NS, '/reconcile', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'reconcile' ), 'args' => self::state_args() ) );
 		register_rest_route( self::NS, '/cutover', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'cutover' ), 'args' => self::state_args() ) );
-		register_rest_route( self::NS, '/fallback/open', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'open_fallback' ), 'args' => array_merge( self::state_args(), array( 'minutes' => array( 'type' => 'integer', 'default' => 30, 'minimum' => 5, 'maximum' => 1440 ) ) ) ) );
+		register_rest_route( self::NS, '/fallback/open', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'open_fallback' ), 'args' => array_merge( self::state_args(), array( 'hours' => array( 'type' => 'integer', 'default' => 24, 'minimum' => 1, 'maximum' => 168 ) ) ) ) );
 		register_rest_route( self::NS, '/rollback', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'rollback' ), 'args' => array_merge( self::state_args(), self::id_args(), array( 'idempotency_key' => self::opaque_idempotency_arg(), 'restore_handover' => array( 'type' => 'boolean', 'default' => false ), 'handover_confirmation' => array( 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ) ) ) ) );
 		register_rest_route( self::NS, '/retire', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_retire' ), 'callback' => array( __CLASS__, 'retire' ), 'args' => array_merge( self::state_args(), array( 'confirmation' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ) ) ) ) );
 		register_rest_route( self::NS, '/conflicts/(?P<conflict_id>[1-9][0-9]*)/resolve', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_review' ), 'callback' => array( __CLASS__, 'resolve_conflict' ), 'args' => array( 'conflict_id' => array( 'required' => true, 'type' => 'integer', 'sanitize_callback' => 'absint' ), 'resolution_code' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_key' ) ) ) );
@@ -145,7 +145,7 @@ final class SNFLA_REST {
 	public static function open_fallback( WP_REST_Request $request ) {
 		$actor = self::can_run( $request );
 		if ( is_wp_error( $actor ) ) { return self::failure( $actor ); }
-		return self::result( 'snfla_fallback_opened', SNFLA_Redirects::open_fallback( $actor, $request->get_param( 'minutes' ), $request->get_param( 'expected_state' ), $request->get_param( 'expected_version' ) ) );
+		return self::result( 'snfla_fallback_opened', SNFLA_Redirects::open_fallback( $actor, $request->get_param( 'hours' ), $request->get_param( 'expected_state' ), $request->get_param( 'expected_version' ) ) );
 	}
 
 	public static function rollback( WP_REST_Request $request ) {
