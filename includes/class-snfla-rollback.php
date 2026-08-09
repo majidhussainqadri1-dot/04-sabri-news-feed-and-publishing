@@ -6,11 +6,12 @@ final class SNFLA_Rollback {
 	const MAX_BATCH = 100;
 
 	public static function execute( $actor_id, array $legacy_ids, $idempotency_key, $expected_state, $expected_version, $restore_handover = false, $handover_confirmation = '' ) {
+		if ( ! is_int( $actor_id ) || $actor_id <= 0 || ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_rollback_identity_or_version_invalid', 'Rollback actor and lifecycle version must be canonical positive integers.', array( 'status' => 400 ) ); }
 		$legacy_ids = SNFLA_Integrity::strict_positive_ids( $legacy_ids, self::MAX_BATCH );
 		if ( is_wp_error( $legacy_ids ) ) { return new WP_Error( 'snfla_invalid_rollback_batch', 'Rollback IDs must be positive, unique and canonical.', array( 'status' => 400 ) ); }
 		if ( empty( $legacy_ids ) ) { return new WP_Error( 'snfla_empty_rollback_batch', 'Select at least one migrated legacy publication.', array( 'status' => 400 ) ); }
 		$authorized_actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_RUN );
-		if ( is_wp_error( $authorized_actor ) || absint( $authorized_actor ) !== absint( $actor_id ) ) { return new WP_Error( 'snfla_canonical_migration_capability_missing', 'File 21 canonical migration capability and fresh File 00 authority are required.', array( 'status' => 403 ) ); }
+		if ( is_wp_error( $authorized_actor ) || $authorized_actor !== $actor_id ) { return new WP_Error( 'snfla_canonical_migration_capability_missing', 'File 21 canonical migration capability and fresh File 00 authority are required.', array( 'status' => 403 ) ); }
 		if ( ! SNFLA_Migration::backup_proof_valid() ) { return new WP_Error( 'snfla_backup_proof_required', 'A recent backup and restore proof is required.', array( 'status' => 412 ) ); }
 		$state_check = SNFLA_Schema::assert_current( $expected_state, $expected_version );
 		if ( is_wp_error( $state_check ) ) { return $state_check; }
@@ -33,7 +34,7 @@ final class SNFLA_Rollback {
 		$run_uuid = wp_generate_uuid4();
 		try {
 			$authorized_actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_RUN );
-			if ( is_wp_error( $authorized_actor ) || absint( $authorized_actor ) !== absint( $actor_id ) ) {
+			if ( is_wp_error( $authorized_actor ) || $authorized_actor !== $actor_id ) {
 				return new WP_Error( 'snfla_rollback_authority_changed', 'Rollback authority changed while waiting for the operation lock.', array( 'status' => 403 ) );
 			}
 			if ( ! SNFLA_Migration::backup_proof_valid() ) {
