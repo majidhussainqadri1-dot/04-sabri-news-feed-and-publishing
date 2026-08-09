@@ -187,15 +187,22 @@ final class SNFLA_Interaction_Provider {
 		);
 	}
 
+	private static function progress_state_valid( array $state ) {
+		if ( isset( $state['cursor'] ) && ( ! is_int( $state['cursor'] ) || $state['cursor'] < 0 ) ) { return false; }
+		foreach ( array( 'complete', 'meta_complete' ) as $flag ) { if ( isset( $state[ $flag ] ) && ! is_bool( $state[ $flag ] ) ) { return false; } }
+		return true;
+	}
+
 	private static function migrate_kind( $kind, $legacy_id, $target_id, $budget, array &$progress ) {
 		global $wpdb;
 		$legacy_table = $wpdb->prefix . 'snp_' . $kind;
 		$exists       = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $legacy_table ) ) );
 		$has_table    = $exists === $legacy_table;
 		$state        = isset( $progress['interaction_progress'][ $kind ] ) && is_array( $progress['interaction_progress'][ $kind ] ) ? $progress['interaction_progress'][ $kind ] : array();
-		$cursor       = absint( $state['cursor'] ?? 0 );
-		$meta_complete = 'views' !== $kind || ! empty( $state['meta_complete'] );
 		$report       = array( 'processed' => 0, 'migrated' => 0, 'skipped' => 0, 'remaining' => false, 'errors' => array() );
+		if ( ! self::progress_state_valid( $state ) ) { $report['errors'][] = 'interaction_progress_state_corrupt'; return $report; }
+		$cursor       = isset( $state['cursor'] ) ? (int) $state['cursor'] : 0;
+		$meta_complete = 'views' !== $kind || ( isset( $state['meta_complete'] ) && true === $state['meta_complete'] );
 		$fatal        = false;
 
 		if ( $has_table ) {
