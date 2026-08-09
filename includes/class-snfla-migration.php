@@ -760,6 +760,7 @@ final class SNFLA_Migration {
 		$uuid = sanitize_text_field( (string) $uuid );
 		$operation = sanitize_key( $operation );
 		$status = sanitize_key( $status );
+		if ( 1 !== preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/Di', $uuid ) || ! in_array( $operation, array( 'migrate', 'rollback' ), true ) || 'running' !== $status ) { return false; }
 		$idempotency_hash = strtolower( sanitize_text_field( (string) $idempotency_hash ) );
 		$signature = strtolower( sanitize_text_field( (string) $signature ) );
 		$checkpoint_json = wp_json_encode( SNFLA_Checksum::canonicalize( $checkpoint ) );
