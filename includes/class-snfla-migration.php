@@ -451,7 +451,18 @@ final class SNFLA_Migration {
 					$blocked[ $legacy_id ] = 'quarantine_conflict_resolution_failed';
 					continue;
 				}
-				$approved[ $legacy_id ] = array( 'reason_code' => $reason_code, 'conflict_codes' => $conflicts, 'source_checksum' => $checksum );
+				$event_delivery = SNFLA_Cross_File_Contracts::emit_event(
+					'LegacyRecordQuarantined.v1',
+					$actor_id,
+					array(
+						'_event_key'              => 'legacy:' . $legacy_id . '|' . $checksum . '|' . $decision_hash,
+						'legacy_id'               => $legacy_id,
+						'reason_code'             => $reason_code,
+						'source_checksum'         => $checksum,
+						'decision_reference_hash' => $decision_hash,
+					)
+				);
+				$approved[ $legacy_id ] = array( 'reason_code' => $reason_code, 'conflict_codes' => $conflicts, 'source_checksum' => $checksum, 'event_delivery' => $event_delivery );
 			}
 			$result = array(
 				'success'              => empty( $blocked ),
@@ -681,7 +692,18 @@ final class SNFLA_Migration {
 				}
 				return new WP_Error( 'snfla_migration_audit_failed', 'Migration targets were quarantined because the final audit event could not be written.', array( 'status' => 500, 'run_uuid' => $run_uuid ) );
 			}
-			return array( 'idempotent_replay' => false, 'run_uuid' => $run_uuid, 'status' => $status, 'report' => $summary, 'lifecycle' => $transition );
+			$event_delivery = SNFLA_Cross_File_Contracts::emit_event(
+				'LegacyMigrationBatchCompleted.v1',
+				$actor_id,
+				array(
+					'_event_key'     => $run_uuid,
+					'run_uuid'       => $run_uuid,
+					'status'         => $status,
+					'migrated_count' => count( (array) ( $result['migrated'] ?? array() ) ),
+					'skipped_count'  => count( $skipped ) + count( (array) ( $result['skipped'] ?? array() ) ),
+				)
+			);
+			return array( 'idempotent_replay' => false, 'run_uuid' => $run_uuid, 'status' => $status, 'report' => $summary, 'lifecycle' => $transition, 'event_delivery' => $event_delivery );
 		} finally {
 			SNFLA_Database::release_lock( 'migration' );
 			SNFLA_Database::release_lock( 'operation' );
