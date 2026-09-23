@@ -35,6 +35,7 @@ final class SNFLA_Cross_File_Contracts {
 		add_filter( 'query_vars', array( __CLASS__, 'query_vars' ) );
 		add_action( 'template_redirect', array( __CLASS__, 'protect_report_route' ), -20 );
 		add_filter( 'template_include', array( __CLASS__, 'report_template' ), 99 );
+		add_filter( 'sabri_shell_layout_mode', array( __CLASS__, 'file20_layout_mode' ), 20, 2 );
 
 		add_filter( 'spcrc/module_manifests', array( __CLASS__, 'file24_manifests' ), 20, 1 );
 		add_filter( 'spcrc/file04_contract_state', array( __CLASS__, 'file24_contract_state' ), 20, 2 );
@@ -88,6 +89,11 @@ final class SNFLA_Cross_File_Contracts {
 		nocache_headers();
 		header( 'Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0', true );
 		header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
+	}
+
+	public static function file20_layout_mode( $mode, $settings = array() ) {
+		unset( $settings );
+		return self::is_report_request() ? 'minimal' : $mode;
 	}
 
 	public static function report_template( $template ) {
