@@ -58,13 +58,13 @@ for event in ['LegacyMigrationBatchCompleted.v1','LegacyRecordQuarantined.v1','L
     need(event in cross, 'Required File 04 plan event missing from producer contract: ' + event, f)
 for transport in ['LegacyMigrationBatchCompleted.V1','LegacyRecordQuarantined.V1','LegacyCutoverCompleted.V1','LegacyAdapterRetired.V1']:
     need(transport in cross, 'File 19-compatible transport event missing: ' + transport, f)
-need('FILE19_OUTBOX_MAX          = 100' in cross and 'retry_file19_outbox' in cross and 'sun_ingest_domain_event' in cross, 'Bounded File 19 retry/outbox integration is incomplete.', f)
+need('FILE19_OUTBOX_MAX          = 100' in cross and 'retry_file19_outbox' in cross and 'sun_ingest_domain_event' in cross and 'event_capacity_available' in cross and 'file19_event_outbox_full' in cross and 'array_slice( $outbox' not in cross, 'Lossless bounded File 19 retry/backpressure integration is incomplete.', f)
 
 # 14-17 lifecycle event emission points.
 need("'LegacyMigrationBatchCompleted.v1'" in migration, 'Migration-completed event is not emitted.', f)
 need("'LegacyRecordQuarantined.v1'" in migration, 'Quarantine event is not emitted.', f)
 need("'LegacyCutoverCompleted.v1'" in reconciliation, 'Cutover-completed event is not emitted.', f)
-need("'LegacyAdapterRetired.v1'" in retirement, 'Adapter-retired event is not emitted.', f)
+need("'LegacyAdapterRetired.v1'" in retirement and 'snfla_retirement_event_delivery_pending' in retirement and 'file19_outbox_status' in retirement, 'Retirement event is not guaranteed before self-deactivation.', f)
 
 # 18 File 24 assurance contract.
 need("'spcrc/module_manifests'" in cross and "'spcrc/file04_contract_state'" in cross and "'module_key'             => 'file-04'" in cross and "'canonical_data_owner'" in cross and "'release_gate'" in cross, 'File 24 manifest/assurance integration is incomplete.', f)
@@ -73,6 +73,7 @@ need("'spcrc/module_manifests'" in cross and "'spcrc/file04_contract_state'" in 
 for needle in ["$checks['file01_registry']", "$checks['file20_shell']", "$checks['file19_events']", "$checks['file24_assurance']"]:
     need(needle in completion, 'System Check omits cross-file state: ' + needle, f)
 need("'/plan/contracts/sync'" in completion and 'sync_foundation_registry' in completion, 'Authorized File 01 contract sync endpoint is missing.', f)
+need('snfla_file19_event_backpressure' in migration and 'snfla_file19_event_backpressure' in reconciliation and 'snfla_file19_event_backpressure' in retirement, 'Lifecycle mutation backpressure for the bounded File 19 outbox is incomplete.', f)
 
 # 20 release/audit evidence must close R80 and run this gate.
 need('| 80 | **Defect.**' in audit and 'PENDING — not yet claimed' not in audit, 'R80 audit evidence has not been closed truthfully.', f)
