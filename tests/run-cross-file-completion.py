@@ -51,7 +51,7 @@ for needle in ['SPF_Registry::register_manifest', 'SPF_Registry::register_contra
     need(needle in cross, 'File 01 registry integration missing: ' + needle, f)
 
 # 11 File 20 context/layout truth.
-need("'layout_context'  => 'system_recovery'" in cross and "'sabri_shell_contract_registry'" in cross and "'sabri_shell_layout_contexts'" in cross and "'minimal' ===" in cross, 'File 20 canonical context/layout binding is incomplete.', f)
+need("'layout_context'  => 'system_recovery'" in cross and "'sabri_shell_contract_registry'" in cross and "'sabri_shell_layout_contexts'" in cross and "'sabri_shell_layout_mode'" in cross and 'file20_layout_mode' in cross and "return self::is_report_request() ? 'minimal' : $mode;" in cross, 'File 20 canonical context/layout binding is incomplete.', f)
 
 # 12-13 File 19 producer, exact plan events and bounded durable retry.
 for event in ['LegacyMigrationBatchCompleted.v1','LegacyRecordQuarantined.v1','LegacyCutoverCompleted.v1','LegacyAdapterRetired.v1']:
