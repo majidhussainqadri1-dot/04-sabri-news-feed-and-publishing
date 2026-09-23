@@ -85,6 +85,15 @@ final class SNFLA_Plan_Completion {
 				'permission_callback' => array( __CLASS__, 'permission_run' ),
 			)
 		);
+		register_rest_route(
+			SNFLA_REST::NS,
+			'/plan/events/retry',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( __CLASS__, 'rest_retry_events' ),
+				'permission_callback' => array( __CLASS__, 'permission_run' ),
+			)
+		);
 	}
 
 	public static function permission_run( WP_REST_Request $request ) {
@@ -133,6 +142,12 @@ final class SNFLA_Plan_Completion {
 		unset( $request );
 		$result = SNFLA_Cross_File_Contracts::sync_foundation_registry();
 		return is_wp_error( $result ) ? $result : self::rest_payload( 'snfla_cross_file_contracts_synced', $result );
+	}
+
+	public static function rest_retry_events( WP_REST_Request $request ) {
+		unset( $request );
+		$result = SNFLA_Cross_File_Contracts::retry_file19_outbox();
+		return self::rest_payload( 'snfla_file19_events_retried', $result );
 	}
 
 	/**
