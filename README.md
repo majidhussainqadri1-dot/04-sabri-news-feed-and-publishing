@@ -25,7 +25,7 @@ The independent second eighty-round review is now represented through R80 at sou
 - publishes a File 01 module manifest, versioned File 04 migration contract and the restricted `/legacy-migration/report/` route through the canonical registry sync;
 - binds that route to File 20's existing `system_recovery` context, whose canonical mode is `minimal`, rather than creating a second shell/layout system;
 - exposes the canonical admin surface at `wp-admin/admin.php?page=sabri-legacy-feed` while retaining the historical slug only as a hidden compatibility alias;
-- registers a File 19 producer for the four required File 04 lifecycle facts and uses a bounded retry outbox if File 19 is temporarily unavailable;
+- registers a File 19 producer for the four required File 04 lifecycle facts and uses a lossless bounded retry outbox if File 19 is temporarily unavailable; pending events block later lifecycle mutations so event order cannot be inverted, and an authorized `/plan/events/retry` operation retries delivery;
 - publishes a bounded File 24 module-security manifest and `spcrc/file04_contract_state` assurance state without weakening native File 04 authorization or integrity controls;
 - keeps privileged read-only status/System Check diagnostics available during File 21 outages while all state-changing operations remain fail-closed;
 - executes `tests/run-cross-file-completion.py` in exact-head CI and deterministic release verification.
