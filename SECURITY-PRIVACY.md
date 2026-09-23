@@ -1,4 +1,4 @@
-# File 04 v1.2.0 Security, Privacy and Resilience
+# File 04 v2.0.5 Security, Privacy and Resilience
 
 - File 00 current-action assurance and File 21 compatibility fail closed.
 - Activation mutations are preceded by a signed handover and followed by automatic compensation on failure.
