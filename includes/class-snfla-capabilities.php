@@ -94,6 +94,33 @@ final class SNFLA_Capabilities {
 		return $user_id;
 	}
 
+
+	public static function current_diagnostic_actor() {
+		$user_id = get_current_user_id();
+		if ( $user_id <= 0 ) {
+			return new WP_Error( 'snfla_authentication_required', 'Authentication is required.', array( 'status' => 401 ) );
+		}
+
+		$allowed = current_user_can( self::CAP_REVIEW )
+			|| current_user_can( 'sabri_feed_run_migrations' )
+			|| current_user_can( 'manage_options' );
+		// Diagnostic extension filters may narrow an already-authorized decision,
+		// never grant authority to an otherwise unauthorized account.
+		if ( $allowed ) {
+			$allowed = (bool) apply_filters( 'snfla_diagnostic_capability_allowed', true, $user_id );
+		}
+		if ( ! $allowed ) {
+			return new WP_Error( 'snfla_forbidden', 'The current account lacks the File 04 diagnostic capability.', array( 'status' => 403 ) );
+		}
+
+		$identity_adapter = '\\Sabri\\HomeNewsFeed\\CanonicalIdentityAdapter';
+		if ( class_exists( $identity_adapter ) && is_callable( array( $identity_adapter, 'subject_is_active' ) ) && ! $identity_adapter::subject_is_active( $user_id ) ) {
+			return new WP_Error( 'snfla_inactive_identity', 'Canonical identity governance does not currently authorize this account to view File 04 diagnostics.', array( 'status' => 403 ) );
+		}
+
+		return $user_id;
+	}
+
 	public static function verify_rest_nonce( $request ) {
 		$nonce = $request instanceof WP_REST_Request ? (string) $request->get_header( 'X-WP-Nonce' ) : '';
 		if ( '' === $nonce || ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
