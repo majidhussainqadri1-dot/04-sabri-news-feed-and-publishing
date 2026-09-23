@@ -486,11 +486,11 @@ final class SNFLA_Plan_Completion {
 		$file26_bound = is_array( $file26 ) && ! empty( $file26['accepted'] ) && ! empty( $file26['provider_id'] ) && ! empty( $file26['manifest_digest'] ) && hash_equals( (string) $file26_request['manifest_digest'], (string) $file26['manifest_digest'] ) && false !== $file26_verified_at && $file26_verified_at >= time() - 15 * MINUTE_IN_SECONDS && $file26_verified_at <= time() + 300;
 		$checks['file26'] = array( 'status' => $file26_bound ? 'pass' : 'unknown', 'request_digest' => $file26_request['manifest_digest'], 'evidence' => SNFLA_Audit::redact( is_array( $file26 ) ? $file26 : array() ) );
 		$file01 = SNFLA_Cross_File_Contracts::foundation_registry_status();
-		$checks['file01_registry'] = array_merge( array( 'status' => ! empty( $file01['synced'] ) ? 'pass' : 'unknown' ), $file01 );
+		$checks['file01_registry'] = array_merge( $file01, array( 'status' => ! empty( $file01['synced'] ) ? 'pass' : 'unknown' ) );
 		$file20 = SNFLA_Cross_File_Contracts::file20_shell_status();
 		$checks['file20_shell'] = array_merge( array( 'status' => (string) ( $file20['status'] ?? 'unknown' ) ), $file20 );
 		$file19 = SNFLA_Cross_File_Contracts::file19_outbox_status();
-		$checks['file19_events'] = array_merge( array( 'status' => 'pass' === (string) ( $file19['status'] ?? '' ) ? 'pass' : 'unknown' ), $file19 );
+		$checks['file19_events'] = array_merge( $file19, array( 'status' => 'pass' === (string) ( $file19['status'] ?? '' ) ? 'pass' : 'unknown' ) );
 		$file24 = SNFLA_Cross_File_Contracts::file24_status();
 		$checks['file24_assurance'] = array_merge( array( 'status' => (string) ( $file24['status'] ?? 'unknown' ) ), $file24 );
 		$checks['inventory'] = array( 'status' => SNFLA_Inventory::unchanged() ? 'pass' : 'blocker', 'locked' => ! empty( SNFLA_Inventory::locked() ) );
