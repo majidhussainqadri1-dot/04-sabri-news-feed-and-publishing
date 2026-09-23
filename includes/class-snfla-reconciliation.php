@@ -183,7 +183,7 @@ final class SNFLA_Reconciliation {
 
 	public static function approve_cutover( $actor_id, $expected_state, $expected_version ) {
 		if ( ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_cutover_version_invalid', 'Lifecycle version must be a canonical positive integer.', array( 'status' => 400 ) ); }
-		if ( ! SNFLA_Cross_File_Contracts::event_capacity_available( 1 ) ) { return new WP_Error( 'snfla_file19_event_backpressure', 'The bounded File 19 event outbox must be drained before cutover.', array( 'status' => 503 ) ); }
+		if ( ! SNFLA_Cross_File_Contracts::event_stream_ready( 1 ) ) { return new WP_Error( 'snfla_file19_event_backpressure', 'The bounded File 19 event outbox must be drained before cutover.', array( 'status' => 503 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) { return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) ); }
 		try {
 			$authorized_actor = SNFLA_Capabilities::revalidate_actor( $actor_id, SNFLA_Capabilities::CAP_REVIEW );
