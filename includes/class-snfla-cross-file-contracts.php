@@ -546,6 +546,10 @@ final class SNFLA_Cross_File_Contracts {
 		return array( 'processed' => $processed, 'remaining' => count( $outbox ) );
 	}
 
+	public static function event_stream_ready( $needed = 1 ) {
+		return empty( self::file19_outbox() ) && self::event_capacity_available( $needed );
+	}
+
 	public static function event_capacity_available( $needed = 1 ) {
 		if ( ! is_int( $needed ) || $needed < 1 || $needed > self::FILE19_OUTBOX_MAX ) {
 			return false;
