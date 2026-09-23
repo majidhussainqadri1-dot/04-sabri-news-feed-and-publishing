@@ -8,15 +8,15 @@ This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master 
 | F04-FR-002 Eligibility classification | `SNFLA_Migration::candidate_conflicts`, dry-run item ledger, quarantine reasons | own-plan QA + two fresh reviews |
 | F04-FR-003 Canonical mapping | `class-snfla-mapping.php`, File 21 provenance validation | unit + reconciliation + own-plan QA |
 | F04-FR-004 Dry-run | signed complete scan with counts/conflicts/dispositions/storage/time/sample preview; no canonical mutation | own-plan QA checks all required evidence fields |
-| F04-FR-005 Batch migration | `MAX_BATCH`, operation/advisory locks, dry-run row binding, resumable interaction cursors, idempotency/lifecycle checks | unit + architecture + own-plan QA |
+| F04-FR-005 Batch migration | `MAX_BATCH`, operation/advisory locks, dry-run row binding, resumable interaction cursors, idempotency/lifecycle checks, `LegacyMigrationBatchCompleted.v1` event | unit + architecture + cross-file QA + own-plan QA |
 | F04-FR-006 Authorship mapping | File 00 immutable UUID contract `sabri_file00_platform_uuid_v1`; governed deleted/unknown-author placeholder contract | own-plan QA + migration preflight |
 | F04-FR-007 Media/reference migration | bounded keyset attachment traversal, SHA-256/reference manifest, File 21 rights/ownership/alt/dedup/broken-link preflight and post-migration verification | own-plan QA + canonical provider acceptance in staging |
 | F04-FR-008 Interaction reconciliation | File 21 interaction provider boundary and contribution ledger | unit/reconciliation + staging provider acceptance |
-| F04-FR-009 Quarantine | source-only reasoned quarantine/conflict ledger; no silent coercion/delete | unit + architecture + migration acceptance |
-| F04-FR-010 Cutover | final reconciliation/delta, verified cache invalidation, File 26 search reindex/handoff, lifecycle transition | architecture/own-plan QA + staging provider evidence |
-| F04-FR-011 Redirect integrity | permanent canonical redirects, loop/nonpublic/tombstone handling | unit + browser/staging acceptance |
+| F04-FR-009 Quarantine | source-only reasoned quarantine/conflict ledger; no silent coercion/delete; `LegacyRecordQuarantined.v1` event | unit + architecture + cross-file QA + migration acceptance |
+| F04-FR-010 Cutover | final reconciliation/delta, verified cache invalidation, File 26 search reindex/handoff, lifecycle transition, `LegacyCutoverCompleted.v1` event | architecture/own-plan QA + cross-file QA + staging provider evidence |
+| F04-FR-011 Redirect integrity | permanent canonical redirects, loop/nonpublic/tombstone handling; restricted `/legacy-migration/report/` registered through File 01 with File 20 `system_recovery` layout | unit + cross-file QA + browser/staging acceptance |
 | F04-FR-012 Rollback | checkpointed non-destructive rollback, changed-target protection, canonical File 21 rollback command | unit + rollback rehearsal |
-| F04-FR-013 Retirement | route manifest handoff, fallback expiry, zero conflicts, rollback proof, self-deactivation | unit + operational acceptance |
+| F04-FR-013 Retirement | route manifest handoff, fallback expiry, zero conflicts, rollback proof, `LegacyAdapterRetired.v1` delivery before self-deactivation | unit + cross-file QA + operational acceptance |
 
 ## Non-functional requirements
 
@@ -27,11 +27,15 @@ This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master 
 | F04-NFR-003 Reliability | idempotency, locks, bounded batches, reconciliation, provider fail-closed behavior, rollback/retirement gates |
 | F04-NFR-004 Performance | bounded keyset traversal, bounded queries, p75/p95/error-rate instrumentation, provider-supplied bounded media storage estimate |
 | F04-NFR-005 Accessibility | logical RTL, visible focus, 44px controls, bidi isolation, reduced motion, forced-colors/reflow source safeguards; human WCAG acceptance remains staging |
-| F04-NFR-006 Observability | System Check, privacy-safe endpoint metrics, operational alert hook, audit-chain verification |
+| F04-NFR-006 Observability | System Check, privacy-safe endpoint metrics, operational alert hook, audit-chain verification; read-only diagnostics remain available during File 21 outage |
 | F04-NFR-007 Migration/Rollback | fresh/upgrade schema path, inventory lock, migration ledger, reconciliation, backup/restore proof, rollback checkpoints |
 | F04-NFR-008 Operability | `/plan/system-check`, `/plan/metrics`, migration/rollback/operations runbooks, cache/search handoff evidence |
 | F04-NFR-009 Compatibility | PHP 8.1/8.3 CI, WordPress API boundaries, explicit File 21 package/runtime gate; WordPress 7.0.1/PHP 8.3 Hostinger acceptance external |
 | F04-NFR-010 Localization | RTL logical CSS/bidi isolation and versioned File 20/25 ownership; real Urdu/Arabic/English browser corpus external |
+
+## Cross-file completion gate
+
+`includes/class-snfla-cross-file-contracts.php` implements File 01 registry/route synchronization, File 20 canonical layout verification, File 19 producer/event/outbox integration and File 24 manifest/assurance state. File 26 legacy resolution uses exact positive identity semantics. `tests/run-cross-file-completion.py` supplies the permanent 20-check source regression gate.
 
 ## Source QA gate
 
