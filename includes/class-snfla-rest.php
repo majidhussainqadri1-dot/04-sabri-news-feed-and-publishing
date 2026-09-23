@@ -64,7 +64,7 @@ final class SNFLA_REST {
 	public static function can_read( WP_REST_Request $request ) {
 		$nonce = SNFLA_Capabilities::verify_rest_nonce( $request );
 		if ( is_wp_error( $nonce ) ) { return $nonce; }
-		return SNFLA_Capabilities::current_read_actor( SNFLA_Capabilities::CAP_REVIEW );
+		return SNFLA_Capabilities::current_diagnostic_actor();
 	}
 	public static function can_run( WP_REST_Request $request ) { return self::authorize( $request, SNFLA_Capabilities::CAP_RUN ); }
 	public static function can_review( WP_REST_Request $request ) { return self::authorize( $request, SNFLA_Capabilities::CAP_REVIEW ); }
