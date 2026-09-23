@@ -30,6 +30,10 @@ No ring may be skipped merely because an earlier ring is green.
 - zero known unaccepted source-scope defects after two consecutive current-plan reviews;
 - File 00 immutable author identity contract available;
 - File 21 canonical migration, interaction, media/reference and rollback contracts available;
+- authorized File 01 contract sync completed and `/legacy-migration/report/` registered to File 04 with `system_recovery` layout context;
+- File 20 reports the File 04 migration-compatibility boundary and canonical `system_recovery` minimal layout;
+- File 19 producer contract is available or any bounded File 04 event outbox is explicitly unresolved;
+- File 24 has ingested the File 04 module-security manifest and reports a non-blocked contract state;
 - File 26 legacy-resolution/search handoff contract available;
 - locked source inventory and complete dry-run with counts, conflicts, disposition, storage/time estimate and sampled canonical preview;
 - backup plus isolated restore proof bound to the current source signature;
@@ -38,17 +42,18 @@ No ring may be skipped merely because an earlier ring is green.
 ## 4. Migration operator procedure
 
 1. Confirm lifecycle and exact expected version.
-2. Run System Check; treat `blocker` as stop, `unknown` as unresolved evidence, never as success.
-3. Capture/verify source inventory lock.
-4. Run complete dry-run. Resolve or explicitly quarantine every blocking disposition.
-5. Review storage/time estimates as planning estimates, not SLO guarantees.
-6. Verify independently produced backup/restore evidence.
-7. Select a bounded batch no larger than the source-enforced maximum.
-8. Revalidate current File 00 actor, lifecycle, mapping and source signature after lock acquisition.
-9. Run migration through File 21 canonical commands only.
-10. Verify authorship, target provenance, media/reference coverage and interaction contribution ledgers.
-11. If post-migration verification fails, contain/rollback the canonical target through File 21; never repair File 21 tables directly.
-12. Reconcile batch counts/checksums and persist evidence before moving to the next batch.
+2. Run the authenticated `POST /wp-json/sabri/file04/v1/plan/contracts/sync` operation in staging to register/update the File 01 manifest, contract and restricted route using File 00/File 01 authorization.
+3. Run System Check; treat `blocker` as stop, `unknown` as unresolved evidence, never as success.
+4. Capture/verify source inventory lock.
+5. Run complete dry-run. Resolve or explicitly quarantine every blocking disposition.
+6. Review storage/time estimates as planning estimates, not SLO guarantees.
+7. Verify independently produced backup/restore evidence.
+8. Select a bounded batch no larger than the source-enforced maximum.
+9. Revalidate current File 00 actor, lifecycle, mapping and source signature after lock acquisition.
+10. Run migration through File 21 canonical commands only.
+11. Verify authorship, target provenance, media/reference coverage and interaction contribution ledgers.
+12. If post-migration verification fails, contain/rollback the canonical target through File 21; never repair File 21 tables directly.
+13. Reconcile batch counts/checksums and persist evidence before moving to the next batch.
 
 ## 5. Cutover procedure
 
@@ -103,10 +108,11 @@ Any production SLO/error budget must be approved from real monitoring evidence. 
 ## 8. Degraded dependency behavior
 
 - **File 00 unavailable:** all privileged state-changing operations fail closed.
-- **File 21 unavailable/incompatible:** migration, rollback and canonical-target actions fail closed; legacy public truth is not re-enabled.
+- **File 21 unavailable/incompatible:** migration, rollback and canonical-target actions fail closed; legacy public truth is not re-enabled. Authenticated read-only System Check/status diagnostics remain available so the dependency failure can be diagnosed.
 - **File 26 unavailable:** migration may not be declared cutover-complete; search handoff remains pending/unknown.
 - **File 24/assurance view unavailable:** native File 04 authorization/integrity controls remain active; assurance status is unknown, not secure-by-assumption.
 - **Cache/search provider evidence missing:** cutover is blocked.
+- **File 19 unavailable:** lifecycle events enter the bounded File 04 outbox; retirement self-deactivation waits for the final retirement event to be delivered.
 - **Monitoring provider unavailable:** local bounded evidence remains, operator escalation required; no false healthy state.
 
 ## 9. Support and escalation
