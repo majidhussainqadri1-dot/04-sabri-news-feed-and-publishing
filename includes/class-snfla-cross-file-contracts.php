@@ -248,6 +248,10 @@ final class SNFLA_Cross_File_Contracts {
 		if ( is_wp_error( $actor ) ) {
 			return $actor;
 		}
+		$current_status = self::foundation_registry_status();
+		if ( ! empty( $current_status['synced'] ) ) {
+			return array( 'synced' => true, 'idempotent' => true, 'actor_id' => (int) $actor, 'status' => $current_status );
+		}
 
 		$module = SPF_Registry::get_module( self::FILE01_MODULE_KEY );
 		$manifest_context = array( 'purpose' => 'file04_manifest_registration' );
@@ -332,7 +336,11 @@ final class SNFLA_Cross_File_Contracts {
 			&& 'minimal' === (string) ( $route['layout_context'] ?? '' )
 			&& in_array( (string) ( $route['status'] ?? '' ), array( 'registered', 'active' ), true );
 		$contract_ok = is_array( $contract ) && 'current' === (string) ( $contract['status'] ?? '' );
-		$module_ok = is_array( $module ) && self::FILE01_MODULE_KEY === (string) ( $module['module_key'] ?? '' );
+		$module_ok = is_array( $module )
+			&& self::FILE01_MODULE_KEY === (string) ( $module['module_key'] ?? '' )
+			&& ( defined( 'SNFLA_VERSION' ) ? SNFLA_VERSION : '2.0.5' ) === (string) ( $module['software_version'] ?? '' )
+			&& self::CONTRACT_VERSION === (string) ( $module['contract_version'] ?? '' )
+			&& 'active' === (string) ( $module['state'] ?? '' );
 		return array(
 			'available' => true,
 			'synced'    => $module_ok && $route_ok && $contract_ok,
