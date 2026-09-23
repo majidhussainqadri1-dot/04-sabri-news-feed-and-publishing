@@ -46,11 +46,12 @@ The File 04 plan maps these **15** relevant journeys: `AJ-07`, `AJ-10`, `AJ-24`,
 ## Modern implementation lineage introduced in v1.3.0 and hardened through v2.0.5
 
 1. `SNFLA_Central_Plan` — exact 71-CV registry, 2 F04-CEN IDs, 15 AJ IDs, canonical-owner map and truthful release gate.
-2. File 26 compatibility — `sabri_file26_legacy_resolution_v1` resolves a migrated legacy ID only to a verified, public File 21 canonical object. Unmapped/private targets are explicitly non-indexable and no File 04 ranking backend is created.
+2. File 26 compatibility — `sabri_file26_legacy_resolution_v1` accepts only exact positive canonical legacy IDs and resolves a migrated ID only to a verified, public File 21 canonical object. Malformed/unmapped/private targets are non-indexable and no File 04 ranking backend is created.
 3. Accessibility/localization source safeguards — logical RTL properties, strong `:focus-visible`, 44px controls, LTR isolation for code/JSON, reduced-motion handling, forced-colors support and mobile reflow safeguards.
 4. Release truth separation — source trace completion is distinct from Hostinger staging, backup/restore, File 26 integration acceptance, accessibility acceptance, degraded-provider drills and Founder production approval.
 5. Two fresh post-central-plan source review rounds — requirements/ownership first; adversarial/source regression second.
-6. Deterministic v1.3.0 package metadata includes central-plan IDs, canonical owner boundaries, dependency contracts and review counts.
+6. Deterministic package metadata includes central-plan IDs, canonical owner boundaries, dependency contracts and review counts.
+7. Cross-file contract completion — File 01 receives the File 04 manifest/contract/restricted route via authorized registry sync; File 20 supplies the canonical `system_recovery` → `minimal` layout; File 19 receives the four required lifecycle facts through a versioned producer with bounded retry; File 24 receives the module security manifest and File 04 assurance state; read-only diagnostics remain available when File 21 is unavailable.
 
 ## Required trace chain
 
