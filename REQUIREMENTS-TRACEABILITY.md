@@ -1,4 +1,4 @@
-# File 04 v1.3.0 — Governing Requirements Traceability
+# File 04 v2.0.5 — Governing Requirements Traceability
 
 ## Governing sources
 
@@ -43,7 +43,7 @@ The File 04 plan maps these **15** relevant journeys: `AJ-07`, `AJ-10`, `AJ-24`,
 - `AJ-36`–`AJ-37` are degraded-provider and restore/reconciliation gates.
 - `AJ-38`–`AJ-40` are release gates: blockers stop release, screenshot/role/state corpus is required in staging, and two consecutive corrective review/fix/retest rounds precede rollout.
 
-## Modern implementation additions in v1.3.0
+## Modern implementation lineage introduced in v1.3.0 and hardened through v2.0.5
 
 1. `SNFLA_Central_Plan` — exact 71-CV registry, 2 F04-CEN IDs, 15 AJ IDs, canonical-owner map and truthful release gate.
 2. File 26 compatibility — `sabri_file26_legacy_resolution_v1` resolves a migrated legacy ID only to a verified, public File 21 canonical object. Unmapped/private targets are explicitly non-indexable and no File 04 ranking backend is created.
