@@ -112,7 +112,7 @@ Any production SLO/error budget must be approved from real monitoring evidence. 
 - **File 26 unavailable:** migration may not be declared cutover-complete; search handoff remains pending/unknown.
 - **File 24/assurance view unavailable:** native File 04 authorization/integrity controls remain active; assurance status is unknown, not secure-by-assumption.
 - **Cache/search provider evidence missing:** cutover is blocked.
-- **File 19 unavailable:** lifecycle events enter the bounded File 04 outbox; retirement self-deactivation waits for the final retirement event to be delivered.
+- **File 19 unavailable:** lifecycle events enter the lossless bounded File 04 outbox. While any prior event is pending, later migration/quarantine/cutover/retirement mutations are blocked to preserve event order. An authorized operator may retry delivery with `POST /wp-json/sabri/file04/v1/plan/events/retry`. Retirement self-deactivation waits for the final retirement event to be delivered.
 - **Monitoring provider unavailable:** local bounded evidence remains, operator escalation required; no false healthy state.
 
 ## 9. Support and escalation
