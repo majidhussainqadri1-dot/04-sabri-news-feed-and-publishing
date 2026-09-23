@@ -111,8 +111,10 @@ need('| 79 | **Defect.**' in record and '| 80 | **Defect.**' in record,'R79-R80 
 need('SNFLA_Cross_File_Contracts' in cross and 'SPF_Registry::map_route' in cross,'R80 File01/File20 route/context contract layer missing',f)
 need('LegacyMigrationBatchCompleted.v1' in migration and 'LegacyRecordQuarantined.v1' in migration,'R80 File19 migration/quarantine events missing',f)
 need('LegacyCutoverCompleted.v1' in reconciliation and 'LegacyAdapterRetired.v1' in retirement,'R80 File19 cutover/retirement events missing',f)
-need('event_capacity_available' in cross and 'file19_event_outbox_full' in cross and 'snfla_file19_event_backpressure' in migration + reconciliation + retirement,'R80 bounded event outbox backpressure missing',f)
+need('event_capacity_available' in cross and 'event_stream_ready' in cross and 'file19_event_outbox_full' in cross and 'snfla_file19_event_backpressure' in migration + reconciliation + retirement,'R80 ordered bounded event outbox backpressure missing',f)
 need('snfla_retirement_event_delivery_pending' in retirement and 'file19_outbox_status' in retirement,'R80 retirement event-before-deactivation guarantee missing',f)
+need("'/plan/events/retry'" in completion and 'rest_retry_events' in completion,'R80 authorized File19 event retry endpoint missing',f)
+need("if ( SNFLA_Schema::state_valid() && 'retired' === SNFLA_Schema::state() )" in main and main.find("if ( SNFLA_Schema::state_valid() && 'retired' === SNFLA_Schema::state() )") < main.find('SNFLA_Central_Plan::boot();'),'R80 retired runtime bootstrap is not inert',f)
 need('spcrc/module_manifests' in cross and 'spcrc/file04_contract_state' in cross,'R80 File24 assurance contract missing',f)
 file26=central[central.find('public static function file26_resolution'):central.find('public static function release_readiness')]
 need('self::strict_positive_id( $legacy_id )' in file26 and 'absint( $legacy_id )' not in file26,'R80 File26 strict legacy identity missing',f)
