@@ -507,12 +507,12 @@ final class SNFLA_Cross_File_Contracts {
 			if ( ! is_wp_error( $result ) ) {
 				return array( 'published' => true, 'queued' => false, 'provider' => 'File 19', 'result' => SNFLA_Audit::redact( $result ) );
 			}
-			self::queue_file19_event( $event, $result->get_error_code() );
-			return array( 'published' => false, 'queued' => true, 'provider' => 'File 19', 'reason' => $result->get_error_code() );
+			$queued = self::queue_file19_event( $event, $result->get_error_code() );
+			return array( 'published' => false, 'queued' => $queued, 'provider' => 'File 19', 'reason' => $queued ? $result->get_error_code() : 'file19_outbox_full' );
 		}
 
-		self::queue_file19_event( $event, 'file19_unavailable' );
-		return array( 'published' => false, 'queued' => true, 'provider' => 'File 19', 'reason' => 'file19_unavailable' );
+		$queued = self::queue_file19_event( $event, 'file19_unavailable' );
+		return array( 'published' => false, 'queued' => $queued, 'provider' => 'File 19', 'reason' => $queued ? 'file19_unavailable' : 'file19_outbox_full' );
 	}
 
 	public static function retry_file19_outbox() {
@@ -540,6 +540,13 @@ final class SNFLA_Cross_File_Contracts {
 		return array( 'processed' => $processed, 'remaining' => count( $outbox ) );
 	}
 
+	public static function event_capacity_available( $needed = 1 ) {
+		if ( ! is_int( $needed ) || $needed < 1 || $needed > self::FILE19_OUTBOX_MAX ) {
+			return false;
+		}
+		return count( self::file19_outbox() ) + $needed <= self::FILE19_OUTBOX_MAX;
+	}
+
 	public static function file19_outbox_status() {
 		$outbox = self::file19_outbox();
 		return array(
@@ -553,7 +560,16 @@ final class SNFLA_Cross_File_Contracts {
 		$outbox = self::file19_outbox();
 		$key = sanitize_text_field( (string) ( $event['event_id'] ?? '' ) );
 		if ( '' === $key ) {
-			return;
+			return false;
+		}
+		if ( ! isset( $outbox[ $key ] ) && count( $outbox ) >= self::FILE19_OUTBOX_MAX ) {
+			do_action( 'snfla_operational_alert_v1', array(
+				'owner'    => 'File 04 release operator',
+				'severity' => 'critical',
+				'code'     => 'file19_event_outbox_full',
+				'event_id' => $key,
+			) );
+			return false;
 		}
 		$outbox[ $key ] = array(
 			'event'          => $event,
@@ -561,8 +577,7 @@ final class SNFLA_Cross_File_Contracts {
 			'attempts'       => absint( $outbox[ $key ]['attempts'] ?? 0 ),
 			'queued_at_utc'  => (string) ( $outbox[ $key ]['queued_at_utc'] ?? gmdate( 'Y-m-d H:i:s' ) ),
 		);
-		$outbox = array_slice( $outbox, -1 * self::FILE19_OUTBOX_MAX, null, true );
-		self::persist_file19_outbox( $outbox );
+		$persisted = self::persist_file19_outbox( $outbox );
 		do_action( 'snfla_operational_alert_v1', array(
 			'owner'    => 'File 04 release operator',
 			'severity' => 'medium',
@@ -570,6 +585,7 @@ final class SNFLA_Cross_File_Contracts {
 			'event_id' => $key,
 			'reason'   => sanitize_key( (string) $reason ),
 		) );
+		return $persisted;
 	}
 
 	private static function file19_outbox() {
