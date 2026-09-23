@@ -29,6 +29,9 @@ f = []
 need("'class-snfla-cross-file-contracts.php'" in main, 'Cross-file contract class is not loaded.', f)
 need('SNFLA_Cross_File_Contracts::boot();' in main, 'Cross-file contract class is not booted.', f)
 
+# Retired runtime must short-circuit before plan/REST/Future surfaces boot.
+need("SNFLA_Cross_File_Contracts::boot();" in main and "if ( SNFLA_Schema::state_valid() && 'retired' === SNFLA_Schema::state() )" in main and main.find("if ( SNFLA_Schema::state_valid() && 'retired' === SNFLA_Schema::state() )") < main.find('SNFLA_Central_Plan::boot();'), 'Retired bootstrap still exposes central-plan/REST/Future surfaces.', f)
+
 # 3 strict File 26 identity.
 file26 = central[central.find('public static function file26_resolution'):central.find('public static function release_readiness')]
 need('self::strict_positive_id( $legacy_id )' in file26 and "status' => 'invalid'" in file26 and 'absint( $legacy_id )' not in file26, 'File 26 legacy resolution still allows lossy identity normalization.', f)
@@ -58,7 +61,7 @@ for event in ['LegacyMigrationBatchCompleted.v1','LegacyRecordQuarantined.v1','L
     need(event in cross, 'Required File 04 plan event missing from producer contract: ' + event, f)
 for transport in ['LegacyMigrationBatchCompleted.V1','LegacyRecordQuarantined.V1','LegacyCutoverCompleted.V1','LegacyAdapterRetired.V1']:
     need(transport in cross, 'File 19-compatible transport event missing: ' + transport, f)
-need('FILE19_OUTBOX_MAX          = 100' in cross and 'retry_file19_outbox' in cross and 'sun_ingest_domain_event' in cross and 'event_capacity_available' in cross and 'file19_event_outbox_full' in cross and 'array_slice( $outbox' not in cross, 'Lossless bounded File 19 retry/backpressure integration is incomplete.', f)
+need('FILE19_OUTBOX_MAX          = 100' in cross and 'retry_file19_outbox' in cross and 'sun_ingest_domain_event' in cross and 'event_capacity_available' in cross and 'event_stream_ready' in cross and 'file19_event_outbox_full' in cross and 'array_slice( $outbox' not in cross, 'Lossless ordered bounded File 19 retry/backpressure integration is incomplete.', f)
 
 # 14-17 lifecycle event emission points.
 need("'LegacyMigrationBatchCompleted.v1'" in migration, 'Migration-completed event is not emitted.', f)
@@ -73,6 +76,7 @@ need("'spcrc/module_manifests'" in cross and "'spcrc/file04_contract_state'" in 
 for needle in ["$checks['file01_registry']", "$checks['file20_shell']", "$checks['file19_events']", "$checks['file24_assurance']"]:
     need(needle in completion, 'System Check omits cross-file state: ' + needle, f)
 need("'/plan/contracts/sync'" in completion and 'sync_foundation_registry' in completion, 'Authorized File 01 contract sync endpoint is missing.', f)
+need("'/plan/events/retry'" in completion and 'rest_retry_events' in completion and 'retry_file19_outbox' in completion, 'Authorized File 19 retry endpoint is missing.', f)
 need('snfla_file19_event_backpressure' in migration and 'snfla_file19_event_backpressure' in reconciliation and 'snfla_file19_event_backpressure' in retirement, 'Lifecycle mutation backpressure for the bounded File 19 outbox is incomplete.', f)
 
 # 20 release/audit evidence must close R80 and run this gate.
