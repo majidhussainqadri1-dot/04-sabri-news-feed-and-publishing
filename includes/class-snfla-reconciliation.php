@@ -183,6 +183,7 @@ final class SNFLA_Reconciliation {
 
 	public static function approve_cutover( $actor_id, $expected_state, $expected_version ) {
 		if ( ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_cutover_version_invalid', 'Lifecycle version must be a canonical positive integer.', array( 'status' => 400 ) ); }
+		if ( ! SNFLA_Cross_File_Contracts::event_stream_ready( 1 ) ) { return new WP_Error( 'snfla_file19_event_backpressure', 'The bounded File 19 event outbox must be drained before cutover.', array( 'status' => 503 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) { return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) ); }
 		try {
 			$authorized_actor = SNFLA_Capabilities::revalidate_actor( $actor_id, SNFLA_Capabilities::CAP_REVIEW );
@@ -219,6 +220,17 @@ final class SNFLA_Reconciliation {
 			}
 			$transition = SNFLA_Schema::transition( 'redirect_cutover', sanitize_key( $expected_state ), $expected_version, $actor_id, array( 'reconciliation_checksum' => $report['report_checksum'] ?? '', 'final_delta_signature' => $locked['source_signature'], 'cache_provider' => sanitize_key( (string) ( $cache_evidence['provider_id'] ?? '' ) ), 'search_provider' => sanitize_key( (string) ( $search_evidence['provider_id'] ?? '' ) ) ) );
 			if ( is_wp_error( $transition ) ) { return $transition; }
+			SNFLA_Cross_File_Contracts::emit_event(
+				'LegacyCutoverCompleted.v1',
+				$actor_id,
+				array(
+					'_event_key'              => (string) $locked['source_signature'] . '|' . (string) ( $report['report_checksum'] ?? '' ),
+					'source_signature'         => (string) $locked['source_signature'],
+					'reconciliation_checksum' => (string) ( $report['report_checksum'] ?? '' ),
+					'cache_provider'           => sanitize_key( (string) ( $cache_evidence['provider_id'] ?? '' ) ),
+					'search_provider'          => sanitize_key( (string) ( $search_evidence['provider_id'] ?? '' ) ),
+				)
+			);
 			return $transition;
 		} finally {
 			SNFLA_Database::release_lock( 'operation' );

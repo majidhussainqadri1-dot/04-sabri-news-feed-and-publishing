@@ -10,11 +10,13 @@ final class SNFLA_Admin {
 
 	public static function menu() {
 		$cap = apply_filters( 'snfla_admin_menu_capability', 'sabri_feed_run_migrations' );
-		add_management_page( 'File 04 Legacy Adapter', 'File 04 Legacy Adapter', $cap, 'snfla-legacy-adapter', array( __CLASS__, 'page' ) );
+		add_menu_page( 'File 04 Legacy Adapter', 'File 04 Legacy Adapter', $cap, 'sabri-legacy-feed', array( __CLASS__, 'page' ), 'dashicons-migrate', 80 );
+		// Hidden compatibility alias for historical Tools links; canonical admin route is admin.php?page=sabri-legacy-feed.
+		add_submenu_page( null, 'File 04 Legacy Adapter', 'File 04 Legacy Adapter', $cap, 'snfla-legacy-adapter', array( __CLASS__, 'page' ) );
 	}
 
 	public static function assets( $hook ) {
-		if ( 'tools_page_snfla-legacy-adapter' === $hook ) {
+		if ( in_array( $hook, array( 'toplevel_page_sabri-legacy-feed', 'admin_page_snfla-legacy-adapter' ), true ) ) {
 			wp_enqueue_style( 'snfla-admin', SNFLA_URL . 'assets/css/admin.css', array( 'dashicons' ), SNFLA_VERSION );
 		}
 	}
@@ -32,7 +34,7 @@ final class SNFLA_Admin {
 	}
 
 	public static function page() {
-		$actor = SNFLA_Capabilities::current_read_actor( SNFLA_Capabilities::CAP_REVIEW );
+		$actor = SNFLA_Capabilities::current_diagnostic_actor();
 		if ( is_wp_error( $actor ) ) {
 			$error_data = $actor->get_error_data();
 			$response   = is_array( $error_data ) && isset( $error_data['status'] ) ? absint( $error_data['status'] ) : 403;
@@ -49,7 +51,7 @@ final class SNFLA_Admin {
 			<p class="snfla-lead">Read-only, auditable and reversible migration into canonical File 21. This module does not own publishing, feed ranking, comments, reactions, saves, reports, navigation or public composition.</p>
 			<div class="snfla-state"><strong>Lifecycle:</strong> <?php echo esc_html( $status['state'] ); ?> <span>v<?php echo absint( $status['version'] ); ?></span> · <strong>Open conflicts:</strong> <?php echo absint( SNFLA_Mapping::open_conflict_count() ); ?> · <strong>File 21:</strong> <?php echo SNFLA_Capabilities::file21_ready() ? 'Ready' : 'Blocked'; ?></div>
 			<nav class="nav-tab-wrapper" aria-label="File 04 migration sections">
-			<?php foreach ( $tabs as $key => $label ) : ?><a class="nav-tab <?php echo $tab === $key ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( add_query_arg( array( 'page' => 'snfla-legacy-adapter', 'tab' => $key ), admin_url( 'tools.php' ) ) ); ?>"><span class="dashicons dashicons-<?php echo esc_attr( self::icon( $key ) ); ?>"></span><?php echo esc_html( $label ); ?></a><?php endforeach; ?>
+			<?php foreach ( $tabs as $key => $label ) : ?><a class="nav-tab <?php echo $tab === $key ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( add_query_arg( array( 'page' => 'sabri-legacy-feed', 'tab' => $key ), admin_url( 'admin.php' ) ) ); ?>"><span class="dashicons dashicons-<?php echo esc_attr( self::icon( $key ) ); ?>"></span><?php echo esc_html( $label ); ?></a><?php endforeach; ?>
 			</nav>
 			<section class="snfla-panel">
 			<?php
@@ -62,7 +64,7 @@ final class SNFLA_Admin {
 				case 'reconciliation': self::json_block( SNFLA_Reconciliation::report() ); break;
 				case 'rollback': self::json_block( SNFLA_Rollback::proof() ); break;
 				case 'retirement': $retirement=get_option( SNFLA_Schema::RETIREMENT_OPTION, array() ); self::json_block( array( 'required_confirmation' => SNFLA_Retirement::CONFIRMATION, 'evidence_valid' => SNFLA_Integrity::evidence_valid( $retirement ), 'evidence' => SNFLA_Integrity::evidence_valid( $retirement ) ? $retirement : array( 'invalid_evidence' => true ), 'source_deletion' => 'Never automatic' ) ); break;
-				default: self::json_block( array( 'status' => $status, 'file21' => SNFLA_File21_Adapter::status(), 'backup_proof_valid' => SNFLA_Migration::backup_proof_valid(), 'reconciliation' => SNFLA_Reconciliation::report(), 'rest_namespace' => SNFLA_REST::NAMESPACE, 'legacy_page_quarantine' => SNFLA_Database::public_page_quarantine_status(), 'runbook' => 'MIGRATION-RUNBOOK.md and ROLLBACK-RUNBOOK.md' ) );
+				default: self::json_block( array( 'status' => $status, 'file21' => SNFLA_File21_Adapter::status(), 'backup_proof_valid' => SNFLA_Migration::backup_proof_valid(), 'reconciliation' => SNFLA_Reconciliation::report(), 'rest_namespace' => SNFLA_REST::NS, 'legacy_page_quarantine' => SNFLA_Database::public_page_quarantine_status(), 'runbook' => 'MIGRATION-RUNBOOK.md and ROLLBACK-RUNBOOK.md' ) );
 			}
 			?>
 			</section>

@@ -72,6 +72,7 @@ def run_source_gates():
     subprocess.run(['php',str(ROOT/'tests/run-central-plan.php')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-architecture.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-file04-own-plan.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
+    subprocess.run([sys.executable,str(ROOT/'tests/run-cross-file-completion.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-future18.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-central-reviews.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-future18-reviews.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)

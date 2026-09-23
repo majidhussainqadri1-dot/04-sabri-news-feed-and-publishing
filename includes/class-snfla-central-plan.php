@@ -148,8 +148,11 @@ final class SNFLA_Central_Plan {
 	 */
 	public static function file26_resolution( $existing, $legacy_id ) {
 		if ( ! empty( $existing ) ) { return $existing; }
-		$legacy_id = absint( $legacy_id );
-		if ( $legacy_id <= 0 || ! SNFLA_Capabilities::file21_ready() ) {
+		$legacy_id = self::strict_positive_id( $legacy_id );
+		if ( $legacy_id <= 0 ) {
+			return array( 'status' => 'invalid', 'indexable' => false, 'legacy_id' => 0 );
+		}
+		if ( ! SNFLA_Capabilities::file21_ready() ) {
 			return array( 'status' => 'unavailable', 'indexable' => false, 'legacy_id' => $legacy_id );
 		}
 		$target_id = SNFLA_File21_Adapter::target_for( $legacy_id );
@@ -173,6 +176,19 @@ final class SNFLA_Central_Plan {
 			'contract'     => self::CONTRACT_VERSION,
 		);
 	}
+
+
+	private static function strict_positive_id( $value ) {
+		if ( is_int( $value ) ) {
+			return $value > 0 ? $value : 0;
+		}
+		if ( ! is_string( $value ) || 1 !== preg_match( '/^[1-9][0-9]*$/D', $value ) ) {
+			return 0;
+		}
+		$parsed = (int) $value;
+		return $parsed > 0 && (string) $parsed === $value ? $parsed : 0;
+	}
+
 
 	/**
 	 * Truthful production-readiness gate. Source completion does not fabricate

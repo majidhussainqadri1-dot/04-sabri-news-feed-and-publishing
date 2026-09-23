@@ -5,12 +5,14 @@ final class SNFLA_Retirement {
 	const CONFIRMATION = 'RETIRE FILE 04 LEGACY ADAPTER';
 
 	public static function retire( $actor_id, $confirmation, $expected_state, $expected_version ) {
+		if ( ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_retirement_version_invalid', 'Lifecycle version must be a canonical positive integer.', array( 'status' => 400 ) ); }
 		if ( self::CONFIRMATION !== trim( (string) $confirmation ) ) { return new WP_Error( 'snfla_retirement_confirmation_required', 'Type the exact retirement confirmation phrase.', array( 'status' => 400 ) ); }
+		if ( ! SNFLA_Cross_File_Contracts::event_stream_ready( 1 ) ) { return new WP_Error( 'snfla_file19_event_backpressure', 'The bounded File 19 event outbox must be drained before retirement.', array( 'status' => 503 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) { return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) ); }
 		try {
 			$authorized_actor = SNFLA_Capabilities::revalidate_actor( $actor_id, SNFLA_Capabilities::CAP_RETIRE );
 			if ( is_wp_error( $authorized_actor ) ) { return $authorized_actor; }
-			$state_check = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), absint( $expected_version ) );
+			$state_check = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), $expected_version );
 			if ( is_wp_error( $state_check ) ) { return $state_check; }
 			if ( ! self::deactivation_api_available() ) {
 				return new WP_Error( 'snfla_retirement_deactivation_unavailable', 'WordPress plugin deactivation APIs are unavailable; retirement cannot complete safely.', array( 'status' => 503 ) );
@@ -50,10 +52,27 @@ final class SNFLA_Retirement {
 			);
 			$previous = get_option( SNFLA_Schema::RETIREMENT_OPTION, array() );
 			if ( ! update_option( SNFLA_Schema::RETIREMENT_OPTION, $evidence, false ) ) { return new WP_Error( 'snfla_retirement_evidence_persist_failed', 'Retirement evidence could not be persisted.', array( 'status' => 500 ) ); }
-			$transition = SNFLA_Schema::transition( 'retired', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'confirmation_hash' => hash( 'sha256', self::CONFIRMATION ), 'reconciliation_checksum' => $report['report_checksum'] ?? '', 'retirement_evidence_checksum' => SNFLA_Checksum::hash( $evidence ), 'redirect_handoff_checksum' => $handoff['manifest_checksum'] ?? '' ) );
+			$transition = SNFLA_Schema::transition( 'retired', sanitize_key( $expected_state ), $expected_version, $actor_id, array( 'confirmation_hash' => hash( 'sha256', self::CONFIRMATION ), 'reconciliation_checksum' => $report['report_checksum'] ?? '', 'retirement_evidence_checksum' => SNFLA_Checksum::hash( $evidence ), 'redirect_handoff_checksum' => $handoff['manifest_checksum'] ?? '' ) );
 			if ( is_wp_error( $transition ) ) {
 				$restored_previous = update_option( SNFLA_Schema::RETIREMENT_OPTION, $previous, false ) || get_option( SNFLA_Schema::RETIREMENT_OPTION, array() ) === $previous;
 				return $restored_previous ? $transition : new WP_Error( 'snfla_retirement_compensation_failed', 'Retirement transition failed and previous retirement evidence could not be restored exactly.', array( 'status' => 500, 'cause' => $transition->get_error_code(), 'manual_recovery_required' => true ) );
+			}
+			$event_delivery = SNFLA_Cross_File_Contracts::emit_event(
+				'LegacyAdapterRetired.v1',
+				$actor_id,
+				array(
+					'_event_key'                    => $source_signature . '|' . SNFLA_Checksum::hash( $evidence ),
+					'source_signature'              => $source_signature,
+					'retirement_evidence_checksum' => SNFLA_Checksum::hash( $evidence ),
+					'redirect_handoff_checksum'    => (string) ( $handoff['manifest_checksum'] ?? '' ),
+				)
+			);
+			if ( empty( $event_delivery['published'] ) ) {
+				return new WP_Error(
+					'snfla_retirement_event_delivery_pending',
+					'The adapter entered the retired state, but the required File 19 retirement event is queued. File 04 will remain inert-but-active until the bounded outbox is drained, then self-deactivate.',
+					array( 'status' => 503, 'retired' => true, 'event_delivery' => SNFLA_Audit::redact( $event_delivery ) )
+				);
 			}
 			wp_clear_scheduled_hook( 'snfla_daily_integrity_check' );
 			$deactivated = self::deactivate_retired_plugin();
@@ -61,7 +80,7 @@ final class SNFLA_Retirement {
 				SNFLA_Audit::record( 'retirement_deactivation_failed', $actor_id, array( 'source_signature' => $source_signature, 'retirement_evidence_checksum' => SNFLA_Checksum::hash( $evidence ) ) );
 				return new WP_Error( 'snfla_retirement_deactivation_failed', 'The adapter entered the retired state but WordPress could not remove it from the active plugin list; manual deactivation is required before release acceptance.', array( 'status' => 500, 'retired' => true ) );
 			}
-			return array( 'evidence' => $evidence, 'lifecycle' => $transition, 'redirect_handoff' => SNFLA_Audit::redact( $handoff ), 'plugin_deactivated' => true );
+			return array( 'evidence' => $evidence, 'lifecycle' => $transition, 'redirect_handoff' => SNFLA_Audit::redact( $handoff ), 'plugin_deactivated' => true, 'event_delivery' => $event_delivery );
 		} finally { SNFLA_Database::release_lock( 'operation' ); }
 	}
 
@@ -153,6 +172,13 @@ final class SNFLA_Retirement {
 	/** Make an already-retired adapter inert and remove it from active plugins. */
 	public static function deactivate_retired_plugin() {
 		if ( 'retired' !== SNFLA_Schema::state() ) { return false; }
+		if ( class_exists( 'SNFLA_Cross_File_Contracts' ) ) {
+			$outbox = SNFLA_Cross_File_Contracts::file19_outbox_status();
+			if ( ! empty( $outbox['count'] ) ) {
+				return false;
+			}
+		}
+		wp_clear_scheduled_hook( 'snfla_daily_integrity_check' );
 		if ( ! function_exists( 'deactivate_plugins' ) && defined( 'ABSPATH' ) && file_exists( ABSPATH . 'wp-admin/includes/plugin.php' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}

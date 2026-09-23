@@ -362,6 +362,7 @@ final class SNFLA_Migration {
 		$decision_reference = trim( (string) $decision_reference );
 		$decision_hash = hash( 'sha256', $decision_reference );
 		if ( empty( $legacy_ids ) ) { return new WP_Error( 'snfla_empty_quarantine_batch', 'Select at least one dry-run conflict candidate.', array( 'status' => 400 ) ); }
+		if ( ! SNFLA_Cross_File_Contracts::event_stream_ready( count( $legacy_ids ) ) ) { return new WP_Error( 'snfla_file19_event_backpressure', 'The bounded File 19 event outbox must be drained before approving more quarantine dispositions.', array( 'status' => 503 ) ); }
 		if ( ! in_array( $reason_code, $allowed_reasons, true ) || strlen( $decision_reference ) < 8 || strlen( $decision_reference ) > 190 ) {
 			return new WP_Error( 'snfla_quarantine_decision_required', 'An allowed quarantine reason and an 8–190 character decision reference are required.', array( 'status' => 400 ) );
 		}
@@ -451,7 +452,18 @@ final class SNFLA_Migration {
 					$blocked[ $legacy_id ] = 'quarantine_conflict_resolution_failed';
 					continue;
 				}
-				$approved[ $legacy_id ] = array( 'reason_code' => $reason_code, 'conflict_codes' => $conflicts, 'source_checksum' => $checksum );
+				$event_delivery = SNFLA_Cross_File_Contracts::emit_event(
+					'LegacyRecordQuarantined.v1',
+					$actor_id,
+					array(
+						'_event_key'              => 'legacy:' . $legacy_id . '|' . $checksum . '|' . $decision_hash,
+						'legacy_id'               => $legacy_id,
+						'reason_code'             => $reason_code,
+						'source_checksum'         => $checksum,
+						'decision_reference_hash' => $decision_hash,
+					)
+				);
+				$approved[ $legacy_id ] = array( 'reason_code' => $reason_code, 'conflict_codes' => $conflicts, 'source_checksum' => $checksum, 'event_delivery' => $event_delivery );
 			}
 			$result = array(
 				'success'              => empty( $blocked ),
@@ -504,6 +516,7 @@ final class SNFLA_Migration {
 		$legacy_ids = SNFLA_Integrity::strict_positive_ids( $legacy_ids, self::MAX_BATCH );
 		if ( is_wp_error( $legacy_ids ) ) { return new WP_Error( 'snfla_invalid_migration_batch', 'Migration IDs must be positive, unique and canonical.', array( 'status' => 400 ) ); }
 		if ( empty( $legacy_ids ) ) { return new WP_Error( 'snfla_empty_batch', 'Select at least one legacy publication.', array( 'status' => 400 ) ); }
+		if ( ! SNFLA_Cross_File_Contracts::event_stream_ready( 1 ) ) { return new WP_Error( 'snfla_file19_event_backpressure', 'The bounded File 19 event outbox must be drained before another migration batch can start.', array( 'status' => 503 ) ); }
 		$authorized_actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_RUN );
 		if ( is_wp_error( $authorized_actor ) || $authorized_actor !== $actor_id ) { return new WP_Error( 'snfla_canonical_migration_capability_missing', 'File 21 canonical migration capability and fresh File 00 authority are required.', array( 'status' => 403 ) ); }
 		if ( ! self::backup_proof_valid() ) { return new WP_Error( 'snfla_backup_proof_required', 'A recent backup and restore proof is required before migration.', array( 'status' => 412 ) ); }
@@ -681,7 +694,18 @@ final class SNFLA_Migration {
 				}
 				return new WP_Error( 'snfla_migration_audit_failed', 'Migration targets were quarantined because the final audit event could not be written.', array( 'status' => 500, 'run_uuid' => $run_uuid ) );
 			}
-			return array( 'idempotent_replay' => false, 'run_uuid' => $run_uuid, 'status' => $status, 'report' => $summary, 'lifecycle' => $transition );
+			$event_delivery = SNFLA_Cross_File_Contracts::emit_event(
+				'LegacyMigrationBatchCompleted.v1',
+				$actor_id,
+				array(
+					'_event_key'     => $run_uuid,
+					'run_uuid'       => $run_uuid,
+					'status'         => $status,
+					'migrated_count' => count( (array) ( $result['migrated'] ?? array() ) ),
+					'skipped_count'  => count( $skipped ) + count( (array) ( $result['skipped'] ?? array() ) ),
+				)
+			);
+			return array( 'idempotent_replay' => false, 'run_uuid' => $run_uuid, 'status' => $status, 'report' => $summary, 'lifecycle' => $transition, 'event_delivery' => $event_delivery );
 		} finally {
 			SNFLA_Database::release_lock( 'migration' );
 			SNFLA_Database::release_lock( 'operation' );

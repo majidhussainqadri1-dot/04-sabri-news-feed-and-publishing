@@ -27,6 +27,11 @@ workflow=t('.github/workflows/file04-legacy-adapter-ci.yml')
 build=t('tools/build-release.py')
 status=t('STATUS.md')
 record=t('SECOND-EIGHTY-ROUND-HARDENING-AUDIT.md')
+cross=t('includes/class-snfla-cross-file-contracts.php')
+completion=t('includes/class-snfla-plan-completion.php')
+admin=t('includes/class-snfla-admin.php')
+retirement=t('includes/class-snfla-retirement.php')
+central=t('includes/class-snfla-central-plan.php')
 
 need('Version: 2.0.5' in main and "SNFLA_VERSION', '2.0.5'" in main,'R26 v2.0.5 runtime missing',f)
 need("SNFLA_SCHEMA_VERSION', '1.3.0'" in main,'storage schema must remain 1.3.0',f)
@@ -100,15 +105,31 @@ need('lifecycle_audit_compensation_failed' in schema and 'lifecycle_recovery_aud
 need('conflict_resolution_compensation_failed' in mapping and 'conflict_supersession_compensation_failed' in mapping and 'system_conflict_compensation_failed' in mapping,'R76 conflict compensation escalation missing',f)
 need('created_by_migration' in mapping and 'strict_nonnegative_id' in mapping and 'synthetic_view' in mapping,'R77 strict interaction-ledger write semantics missing',f)
 need('snfla_interaction_query_identity_invalid' in mapping and "'rolled_back'" in mapping and "'active'" in mapping,'R78 strict interaction-ledger read/query semantics missing',f)
-need('| 79 | **Defect.**' in record and '| 80 | **PENDING' in record,'R79 current audit trace or R80 pending boundary missing',f)
+need('| 79 | **Defect.**' in record and '| 80 | **Defect.**' in record,'R79-R80 current audit trace is incomplete',f)
 
-# R65 trace must be current before final fresh regression rounds.
-need('| 65 | **Defect.**' in record and '| 79 | **Defect.**' in record and '| 80 | **PENDING' in record,'R79 audit trace is not current or R80 was pre-certified',f)
-need('corrected through Round 79' in status or 'through Round 79' in status,'R79 truthful status does not state current review boundary',f)
+# R80: final cross-file completion and truthful evidence closure.
+need('SNFLA_Cross_File_Contracts' in cross and 'SPF_Registry::map_route' in cross,'R80 File01/File20 route/context contract layer missing',f)
+need('LegacyMigrationBatchCompleted.v1' in migration and 'LegacyRecordQuarantined.v1' in migration,'R80 File19 migration/quarantine events missing',f)
+need('LegacyCutoverCompleted.v1' in reconciliation and 'LegacyAdapterRetired.v1' in retirement,'R80 File19 cutover/retirement events missing',f)
+need('event_capacity_available' in cross and 'event_stream_ready' in cross and 'file19_event_outbox_full' in cross and 'snfla_file19_event_backpressure' in migration + reconciliation + retirement,'R80 ordered bounded event outbox backpressure missing',f)
+need('snfla_retirement_event_delivery_pending' in retirement and 'file19_outbox_status' in retirement,'R80 retirement event-before-deactivation guarantee missing',f)
+need("'/plan/events/retry'" in completion and 'rest_retry_events' in completion,'R80 authorized File19 event retry endpoint missing',f)
+need("if ( SNFLA_Schema::state_valid() && 'retired' === SNFLA_Schema::state() )" in main and main.find("if ( SNFLA_Schema::state_valid() && 'retired' === SNFLA_Schema::state() )") < main.find('SNFLA_Central_Plan::boot();'),'R80 retired runtime bootstrap is not inert',f)
+need('spcrc/module_manifests' in cross and 'spcrc/file04_contract_state' in cross,'R80 File24 assurance contract missing',f)
+file26=central[central.find('public static function file26_resolution'):central.find('public static function release_readiness')]
+need('self::strict_positive_id( $legacy_id )' in file26 and 'absint( $legacy_id )' not in file26,'R80 File26 strict legacy identity missing',f)
+need('current_diagnostic_actor()' in completion and 'SNFLA_REST::NAMESPACE' not in completion + admin,'R80 degraded diagnostics/REST namespace correction missing',f)
+need('snfla_retirement_version_invalid' in retirement and 'absint( $expected_version )' not in retirement[:retirement.find('private static function handoff_routes')],'R80 retirement exact lifecycle version missing',f)
+need('run-cross-file-completion.py' in workflow and 'run-cross-file-completion.py' in build,'R80 cross-file exact-head regression gate missing',f)
+
+# Permanent trace must represent all eighty rounds without self-certifying external gates.
+need('| 65 | **Defect.**' in record and '| 79 | **Defect.**' in record and '| 80 | **Defect.**' in record,'Second-eighty audit trace is not current through R80',f)
+need('second-eighty-round-source-corrected' in status,'R80 truthful source status is missing',f)
+need('PENDING — not yet claimed' not in record,'R80 still appears pre-certification pending after correction',f)
 for i in range(1,81): need(f'| {i} |' in record,f'audit record missing round {i}',f)
 
 if f:
     print('Second 80-round hardening gate failed:',file=sys.stderr)
     for item in f: print('-',item,file=sys.stderr)
     sys.exit(1)
-print('Second 80-round gate passed for R01-R79 corrected controls; R80 remains deliberately pending final fresh review.')
+print('Second 80-round gate passed: R01-R80 source-review controls are represented, including final cross-file completion; external staging/live gates remain separate.')
