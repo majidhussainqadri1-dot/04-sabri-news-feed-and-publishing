@@ -11,7 +11,7 @@ final class SNFLA_Plugin {
 
 	public function boot() {
 		if ( 'retired' === SNFLA_Schema::state() ) {
-			add_action( 'admin_init', array( 'SNFLA_Retirement', 'deactivate_retired_plugin' ), 1 );
+			add_action( 'admin_init', array( 'SNFLA_Retirement', 'deactivate_retired_plugin' ), 80 );
 			add_action( 'wp_loaded', array( 'SNFLA_Retirement', 'deactivate_retired_plugin' ), 1 );
 			return;
 		}
