@@ -18,15 +18,17 @@ Version 2.0.5 retains the full migration/rollback and Future18 scope, then appli
 1. Use Hostinger staging only.
 2. Activate accepted File 00 and File 21 builds first.
 3. Install this package and verify the System Status page.
-4. Follow MIGRATION-RUNBOOK.md and ROLLBACK-RUNBOOK.md.
-5. Do not deploy live, cut over or retire without required evidence and Founder approval.
+4. With File 01 available, run the authorized `/wp-json/sabri/file04/v1/plan/contracts/sync` contract-sync operation and verify File 01 registry + File 20 layout status in System Check.
+5. Verify File 19/File 24/File 26 integration states; `unknown` is unresolved evidence, never success.
+6. Follow MIGRATION-RUNBOOK.md and ROLLBACK-RUNBOOK.md.
+7. Do not deploy live, cut over or retire without required evidence and Founder approval.
 
 == Changelog ==
 
 = 2.0.5 =
 * Fresh second 80-round adversarial source audit after v2.0.4.
 * Hardened checkpoint IDs, taxonomy-read checksums, authenticated audit/status evidence, mapping identities/states/checksums, dry-run identity, interaction progress, File21 boundary IDs, run-ledger state, lifecycle version input, physical schema health, activation evidence/cron scheduling, and signed page-quarantine status.
-* A distinct second-eighty audit record/gate is being added while the historical first 80-round audit remains unchanged.
+* Closed the independent second-eighty review through R80 with strict File 26 legacy IDs, canonical File 01/File 20 route-context contracts, File 19 lifecycle events with bounded retry, File 24 assurance manifest/state integration, dependency-outage-safe diagnostics, exact retirement versions and a permanent 20-check cross-file gate.
 
 = 2.0.4 =
 * Completed a fresh sequential 80-round Review → immediate correction → retest audit.
