@@ -42,6 +42,7 @@ $snfla_files = array(
 	'class-snfla-rest.php',
 	'class-snfla-admin.php',
 	'class-snfla-cli.php',
+	'class-snfla-cross-file-contracts.php',
 	'class-snfla-central-plan.php',
 	'class-snfla-plan-completion.php',
 	'class-snfla-future18.php',
@@ -59,6 +60,7 @@ register_deactivation_hook( SNFLA_FILE, array( 'SNFLA_Database', 'deactivate' ) 
 add_action(
 	'plugins_loaded',
 	static function () {
+		SNFLA_Cross_File_Contracts::boot();
 		SNFLA_Central_Plan::boot();
 		SNFLA_Plan_Completion::boot();
 		SNFLA_Future18::boot();
