@@ -232,7 +232,7 @@ final class SNFLA_Cross_File_Contracts {
 			'route_path'      => self::REPORT_ROUTE,
 			'owner_module'    => self::FILE01_MODULE_KEY,
 			'page_id'         => null,
-			'layout_context'  => 'minimal',
+			'layout_context'  => 'system_recovery',
 			'status'          => 'active',
 			'destination'     => '',
 			'redirects'       => array(),
@@ -333,7 +333,7 @@ final class SNFLA_Cross_File_Contracts {
 		$route_ok = is_array( $route )
 			&& self::REPORT_ROUTE === (string) ( $route['route_path'] ?? '' )
 			&& self::FILE01_MODULE_KEY === (string) ( $route['owner_module'] ?? '' )
-			&& 'minimal' === (string) ( $route['layout_context'] ?? '' )
+			&& 'system_recovery' === (string) ( $route['layout_context'] ?? '' )
 			&& in_array( (string) ( $route['status'] ?? '' ), array( 'registered', 'active' ), true );
 		$contract_ok = is_array( $contract ) && 'current' === (string) ( $contract['status'] ?? '' );
 		$module_ok = is_array( $module )
@@ -355,15 +355,20 @@ final class SNFLA_Cross_File_Contracts {
 	public static function file20_shell_status() {
 		$registry = apply_filters( 'sabri_shell_contract_registry', array() );
 		$row = is_array( $registry ) && isset( $registry['04'] ) && is_array( $registry['04'] ) ? $registry['04'] : array();
+		$contexts = apply_filters( 'sabri_shell_layout_contexts', array() );
+		$context = is_array( $contexts ) && isset( $contexts['system_recovery'] ) && is_array( $contexts['system_recovery'] ) ? $contexts['system_recovery'] : array();
 		$compatible = ! empty( $row )
 			&& 'migration-compatibility' === (string) ( $row['native_scope'] ?? '' )
-			&& 'suppress-writes-after-cutover' === (string) ( $row['file20_boundary'] ?? '' );
+			&& 'suppress-writes-after-cutover' === (string) ( $row['file20_boundary'] ?? '' )
+			&& 'minimal' === (string) ( $context['mode'] ?? '' )
+			&& 'file-20' === (string) ( $context['owner'] ?? '' );
 		return array(
-			'available'  => ! empty( $row ),
-			'compatible' => $compatible,
-			'status'     => $compatible ? 'pass' : ( empty( $row ) ? 'unknown' : 'blocker' ),
-			'layout'     => 'minimal',
-			'route'      => self::REPORT_ROUTE,
+			'available'      => ! empty( $row ) && ! empty( $context ),
+			'compatible'     => $compatible,
+			'status'         => $compatible ? 'pass' : ( empty( $row ) || empty( $context ) ? 'unknown' : 'blocker' ),
+			'layout_context' => 'system_recovery',
+			'layout_mode'    => (string) ( $context['mode'] ?? '' ),
+			'route'          => self::REPORT_ROUTE,
 		);
 	}
 
