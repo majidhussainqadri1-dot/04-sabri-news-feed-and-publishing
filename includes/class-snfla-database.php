@@ -122,6 +122,9 @@ final class SNFLA_Database {
 
 	public static function deactivate() {
 		wp_clear_scheduled_hook( 'snfla_daily_integrity_check' );
+		// Force the canonical restricted report rewrite to be regenerated on any
+		// future reactivation. No runtime route handler remains while inactive.
+		delete_option( 'snfla_cross_file_rewrite_version' );
 	}
 
 	/** Public-safe page handover evidence without legacy page bodies or titles. */
