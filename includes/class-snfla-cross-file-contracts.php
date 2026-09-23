@@ -22,6 +22,12 @@ final class SNFLA_Cross_File_Contracts {
 
 	public static function boot() {
 		if ( class_exists( 'SNFLA_Schema' ) && SNFLA_Schema::state_valid() && 'retired' === SNFLA_Schema::state() ) {
+			// Retired File 04 stays otherwise inert. The only temporary hooks
+			// retained are the producer/outbox drain needed to deliver the final
+			// retirement fact before safe self-deactivation.
+			add_filter( 'sun_registered_producers', array( __CLASS__, 'file19_producers' ), 20, 1 );
+			add_action( 'admin_init', array( __CLASS__, 'retry_file19_outbox' ), 60 );
+			add_action( 'snfla_retry_cross_file_events', array( __CLASS__, 'retry_file19_outbox' ) );
 			return;
 		}
 		add_action( 'init', array( __CLASS__, 'register_report_rewrite' ), 20 );
