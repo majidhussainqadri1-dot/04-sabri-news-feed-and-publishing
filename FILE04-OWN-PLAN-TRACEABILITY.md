@@ -1,6 +1,6 @@
-# File 04 v1.3.0 — File-Specific Plan Traceability
+# File 04 v2.0.5 — File-Specific Plan Traceability
 
-This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master plan's native functional/non-functional requirements to the v1.3.0 source and current QA. External staging/live evidence remains separate.
+This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master plan's native functional/non-functional requirements to the v2.0.5 source and current QA. External staging/live evidence remains separate.
 
 | Requirement | Source implementation | Verification |
 |---|---|---|
