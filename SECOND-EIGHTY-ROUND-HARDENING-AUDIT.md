@@ -86,11 +86,11 @@
 | 77 | **Defect.** Interaction-ledger write paths still used lossy IDs/contribution coercion. Ledger writes now require strict legacy/target/canonical identity, source-row rules, strict contribution counts and boolean migration flags. |
 | 78 | **Defect.** Interaction-ledger read/query/rollback paths still normalized identities, kinds, statuses and limits. Those paths now use strict positive/nonnegative IDs, kind/status allowlists, exact bounded limits and DB-error checks. |
 | 79 | **Defect.** After R66-R78 the permanent second-eighty audit/status/gate no longer described or asserted the corrected source, so exact-head QA could not prove those rounds. The audit record and permanent deterministic gate were advanced through R79; R80 remains deliberately unclaimed until final fresh review. |
-| 80 | **PENDING — not yet claimed.** |
+| 80 | **Defect.** Final fresh cross-file review found residual source gaps that earlier repository-only gates had not covered: File 26 legacy resolution still used lossy `absint` identity normalization; File 01/File 20 route/context registration was not implemented; the four File 19 lifecycle events were absent; File 24 had no native module manifest/state adapter; read-only System Check/REST/admin diagnostics failed closed merely because File 21 was unavailable; plan/admin code still referenced the nonexistent `SNFLA_REST::NAMESPACE`; retirement still normalized lifecycle versions; and the R80 evidence itself remained contradictory. These were corrected with a dedicated cross-file contract layer, strict File 26/retirement identities, canonical restricted/admin routes, File 01 registry sync, File 20 recovery-layout binding, File 19 producer/outbox/event emission, File 24 assurance manifest/state, dependency-outage-safe diagnostics, and a permanent 20-check cross-file regression gate. External staging/live acceptance remains separate. |
 
-## Current count before final regressions
+## Final source-review count
 
-Defect rounds so far: **1–32, 34, 36–79**. Clean rounds so far: **33, 35**. **R80 alone remains deliberately unclaimed** until one final fresh adversarial review and exact-head regression are completed on the corrected R79 source.
+Defect rounds: **1–32, 34, 36–80**. Clean rounds: **33, 35**. All **80** review rows are now claimed at source-review level. The R80 correction is subject to the current exact-head automated regression; this document does not self-certify CI, staging, deployment or operational acceptance.
 
 ## Evidence boundary
 
