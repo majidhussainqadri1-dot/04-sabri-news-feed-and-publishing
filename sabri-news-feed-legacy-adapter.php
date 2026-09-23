@@ -61,6 +61,13 @@ add_action(
 	'plugins_loaded',
 	static function () {
 		SNFLA_Cross_File_Contracts::boot();
+		if ( SNFLA_Schema::state_valid() && 'retired' === SNFLA_Schema::state() ) {
+			// Retirement is inert: no REST, migration, redirect, Future18 or
+			// plan-completion surface is registered. Cross-file boot retains only
+			// the bounded final-event drain; plugin boot handles safe deactivation.
+			SNFLA_Plugin::instance()->boot();
+			return;
+		}
 		SNFLA_Central_Plan::boot();
 		SNFLA_Plan_Completion::boot();
 		SNFLA_Future18::boot();
