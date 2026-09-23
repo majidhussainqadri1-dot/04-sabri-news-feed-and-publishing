@@ -226,7 +226,7 @@ final class SNFLA_Cross_File_Contracts {
 			return new WP_Error( 'snfla_file01_registry_unavailable', 'File 01 registry is unavailable.', array( 'status' => 503 ) );
 		}
 
-		$actor = SNFLA_Capabilities::current_diagnostic_actor();
+		$actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_RUN );
 		if ( is_wp_error( $actor ) ) {
 			return $actor;
 		}
@@ -322,6 +322,32 @@ final class SNFLA_Cross_File_Contracts {
 			'module'    => $module_ok,
 			'route'     => $route_ok,
 			'contract'  => $contract_ok,
+		);
+	}
+
+
+	public static function file20_shell_status() {
+		$registry = apply_filters( 'sabri_shell_contract_registry', array() );
+		$row = is_array( $registry ) && isset( $registry['04'] ) && is_array( $registry['04'] ) ? $registry['04'] : array();
+		$compatible = ! empty( $row )
+			&& 'migration-compatibility' === (string) ( $row['native_scope'] ?? '' )
+			&& 'suppress-writes-after-cutover' === (string) ( $row['file20_boundary'] ?? '' );
+		return array(
+			'available'  => ! empty( $row ),
+			'compatible' => $compatible,
+			'status'     => $compatible ? 'pass' : ( empty( $row ) ? 'unknown' : 'blocker' ),
+			'layout'     => 'minimal',
+			'route'      => self::REPORT_ROUTE,
+		);
+	}
+
+	public static function file24_status() {
+		$available = class_exists( '\\Sabri\\Platform\\Security\\Registry\\ModuleRegistry' );
+		return array(
+			'available' => $available,
+			'status'    => $available ? 'pass' : 'unknown',
+			'module_key'=> 'file-04',
+			'contract'  => 'spcrc/module_manifests + spcrc/file04_contract_state',
 		);
 	}
 
@@ -482,7 +508,7 @@ final class SNFLA_Cross_File_Contracts {
 		return array(
 			'count'     => count( $outbox ),
 			'available' => function_exists( 'sun_ingest_domain_event' ),
-			'status'    => empty( $outbox ) ? 'pass' : ( function_exists( 'sun_ingest_domain_event' ) ? 'pending' : 'unknown' ),
+			'status'    => function_exists( 'sun_ingest_domain_event' ) ? ( empty( $outbox ) ? 'pass' : 'pending' ) : 'unknown',
 		);
 	}
 
