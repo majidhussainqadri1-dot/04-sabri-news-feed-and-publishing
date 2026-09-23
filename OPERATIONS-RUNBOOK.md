@@ -1,4 +1,4 @@
-# File 04 v1.3.0 — Public-Safe Operations, Release and Retirement Runbook
+# File 04 v2.0.5 — Public-Safe Operations, Release and Retirement Runbook
 
 This runbook is deliberately public-safe. It defines roles, gates, evidence shapes and escalation semantics without storing production secrets, provider credentials, private incident details, backup locations or patient/user records.
 
@@ -25,7 +25,7 @@ No ring may be skipped merely because an earlier ring is green.
 
 ## 3. Required evidence before staging approval
 
-- exact branch/commit and v1.3.0 package checksum;
+- exact branch/commit and v2.0.5 package checksum;
 - deterministic package and complete-source rebuild equality;
 - zero known unaccepted source-scope defects after two consecutive current-plan reviews;
 - File 00 immutable author identity contract available;
