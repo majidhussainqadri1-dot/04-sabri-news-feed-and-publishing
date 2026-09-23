@@ -362,7 +362,7 @@ final class SNFLA_Migration {
 		$decision_reference = trim( (string) $decision_reference );
 		$decision_hash = hash( 'sha256', $decision_reference );
 		if ( empty( $legacy_ids ) ) { return new WP_Error( 'snfla_empty_quarantine_batch', 'Select at least one dry-run conflict candidate.', array( 'status' => 400 ) ); }
-		if ( ! SNFLA_Cross_File_Contracts::event_capacity_available( count( $legacy_ids ) ) ) { return new WP_Error( 'snfla_file19_event_backpressure', 'The bounded File 19 event outbox must be drained before approving more quarantine dispositions.', array( 'status' => 503 ) ); }
+		if ( ! SNFLA_Cross_File_Contracts::event_stream_ready( count( $legacy_ids ) ) ) { return new WP_Error( 'snfla_file19_event_backpressure', 'The bounded File 19 event outbox must be drained before approving more quarantine dispositions.', array( 'status' => 503 ) ); }
 		if ( ! in_array( $reason_code, $allowed_reasons, true ) || strlen( $decision_reference ) < 8 || strlen( $decision_reference ) > 190 ) {
 			return new WP_Error( 'snfla_quarantine_decision_required', 'An allowed quarantine reason and an 8–190 character decision reference are required.', array( 'status' => 400 ) );
 		}
@@ -516,7 +516,7 @@ final class SNFLA_Migration {
 		$legacy_ids = SNFLA_Integrity::strict_positive_ids( $legacy_ids, self::MAX_BATCH );
 		if ( is_wp_error( $legacy_ids ) ) { return new WP_Error( 'snfla_invalid_migration_batch', 'Migration IDs must be positive, unique and canonical.', array( 'status' => 400 ) ); }
 		if ( empty( $legacy_ids ) ) { return new WP_Error( 'snfla_empty_batch', 'Select at least one legacy publication.', array( 'status' => 400 ) ); }
-		if ( ! SNFLA_Cross_File_Contracts::event_capacity_available( 1 ) ) { return new WP_Error( 'snfla_file19_event_backpressure', 'The bounded File 19 event outbox must be drained before another migration batch can start.', array( 'status' => 503 ) ); }
+		if ( ! SNFLA_Cross_File_Contracts::event_stream_ready( 1 ) ) { return new WP_Error( 'snfla_file19_event_backpressure', 'The bounded File 19 event outbox must be drained before another migration batch can start.', array( 'status' => 503 ) ); }
 		$authorized_actor = SNFLA_Capabilities::current_actor( SNFLA_Capabilities::CAP_RUN );
 		if ( is_wp_error( $authorized_actor ) || $authorized_actor !== $actor_id ) { return new WP_Error( 'snfla_canonical_migration_capability_missing', 'File 21 canonical migration capability and fresh File 00 authority are required.', array( 'status' => 403 ) ); }
 		if ( ! self::backup_proof_valid() ) { return new WP_Error( 'snfla_backup_proof_required', 'A recent backup and restore proof is required before migration.', array( 'status' => 412 ) ); }
