@@ -18,9 +18,14 @@ final class SNFLA_Cross_File_Contracts {
 	const FILE19_OWNER               = 'File 04';
 	const FILE19_OUTBOX_OPTION       = 'snfla_file19_event_outbox_v1';
 	const FILE19_OUTBOX_MAX          = 100;
+	const REWRITE_OPTION              = 'snfla_cross_file_rewrite_version';
 
 	public static function boot() {
+		if ( class_exists( 'SNFLA_Schema' ) && SNFLA_Schema::state_valid() && 'retired' === SNFLA_Schema::state() ) {
+			return;
+		}
 		add_action( 'init', array( __CLASS__, 'register_report_rewrite' ), 20 );
+		add_action( 'init', array( __CLASS__, 'maybe_refresh_rewrite_rules' ), 99 );
 		add_filter( 'query_vars', array( __CLASS__, 'query_vars' ) );
 		add_action( 'template_redirect', array( __CLASS__, 'protect_report_route' ), -20 );
 		add_filter( 'template_include', array( __CLASS__, 'report_template' ), 99 );
@@ -35,6 +40,14 @@ final class SNFLA_Cross_File_Contracts {
 
 	public static function register_report_rewrite() {
 		add_rewrite_rule( '^legacy-migration/report/?$', 'index.php?' . self::REPORT_QUERY_VAR . '=1', 'top' );
+	}
+
+	public static function maybe_refresh_rewrite_rules() {
+		if ( self::CONTRACT_VERSION === (string) get_option( self::REWRITE_OPTION, '' ) ) {
+			return;
+		}
+		flush_rewrite_rules( false );
+		update_option( self::REWRITE_OPTION, self::CONTRACT_VERSION, false );
 	}
 
 	public static function query_vars( $vars ) {
@@ -61,6 +74,11 @@ final class SNFLA_Cross_File_Contracts {
 			exit;
 		}
 
+		status_header( 200 );
+		global $wp_query;
+		if ( isset( $wp_query ) ) {
+			$wp_query->is_404 = false;
+		}
 		nocache_headers();
 		header( 'Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0', true );
 		header( 'X-Robots-Tag: noindex, nofollow, noarchive', true );
