@@ -452,6 +452,11 @@ final class SNFLA_Migration {
 					continue;
 				}
 				$approved[ $legacy_id ] = array( 'reason_code' => $reason_code, 'conflict_codes' => $conflicts, 'source_checksum' => $checksum );
+				SNFLA_Cross_File_Contracts::publish_file19_event(
+					'LegacyRecordQuarantined.v1',
+					$actor_id,
+					array( 'legacy_id' => $legacy_id, 'reason_code' => $reason_code, 'source_checksum' => $checksum )
+				);
 			}
 			$result = array(
 				'success'              => empty( $blocked ),
@@ -681,6 +686,16 @@ final class SNFLA_Migration {
 				}
 				return new WP_Error( 'snfla_migration_audit_failed', 'Migration targets were quarantined because the final audit event could not be written.', array( 'status' => 500, 'run_uuid' => $run_uuid ) );
 			}
+			SNFLA_Cross_File_Contracts::publish_file19_event(
+				'LegacyMigrationBatchCompleted.v1',
+				$actor_id,
+				array(
+					'run_uuid'       => $run_uuid,
+					'status'         => $status,
+					'migrated_count' => count( (array) ( $result['migrated'] ?? array() ) ),
+					'skipped_count'  => count( $skipped ) + count( (array) ( $result['skipped'] ?? array() ) ),
+				)
+			);
 			return array( 'idempotent_replay' => false, 'run_uuid' => $run_uuid, 'status' => $status, 'report' => $summary, 'lifecycle' => $transition );
 		} finally {
 			SNFLA_Database::release_lock( 'migration' );
