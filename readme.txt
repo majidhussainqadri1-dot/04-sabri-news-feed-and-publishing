@@ -4,14 +4,14 @@ Tags: legacy migration, reconciliation, rollback, wordpress
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.0.6
+Stable tag: 2.0.7
 License: GPLv2 or later
 
 == Description ==
 
 File 04 is a temporary, write-disabled, auditable and reversible adapter from historical `snp_publication` records into canonical File 21. It does not own Home, News, publishing, ranking, comments, reactions, saves, reports, navigation, composition or search truth.
 
-Version 2.0.6 retains the full migration/rollback and Future18 scope, then applies a fresh sequential 80-round hardening audit across lifecycle integrity, schema verification, REST identity/idempotency, migration/reconciliation/rollback compensation, provider anti-replay, multisite safety, CLI/admin truthfulness, deterministic packaging and canonical ownership. Hostinger staging, live deployment and operational acceptance remain separate evidence gates.
+Version 2.0.7 retains the full migration/rollback, Future18 and eighty-round hardening scope, then corrects exact current companion-contract parity for Files 00/01/20/21/24/26. Hostinger staging, live deployment and operational acceptance remain separate evidence gates.
 
 == Installation ==
 
@@ -22,6 +22,14 @@ Version 2.0.6 retains the full migration/rollback and Future18 scope, then appli
 5. Do not deploy live, cut over or retire without required evidence and Founder approval.
 
 == Changelog ==
+
+= 2.0.7 =
+* Corrected the File 00 authorship bridge to current immutable UUID and governed unknown/deleted-author contracts.
+* Requires File 21 package 1.0.6/runtime API 1.0.4 and passes bound authorship/media evidence for canonical consumption and verification.
+* Corrected File 01 route shape and File 20 system-recovery layout context; removed invalid page_id=0 route registration.
+* Completed the File 24 assurance manifest and aligned File 26 cutover with canonical connector/reindex evidence.
+* Search cutover now requires a completed (or explicitly not-required) verified state; an accepted-but-unfinished reindex is not enough.
+* Storage schema remains 1.3.0. Staging/live/operational acceptance remain separate.
 
 = 2.0.6 =
 * Completed the final second-eighty source review and corrected cross-file contract gaps.
