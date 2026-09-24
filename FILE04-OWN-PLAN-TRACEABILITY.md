@@ -1,6 +1,6 @@
-# File 04 v2.0.6 — File-Specific Plan Traceability
+# File 04 v2.0.7 — File-Specific Plan Traceability
 
-This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master plan's native functional/non-functional requirements to the v2.0.6 source and current QA. External staging/live evidence remains separate.
+This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master plan's native functional/non-functional requirements to the v2.0.7 source and current QA. External staging/live evidence remains separate.
 
 | Requirement | Source implementation | Verification |
 |---|---|---|
@@ -35,7 +35,7 @@ This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master 
 
 ## Cross-file contracts
 
-v2.0.6 adds a bounded `SNFLA_Cross_File_Contracts` layer: File01 explicit module/route registration; File19 versioned factual events; File20 route-context declaration; File24 module assurance manifest/state; strict File26 legacy resolution. These are integration contracts only and do not transfer canonical ownership.
+v2.0.7 hardens the bounded `SNFLA_Cross_File_Contracts` layer against the current exact companion contracts: File01 explicit module/route registration; File19 versioned factual events; File20 route-context declaration; File24 module assurance manifest/state; strict File26 legacy resolution. These are integration contracts only and do not transfer canonical ownership.
 
 ## Source QA gate
 
