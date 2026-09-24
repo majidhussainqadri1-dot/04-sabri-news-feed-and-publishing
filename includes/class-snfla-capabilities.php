@@ -105,7 +105,7 @@ final class SNFLA_Capabilities {
 			return new WP_Error( 'snfla_forbidden', 'The current account lacks diagnostic review authority.', array( 'status' => 403 ) );
 		}
 		if ( self::file21_ready() ) {
-			if ( ! \\Sabri\\HomeNewsFeed\\CanonicalIdentityAdapter::subject_is_active( $user_id ) ) {
+			if ( ! \Sabri\HomeNewsFeed\CanonicalIdentityAdapter::subject_is_active( $user_id ) ) {
 				return new WP_Error( 'snfla_inactive_identity', 'File 00 does not currently authorize this identity to view migration evidence.', array( 'status' => 403 ) );
 			}
 		}
