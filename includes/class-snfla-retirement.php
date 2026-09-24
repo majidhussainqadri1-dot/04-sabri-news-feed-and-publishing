@@ -62,6 +62,7 @@ final class SNFLA_Retirement {
 				SNFLA_Audit::record( 'retirement_deactivation_failed', $actor_id, array( 'source_signature' => $source_signature, 'retirement_evidence_checksum' => SNFLA_Checksum::hash( $evidence ) ) );
 				return new WP_Error( 'snfla_retirement_deactivation_failed', 'The adapter entered the retired state but WordPress could not remove it from the active plugin list; manual deactivation is required before release acceptance.', array( 'status' => 500, 'retired' => true ) );
 			}
+			SNFLA_Cross_File_Contracts::publish_file19_event( 'LegacyAdapterRetired.v1', $actor_id, array( 'source_signature' => $source_signature, 'retirement_evidence_hash' => SNFLA_Checksum::hash( $evidence ), 'route_manifest_checksum' => (string) ( $handoff['manifest_checksum'] ?? '' ) ) );
 			return array( 'evidence' => $evidence, 'lifecycle' => $transition, 'redirect_handoff' => SNFLA_Audit::redact( $handoff ), 'plugin_deactivated' => true );
 		} finally { SNFLA_Database::release_lock( 'operation' ); }
 	}
