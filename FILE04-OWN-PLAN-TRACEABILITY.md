@@ -1,6 +1,6 @@
-# File 04 v2.0.6 — File-Specific Plan Traceability
+# File 04 v2.0.7 — File-Specific Plan Traceability
 
-This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master plan's native functional/non-functional requirements to the v2.0.6 source and current QA. External staging/live evidence remains separate.
+This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master plan's native functional/non-functional requirements to the v2.0.7 source and current QA. External staging/live evidence remains separate.
 
 | Requirement | Source implementation | Verification |
 |---|---|---|
@@ -35,7 +35,7 @@ This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master 
 
 ## Cross-file contracts
 
-v2.0.6 adds a bounded `SNFLA_Cross_File_Contracts` layer: File01 explicit module/route registration; File19 versioned factual events; File20 route-context declaration; File24 module assurance manifest/state; strict File26 legacy resolution. These are integration contracts only and do not transfer canonical ownership.
+v2.0.7 retains and corrects the bounded `SNFLA_Cross_File_Contracts` layer: File01 explicit module/route registration; File19 versioned factual events; File20 route-context declaration; File24 module assurance manifest/state; strict File26 legacy resolution. These are integration contracts only and do not transfer canonical ownership.
 
 ## Source QA gate
 
@@ -44,3 +44,7 @@ v2.0.6 adds a bounded `SNFLA_Cross_File_Contracts` layer: File01 explicit module
 ## External acceptance that cannot be encoded as a truthful source PASS
 
 The following remain real-environment evidence, not missing source code: Hostinger fresh install/upgrade; real File 00/File 21/File 26 contract acceptance; representative live-data dry-run/migration/reconciliation; restore rehearsal; browser/mobile/RTL/WCAG/slow-network corpus; cache/search provider acknowledgement; Founder approval; controlled live rollout; monitored rollback window; final retirement evidence.
+
+## v2.0.7 companion parity correction
+
+The fresh 20-pass cross-repository audit is now a source requirement: File 00 must provide immutable UUID and governed unknown/deleted-author attribution; File 21 must consume those identities and attest media migration; File 01 routes must already be canonical; File 20's current system-recovery layout vocabulary is used; File 24 receives a complete manifest; and File 26 must prove a completed zero-failure canonical reindex before cutover is accepted.
