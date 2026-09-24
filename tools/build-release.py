@@ -4,7 +4,7 @@ import argparse, hashlib, json, shutil, subprocess, sys, tempfile, uuid, zipfile
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-VERSION='2.0.6'
+VERSION='2.0.7'
 PACKAGE_ROOT='04-sabri-news-feed-legacy-adapter'
 FIXED_DT=(2026,8,8,0,0,0)
 GENERATED_NAMES={'SOURCE-INVENTORY.tsv','CHECKSUMS.sha256','RELEASE-LOCK.json','PACKAGE-MANIFEST.json','PACKAGE-CHECKSUMS.sha256'}
@@ -135,7 +135,7 @@ def build(output:Path,source_output:Path):
             'File 00':{'required_for_mutation':True,'purpose':'current identity, step-up and migration capabilities'},
             'File 01':{'required_for_platform_release':True,'purpose':'module/route/contract registry and release evidence'},
             'File 20':{'required_for_platform_release':True,'purpose':'canonical shell/layout mounting'},
-            'File 21':{'required_for_activation':True,'minimum_package':'1.0.3.2','minimum_runtime':'1.0.3','purpose':'canonical publication, interaction, rollback and route ownership'},
+            'File 21':{'required_for_activation':True,'minimum_package':'1.0.6','minimum_runtime':'1.0.3','purpose':'canonical publication, interaction, rollback and route ownership'},
             'File 22':{'required':False,'must_not_call_for_import':True,'purpose':'human composer boundary only'},
             'File 24':{'required_for_platform_release':True,'purpose':'assurance evidence; native File 04/File 21 enforcement preserved'},
             'File 25':{'required_for_platform_release':True,'purpose':'visual tokens/components; File 04 does not create a theme'},
@@ -157,7 +157,7 @@ def build(output:Path,source_output:Path):
             {'bom-ref':'wordpress@>=6.0','type':'framework','name':'WordPress','version':'>=6.0','scope':'required'},
             {'bom-ref':'php@>=8.1','type':'platform','name':'PHP','version':'>=8.1','scope':'required'},
             {'bom-ref':'file00@current-action','type':'application','name':'Sabri Membership Core (File 00)','version':'versioned current-action contract','scope':'required'},
-            {'bom-ref':'file21@1.0.3','type':'application','name':'Sabri Complete Home and News Feed (File 21)','version':'package >=1.0.3.2; runtime >=1.0.3','scope':'required'},
+            {'bom-ref':'file21@1.0.3','type':'application','name':'Sabri Complete Home and News Feed (File 21)','version':'package >=1.0.6; runtime >=1.0.3','scope':'required'},
             {'bom-ref':'file26@versioned','type':'application','name':'Canonical Search and Discovery (File 26)','version':'versioned legacy-resolution consumer contract','scope':'optional'},
           ],
           'dependencies':[{'ref':'file04@'+VERSION,'dependsOn':['wordpress@>=6.0','php@>=8.1','file00@current-action','file21@1.0.3']}],
@@ -183,7 +183,7 @@ def build(output:Path,source_output:Path):
           'known_unresolved_source_scope_blockers':0,
           'truthful_status':{
             'specified':'complete current source scope',
-            'coded':'v2.0.6 cross-file-complete second-eighty hardened candidate',
+            'coded':'v2.0.7 cross-file-complete second-eighty hardened candidate',
             'packaged':'reproducible candidate when this build succeeds',
             'automated_qa':'source gates executed by builder/CI',
             'staging_accepted':'pending',
@@ -258,8 +258,8 @@ def verify_only():
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.6.zip'))
-    ap.add_argument('--source-output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.6-complete-source.zip'))
+    ap.add_argument('--output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.7.zip'))
+    ap.add_argument('--source-output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.7-complete-source.zip'))
     ap.add_argument('--verify-only',action='store_true')
     args=ap.parse_args()
     if args.verify_only: verify_only(); return
