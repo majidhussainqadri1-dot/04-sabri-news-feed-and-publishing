@@ -33,7 +33,7 @@ cross=t('includes/class-snfla-cross-file-contracts.php')
 caps=t('includes/class-snfla-capabilities.php')
 retirement=t('includes/class-snfla-retirement.php')
 
-need('Version: 2.0.6' in main and "SNFLA_VERSION', '2.0.6'" in main,'R26 v2.0.6 runtime missing',f)
+need('Version: 2.0.7' in main and "SNFLA_VERSION', '2.0.7'" in main,'R26 v2.0.7 runtime missing',f)
 need("SNFLA_SCHEMA_VERSION', '1.3.0'" in main,'storage schema must remain 1.3.0',f)
 need('strict_checkpoint_ids' in integrity and 'null === $stored_ids' in integrity,'R1 strict checkpoint IDs missing',f)
 need('is_wp_error( $terms )' in checksum and "return '';" in checksum,'R2 taxonomy checksum fail-closed missing',f)
@@ -45,12 +45,12 @@ need('strict_id_batch' in file21 and 'strict_positive_id' in file21,'R15-R16 Fil
 need('snfla_run_ledger_identity_invalid' in migration and 'snfla_run_ledger_corrupt' in migration and "array( 'completed', 'partial', 'failed', 'audit_failed', 'interrupted' )" in migration,'R17-R19 run ledger hardening missing',f)
 need("is_int( $value ) && $value >= 1" in rest,'R20 strict lifecycle version REST input missing',f)
 need('static $verified_this_request' in db and 'self::verify_schema()' in db and 'snfla_activation_version_evidence_failed' in db and 'snfla_integrity_schedule_failed' in db and 'SNFLA_Integrity::evidence_valid( $handover )' in db,'R21-R25 database physical-health/activation evidence controls missing',f)
-need("VERSION='2.0.6'" in build and 'SECOND_EIGHTY_ROUND_REVIEW_ROUNDS=80' in build and 'run-second-eighty-round-hardening.py' in build,'R26-R27 builder integration missing',f)
+need("VERSION='2.0.7'" in build and 'SECOND_EIGHTY_ROUND_REVIEW_ROUNDS=80' in build and 'run-second-eighty-round-hardening.py' in build,'R26-R27 builder integration missing',f)
 need('run-second-eighty-round-hardening.py' in workflow,'R27 CI integration missing',f)
 
 # R28-R32: strengthened historical QA, physical schema/index and DB lock semantics.
 historical=t('tests/run-eighty-round-hardening.py')
-need('Historical first 80-round guardrails remain present' in historical and "SNFLA_VERSION', '2.0.6'" in historical,'R28 historical eighty-round gate is not aligned to the current strengthened release',f)
+need('Historical first 80-round guardrails remain present' in historical and "SNFLA_VERSION', '2.0.7'" in historical,'R28 historical eighty-round gate is not aligned to the current strengthened release',f)
 need('$column_contracts' in db and "SHOW COLUMNS FROM `{$table}`" in db and '_type_mismatch' in db and '_nullability_mismatch' in db,'R29 physical column contract verification missing',f)
 need("'Sub_part'" in db and '_prefix_index_not_allowed' in db,'R30 prefix-index rejection missing',f)
 need("preg_match( '/^[a-z0-9_]{1,40}$/D', $name )" in db and 'database_lock_release_failed' in db,'R31-R32 exact DB lock identity/release alerting missing',f)
@@ -109,7 +109,7 @@ need('| 79 | **Defect.**' in record and '| 80 | **Defect.**' in record,'R79-R80 
 
 # R65 trace must be current before final fresh regression rounds.
 need('| 65 | **Defect.**' in record and '| 79 | **Defect.**' in record and '| 80 | **Defect.**' in record,'R80 final audit trace is not current',f)
-need('second-eighty-complete' in status and 'v2.0.6' in status,'R80 truthful status does not state completed source-review boundary',f)
+need('second-eighty-complete' in status and 'v2.0.7' in status,'R80 truthful status does not state completed source-review boundary',f)
 # R80: cross-file completion and final truthful source boundary.
 need('class-snfla-cross-file-contracts.php' in main and 'SNFLA_Cross_File_Contracts::boot' in main,'R80 cross-file contract layer is not loaded',f)
 need('sun_registered_producers' in cross and 'LegacyMigrationBatchCompleted.v1' in cross and 'LegacyRecordQuarantined.v1' in cross and 'LegacyCutoverCompleted.v1' in cross and 'LegacyAdapterRetired.v1' in cross,'R80 File19 producer/event contracts missing',f)
