@@ -11,7 +11,7 @@ License: GPLv2 or later
 
 File 04 is a temporary, write-disabled, auditable and reversible adapter from historical `snp_publication` records into canonical File 21. It does not own Home, News, publishing, ranking, comments, reactions, saves, reports, navigation, composition or search truth.
 
-Version 2.0.7 retains the full migration/rollback and Future18 scope, then applies a fresh sequential 80-round hardening audit across lifecycle integrity, schema verification, REST identity/idempotency, migration/reconciliation/rollback compensation, provider anti-replay, multisite safety, CLI/admin truthfulness, deterministic packaging and canonical ownership. Hostinger staging, live deployment and operational acceptance remain separate evidence gates.
+Version 2.0.7 retains the full migration/rollback and Future18 scope, preserves both historical 80-round hardening cycles, and adds a fresh 20-pass exact-companion contract parity correction across File 00/01/19/20/21/24/25/26. Hostinger staging, live deployment and operational acceptance remain separate evidence gates.
 
 == Installation ==
 
@@ -24,7 +24,12 @@ Version 2.0.7 retains the full migration/rollback and Future18 scope, then appli
 == Changelog ==
 
 = 2.0.7 =
-* Completed the final second-eighty source review and corrected cross-file contract gaps.
+* Added exact companion-head parity correction and CI locking across File 00/01/19/20/21/24/25/26.
+* Aligned File00 author identity, File01 routes, File20 system-recovery context, File21 author/media migration, File24 manifest completeness and File26 cutover/reindex contracts.
+* Storage schema remains 1.3.0; staging/live/operational acceptance remain separate.
+
+= 2.0.6 =
+* Completed the final second-eighty source review and corrected source-local cross-file contract gaps.
 * Added strict File26 ID validation, explicit File01 route/module registration, File20 route-context declaration, File19 migration lifecycle events and File24 assurance manifest/state integration.
 * Preserved read-only diagnostics during File21 outages, corrected the plan REST namespace, hardened retirement identity/version handling and removed one-time R80 helper residue.
 * Storage schema remains 1.3.0; staging/live/operational acceptance remain separate.
