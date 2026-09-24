@@ -192,10 +192,11 @@ final class SNFLA_Cross_File_Contracts {
 
 		$manifest = self::foundation_manifest();
 		$current  = SPF_Registry::get_module( 'file-04' );
+		$manifest_context = array( 'purpose' => 'file04_explicit_contract_registration' );
 		if ( is_array( $current ) && isset( $current['record_version'] ) ) {
-			$manifest['expected_record_version'] = (int) $current['record_version'];
+			$manifest_context['expected_version'] = (int) $current['record_version'];
 		}
-		$registered = SPF_Registry::register_manifest( $manifest, array( 'purpose' => 'file04_explicit_contract_registration' ) );
+		$registered = SPF_Registry::register_manifest( $manifest, $manifest_context );
 		if ( is_wp_error( $registered ) ) { return $registered; }
 
 		$routes = array(
@@ -203,8 +204,17 @@ final class SNFLA_Cross_File_Contracts {
 			array( 'route_key' => 'file04-system-check', 'route_path' => '/wp-json/sabri/file04/v1/plan/system-check', 'owner_module' => 'file-04', 'layout_context' => 'minimal-private-task', 'status' => 'active', 'page_id' => 0, 'destination' => '', 'redirects' => array() ),
 		);
 		$mapped = array();
+		$existing_routes = SPF_Registry::list_routes();
+		if ( is_wp_error( $existing_routes ) ) { return $existing_routes; }
 		foreach ( $routes as $route ) {
-			$mapped_route = SPF_Registry::map_route( $route, array( 'purpose' => 'file04_explicit_route_registration' ) );
+			$route_context = array( 'purpose' => 'file04_explicit_route_registration' );
+			foreach ( (array) $existing_routes as $existing_route ) {
+				if ( is_array( $existing_route ) && (string) ( $existing_route['route_key'] ?? '' ) === $route['route_key'] && isset( $existing_route['record_version'] ) ) {
+					$route_context['expected_version'] = (int) $existing_route['record_version'];
+					break;
+				}
+			}
+			$mapped_route = SPF_Registry::map_route( $route, $route_context );
 			if ( is_wp_error( $mapped_route ) ) { return $mapped_route; }
 			$mapped[] = $mapped_route;
 		}
