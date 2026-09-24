@@ -1,4 +1,4 @@
-# File 04 v2.0.6 — Governing Requirements Traceability
+# File 04 v2.0.7 — Governing Requirements Traceability
 
 ## Governing sources
 
@@ -43,14 +43,14 @@ The File 04 plan maps these **15** relevant journeys: `AJ-07`, `AJ-10`, `AJ-24`,
 - `AJ-36`–`AJ-37` are degraded-provider and restore/reconciliation gates.
 - `AJ-38`–`AJ-40` are release gates: blockers stop release, screenshot/role/state corpus is required in staging, and two consecutive corrective review/fix/retest rounds precede rollout.
 
-## Modern implementation additions through v2.0.6
+## Modern implementation additions through v2.0.7
 
 1. `SNFLA_Central_Plan` — exact 71-CV registry, 2 F04-CEN IDs, 15 AJ IDs, canonical-owner map and truthful release gate.
 2. File 26 compatibility — `sabri_file26_legacy_resolution_v1` resolves a migrated legacy ID only to a verified, public File 21 canonical object. Unmapped/private targets are explicitly non-indexable and no File 04 ranking backend is created.
 3. Accessibility/localization source safeguards — logical RTL properties, strong `:focus-visible`, 44px controls, LTR isolation for code/JSON, reduced-motion handling, forced-colors support and mobile reflow safeguards.
 4. Release truth separation — source trace completion is distinct from Hostinger staging, backup/restore, File 26 integration acceptance, accessibility acceptance, degraded-provider drills and Founder production approval.
 5. Two fresh post-central-plan source review rounds — requirements/ownership first; adversarial/source regression second.
-6. Deterministic v2.0.6 package metadata includes central-plan IDs, canonical owner boundaries, dependency contracts and review counts.
+6. Deterministic v2.0.7 package metadata includes central-plan IDs, canonical owner boundaries, dependency contracts and review counts.
 7. Cross-file contracts — `SNFLA_Cross_File_Contracts` publishes File19 domain-event producer metadata, File24 module assurance manifest/state, an explicit File01 registry operation and a File20 route-context declaration without creating duplicate domain ownership.
 8. File26 strict identity — legacy resolution rejects malformed/negative aliases rather than normalizing them.
 9. Degraded diagnostics — authorized read-only System Check/metrics remain available when File21 is unavailable; protected mutations still fail closed.
@@ -62,3 +62,5 @@ For every applicable item the governing trace is:
 **Central CV/CEN/AJ ID → File 04 requirement → design/data/API/event boundary → test ID → defect/fix/commit → package/checksum → staging evidence → Founder approval → rollout/monitoring.**
 
 The repository can prove the chain only through source/package/CI until the external steps actually occur. Hostinger staging, real-data migration, browser/RTL/WCAG acceptance, restore rehearsal, Founder approval, controlled live deployment and operational monitoring MUST NOT be fabricated in this document.
+
+10. Exact companion parity — v2.0.7 requires current File 00 authorship contracts, File 21 1.0.6/1.0.4 migration contracts, File 01 canonical route shape, File 20 system_recovery context, File 24 complete assurance manifest and File 26 completed-reindex cutover evidence.
