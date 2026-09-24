@@ -11,7 +11,7 @@
 | Specified | **Complete for current source scope** | Consolidated plan + File04 plan + CV/CEN/AJ + FR/NFR + Future18 |
 | Coded | **Second fresh 80-round review complete; R80 cross-file defects corrected in v2.0.6** | Independent review, correction and regression discipline |
 | Packaged | **v2.0.6 candidate; exact-head deterministic build required** | Installable + complete-source byte-identical double build |
-| Automated-QA Green | **Pending exact-head CI for this corrective branch/merge head** | Historical gates + second-eighty gate + PHP 8.1/8.3 + repository scan |
+| Automated-QA Green | **Green on corrective source head `569a7445ea67527a72ceed22564ba66a278a29e9` — workflow #333** | All source gates, second-eighty gate, PHP 8.1/8.3, deterministic double package and repository scan passed |
 | Staging-Accepted | **Pending** | Hostinger real integration/browser/restore/rollback evidence |
 | Live-Deployed | **Pending** | Founder-approved controlled deployment |
 | Operational | **Pending** | Sustained monitoring/support/backup/incident/retirement evidence |
