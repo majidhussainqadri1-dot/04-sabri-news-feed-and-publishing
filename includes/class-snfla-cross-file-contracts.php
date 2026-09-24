@@ -100,7 +100,7 @@ final class SNFLA_Cross_File_Contracts {
 
 	public static function file24_manifest() {
 		return array(
-			'module_key'             => 'file-04-legacy-publishing-adapter',
+			'module_key'             => 'file-04',
 			'name'                   => 'Sabri News Feed Legacy Foundation Adapter',
 			'version'                => defined( 'SNFLA_VERSION' ) ? SNFLA_VERSION : '0.0.0',
 			'owner'                  => 'File 04',
