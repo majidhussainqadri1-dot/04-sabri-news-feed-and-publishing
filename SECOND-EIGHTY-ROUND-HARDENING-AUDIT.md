@@ -1,6 +1,6 @@
 # File 04 — Second Fresh Eighty-Round Hardening Audit
 
-**Candidate release:** 2.0.5  
+**Candidate release:** 2.0.6  
 **Storage schema:** 1.3.0  
 **Baseline reviewed:** main `b16fce24cd743ff0f84b082643457b44fc85eec8`  
 **Method:** each round is a fresh review on the corrected source; every found defect is corrected before the next round. The historical first 80-round audit is ancestry evidence only and is not counted here.
@@ -85,12 +85,12 @@
 | 76 | **Defect.** Conflict-resolution/supersession/system-resolution audit compensation did not explicitly escalate restoration failure. Exact restoration is now checked and critical operational alerts are emitted on compensation failure. |
 | 77 | **Defect.** Interaction-ledger write paths still used lossy IDs/contribution coercion. Ledger writes now require strict legacy/target/canonical identity, source-row rules, strict contribution counts and boolean migration flags. |
 | 78 | **Defect.** Interaction-ledger read/query/rollback paths still normalized identities, kinds, statuses and limits. Those paths now use strict positive/nonnegative IDs, kind/status allowlists, exact bounded limits and DB-error checks. |
-| 79 | **Defect.** After R66-R78 the permanent second-eighty audit/status/gate no longer described or asserted the corrected source, so exact-head QA could not prove those rounds. The audit record and permanent deterministic gate were advanced through R79; R80 remains deliberately unclaimed until final fresh review. |
-| 80 | **PENDING — not yet claimed.** |
+| 79 | **Defect.** After R66-R78 the permanent second-eighty audit/status/gate no longer described or asserted the corrected source, so exact-head QA could not prove those rounds. The audit record and permanent deterministic gate were advanced through R79; R80 is completed by the v2.0.6 cross-file correction set. |
+| 80 | **Defect.** Final fresh cross-file/source-truth review found that the prior merge claim had not actually incorporated the final review state and exposed remaining File26 lossy ID normalization, missing File01/File20 registry/context contracts, missing File19 domain events, missing File24 module assurance manifest, dependency-outage diagnostics being blocked by File21 readiness, a `SNFLA_REST::NAMESPACE`/`NS` mismatch, lossy retirement version normalization and stale one-time R80 helpers. v2.0.6 corrects these defects and adds permanent deterministic regression assertions before exact-head CI. |
 
 ## Current count before final regressions
 
-Defect rounds so far: **1–32, 34, 36–79**. Clean rounds so far: **33, 35**. **R80 alone remains deliberately unclaimed** until one final fresh adversarial review and exact-head regression are completed on the corrected R79 source.
+Final defect rounds: **1–32, 34, 36–80**. Clean rounds: **33, 35**. All 80 review rows are now permanently claimed at source-review level; exact-head automated QA, staging, live deployment and operations remain separate evidence gates.
 
 ## Evidence boundary
 
