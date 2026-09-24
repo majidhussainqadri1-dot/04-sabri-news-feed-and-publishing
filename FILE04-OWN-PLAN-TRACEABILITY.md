@@ -1,6 +1,6 @@
-# File 04 v1.3.0 — File-Specific Plan Traceability
+# File 04 v2.0.6 — File-Specific Plan Traceability
 
-This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master plan's native functional/non-functional requirements to the v1.3.0 source and current QA. External staging/live evidence remains separate.
+This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master plan's native functional/non-functional requirements to the v2.0.6 source and current QA. External staging/live evidence remains separate.
 
 | Requirement | Source implementation | Verification |
 |---|---|---|
@@ -27,11 +27,15 @@ This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master 
 | F04-NFR-003 Reliability | idempotency, locks, bounded batches, reconciliation, provider fail-closed behavior, rollback/retirement gates |
 | F04-NFR-004 Performance | bounded keyset traversal, bounded queries, p75/p95/error-rate instrumentation, provider-supplied bounded media storage estimate |
 | F04-NFR-005 Accessibility | logical RTL, visible focus, 44px controls, bidi isolation, reduced motion, forced-colors/reflow source safeguards; human WCAG acceptance remains staging |
-| F04-NFR-006 Observability | System Check, privacy-safe endpoint metrics, operational alert hook, audit-chain verification |
+| F04-NFR-006 Observability | System Check, privacy-safe endpoint metrics, operational alert hook, audit-chain verification; authorized diagnostics remain readable during File21 outage |
 | F04-NFR-007 Migration/Rollback | fresh/upgrade schema path, inventory lock, migration ledger, reconciliation, backup/restore proof, rollback checkpoints |
 | F04-NFR-008 Operability | `/plan/system-check`, `/plan/metrics`, migration/rollback/operations runbooks, cache/search handoff evidence |
 | F04-NFR-009 Compatibility | PHP 8.1/8.3 CI, WordPress API boundaries, explicit File 21 package/runtime gate; WordPress 7.0.1/PHP 8.3 Hostinger acceptance external |
 | F04-NFR-010 Localization | RTL logical CSS/bidi isolation and versioned File 20/25 ownership; real Urdu/Arabic/English browser corpus external |
+
+## Cross-file contracts
+
+v2.0.6 adds a bounded `SNFLA_Cross_File_Contracts` layer: File01 explicit module/route registration; File19 versioned factual events; File20 route-context declaration; File24 module assurance manifest/state; strict File26 legacy resolution. These are integration contracts only and do not transfer canonical ownership.
 
 ## Source QA gate
 
