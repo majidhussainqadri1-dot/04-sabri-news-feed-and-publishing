@@ -4,14 +4,14 @@ Tags: legacy migration, reconciliation, rollback, wordpress
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.0.5
+Stable tag: 2.0.6
 License: GPLv2 or later
 
 == Description ==
 
 File 04 is a temporary, write-disabled, auditable and reversible adapter from historical `snp_publication` records into canonical File 21. It does not own Home, News, publishing, ranking, comments, reactions, saves, reports, navigation, composition or search truth.
 
-Version 2.0.5 retains the full migration/rollback and Future18 scope, then applies a fresh sequential 80-round hardening audit across lifecycle integrity, schema verification, REST identity/idempotency, migration/reconciliation/rollback compensation, provider anti-replay, multisite safety, CLI/admin truthfulness, deterministic packaging and canonical ownership. Hostinger staging, live deployment and operational acceptance remain separate evidence gates.
+Version 2.0.6 retains the full migration/rollback and Future18 scope, then applies a fresh sequential 80-round hardening audit across lifecycle integrity, schema verification, REST identity/idempotency, migration/reconciliation/rollback compensation, provider anti-replay, multisite safety, CLI/admin truthfulness, deterministic packaging and canonical ownership. Hostinger staging, live deployment and operational acceptance remain separate evidence gates.
 
 == Installation ==
 
@@ -22,6 +22,12 @@ Version 2.0.5 retains the full migration/rollback and Future18 scope, then appli
 5. Do not deploy live, cut over or retire without required evidence and Founder approval.
 
 == Changelog ==
+
+= 2.0.6 =
+* Completed the final second-eighty source review and corrected cross-file contract gaps.
+* Added strict File26 ID validation, explicit File01 route/module registration, File20 route-context declaration, File19 migration lifecycle events and File24 assurance manifest/state integration.
+* Preserved read-only diagnostics during File21 outages, corrected the plan REST namespace, hardened retirement identity/version handling and removed one-time R80 helper residue.
+* Storage schema remains 1.3.0; staging/live/operational acceptance remain separate.
 
 = 2.0.5 =
 * Fresh second 80-round adversarial source audit after v2.0.4.
