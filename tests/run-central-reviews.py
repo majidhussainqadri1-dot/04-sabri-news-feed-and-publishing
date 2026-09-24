@@ -26,11 +26,13 @@ build=text('tools/build-release.py')
 trace=text('REQUIREMENTS-TRACEABILITY.md')
 status=text('STATUS.md')
 hard=text('includes/class-snfla-post-audit-hardening.php')
+cross=text('includes/class-snfla-cross-file-contracts.php')
 all_php='\n'.join(p.read_text(encoding='utf-8') for p in ROOT.rglob('*.php') if '.git' not in p.parts and 'tests' not in p.parts)
 
 round1=report('Central-plan Review/Fix Round 1 — requirements, ownership and File 04 plan traceability',[
-    ('Version: 2.0.5' in main, 'Runtime must be second-audit hardened patch 2.0.5.'),
+    ('Version: 2.0.6' in main, 'Runtime must be second-audit hardened patch 2.0.6.'),
     ('class-snfla-central-plan.php' in main and 'SNFLA_Central_Plan::boot' in main, 'Central-plan contract layer must be loaded.'),
+    ('class-snfla-cross-file-contracts.php' in main and 'SNFLA_Cross_File_Contracts::boot' in main, 'Cross-file contract layer must be loaded.'),
     ('class-snfla-plan-completion.php' in main and 'SNFLA_Plan_Completion::boot' in main, 'File 04 own-plan completion layer must be loaded.'),
     ('class-snfla-post-audit-hardening.php' in main and 'SNFLA_Post_Audit_Hardening::boot' in main, 'Post-Future18 hardening layer must be loaded.'),
     ('array( 37, 49 )' in central and 'array( 74, 84 )' in central and 'array( 239, 285 )' in central, 'All 71 File-04-applicable CV requirements must be registered.'),
@@ -52,8 +54,10 @@ round2=report('Central-plan Review/Fix Round 2 — fresh adversarial/source regr
     ('snfla_verify_cutover_cache_invalidation' in reconciliation and 'snfla_verify_cutover_search_reindex' in reconciliation, 'Cutover must require cache and canonical-search evidence.'),
     ('focus-visible' in css and 'prefers-reduced-motion' in css and 'direction:rtl' in css and 'unicode-bidi' in css, 'RTL/accessibility/reduced-motion source safeguards must exist.'),
     ('run-central-plan.php' in workflow and 'run-file04-own-plan.py' in workflow and 'run-central-reviews.py' in workflow and 'run-ten-round-post-future18.py' in workflow, 'Workflow must execute central, File04 and ten-round gates.'),
-    ("VERSION='2.0.5'" in build and 'central_plan_review_rounds' in build and 'TEN_ROUND_REVIEW_ROUNDS=10' in build, 'Deterministic package generator must identify v2.0.5 and all review evidence.'),
+    ("VERSION='2.0.6'" in build and 'central_plan_review_rounds' in build and 'TEN_ROUND_REVIEW_ROUNDS=10' in build, 'Deterministic package generator must identify v2.0.6 and all review evidence.'),
     ('production_ready' in central and 'staging_accepted_pending' in status, 'Source completion must not fabricate staging/production acceptance.'),
+    ('sun_registered_producers' in cross and 'spcrc/module_manifests' in cross and 'SPF_Registry::register_manifest' in cross and 'sabri_file04_route_context_v1' in cross, 'File01/File19/File20/File24 cross-file contracts must be explicit.'),
+    ('strict_positive_id' in central and 'absint( $legacy_id )' not in central.split('public static function file26_resolution',1)[1].split('private static function strict_positive_id',1)[0], 'File26 legacy-resolution input must not use lossy ID normalization.'),
 ])
 
 for command,label in [
@@ -70,4 +74,4 @@ for command,label in [
         print(proc.stdout,end='')
 
 if not (round1 and round2): sys.exit(1)
-print('Two consecutive post-plan source reviews passed with v2.0.5 second-audit hardening and zero known blockers in the tested source scope.')
+print('Two consecutive post-plan source reviews passed with v2.0.6 second-audit hardening and zero known blockers in the tested source scope.')

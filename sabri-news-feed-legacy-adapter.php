@@ -3,7 +3,7 @@
  * Plugin Name: Sabri News Feed Legacy Foundation Adapter
  * Plugin URI: https://github.com/majidhussainqadri1-dot/04-sabri-news-feed-and-publishing
  * Description: Read-only, auditable, reversible migration adapter from historical File 04 records into canonical File 21, with Future18 migration intelligence, three fresh ten-round hardening audits, an 80-round fresh hardening audit and safety controls.
- * Version: 2.0.5
+ * Version: 2.0.6
  * Requires at least: 6.0
  * Requires PHP: 8.1
  * Author: Dr. Allamah Majid Hussain Sabri Muhaddith Mursheed
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SNFLA_VERSION', '2.0.5' );
+define( 'SNFLA_VERSION', '2.0.6' );
 // Third-audit hardening adds no custom-table schema; proven v1.3.0 storage remains current.
 define( 'SNFLA_SCHEMA_VERSION', '1.3.0' );
 define( 'SNFLA_FILE', __FILE__ );
@@ -43,6 +43,7 @@ $snfla_files = array(
 	'class-snfla-admin.php',
 	'class-snfla-cli.php',
 	'class-snfla-central-plan.php',
+	'class-snfla-cross-file-contracts.php',
 	'class-snfla-plan-completion.php',
 	'class-snfla-future18.php',
 	'class-snfla-post-audit-hardening.php',
@@ -60,6 +61,7 @@ add_action(
 	'plugins_loaded',
 	static function () {
 		SNFLA_Central_Plan::boot();
+		SNFLA_Cross_File_Contracts::boot();
 		SNFLA_Plan_Completion::boot();
 		SNFLA_Future18::boot();
 		SNFLA_Post_Audit_Hardening::boot();

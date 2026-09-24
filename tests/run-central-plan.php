@@ -1,6 +1,6 @@
 <?php
 require __DIR__ . '/bootstrap.php';
-if ( ! defined( 'SNFLA_VERSION' ) ) { define( 'SNFLA_VERSION', '1.3.0' ); }
+if ( ! defined( 'SNFLA_VERSION' ) ) { define( 'SNFLA_VERSION', '2.0.6' ); }
 require_once dirname( __DIR__ ) . '/includes/class-snfla-central-plan.php';
 
 $failures = array();

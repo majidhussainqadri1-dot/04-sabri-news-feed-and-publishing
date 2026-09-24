@@ -219,6 +219,16 @@ final class SNFLA_Reconciliation {
 			}
 			$transition = SNFLA_Schema::transition( 'redirect_cutover', sanitize_key( $expected_state ), $expected_version, $actor_id, array( 'reconciliation_checksum' => $report['report_checksum'] ?? '', 'final_delta_signature' => $locked['source_signature'], 'cache_provider' => sanitize_key( (string) ( $cache_evidence['provider_id'] ?? '' ) ), 'search_provider' => sanitize_key( (string) ( $search_evidence['provider_id'] ?? '' ) ) ) );
 			if ( is_wp_error( $transition ) ) { return $transition; }
+			SNFLA_Cross_File_Contracts::publish_file19_event(
+				'LegacyCutoverCompleted.v1',
+				$actor_id,
+				array(
+					'source_signature'        => (string) $locked['source_signature'],
+					'reconciliation_checksum' => (string) ( $report['report_checksum'] ?? '' ),
+					'cache_provider'          => sanitize_key( (string) ( $cache_evidence['provider_id'] ?? '' ) ),
+					'search_provider'         => sanitize_key( (string) ( $search_evidence['provider_id'] ?? '' ) ),
+				)
+			);
 			return $transition;
 		} finally {
 			SNFLA_Database::release_lock( 'operation' );

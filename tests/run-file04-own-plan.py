@@ -15,6 +15,8 @@ rollback=text('includes/class-snfla-rollback.php')
 retirement=text('includes/class-snfla-retirement.php')
 plugin=text('includes/class-snfla-plugin.php')
 central=text('includes/class-snfla-central-plan.php')
+cross=text('includes/class-snfla-cross-file-contracts.php')
+caps=text('includes/class-snfla-capabilities.php')
 css=text('assets/css/admin.css')
 trace=text('REQUIREMENTS-TRACEABILITY.md')
 readme=text('README.md')
@@ -95,6 +97,17 @@ for owner in ['File 21','File 26','File 20','File 25','File 24']:
     check(owner in central,'Canonical owner missing from modern-plan manifest: '+owner,fail)
 check('wp_insert_post(' not in central and '$wpdb->posts' not in central,'Central-plan adapter must not introduce direct canonical writes',fail)
 check('LegacyPublicationMigration::migrate_selected' in file21 and 'LegacyPublicationRollback::rollback_selected' in file21,'Canonical File 21 command boundaries missing',fail)
+
+# Cross-file completion.
+for needle in ['SPF_Registry::register_manifest','SPF_Registry::map_route','sabri_file04_route_context_v1']:
+    check(needle in cross,'File01/File20 cross-file contract missing: '+needle,fail)
+for needle in ['sun_registered_producers','LegacyMigrationBatchCompleted.v1','LegacyRecordQuarantined.v1','LegacyCutoverCompleted.v1','LegacyAdapterRetired.v1']:
+    check(needle in cross,'File19 domain-event contract missing: '+needle,fail)
+for needle in ['spcrc/module_manifests','spcrc/file04_contract_state',"'module_key'             => 'file-04'"]:
+    check(needle in cross,'File24 assurance manifest contract missing: '+needle,fail)
+file26_body=central.split('public static function file26_resolution',1)[1].split('private static function strict_positive_id',1)[0]
+check('self::strict_positive_id( $legacy_id )' in file26_body and 'absint( $legacy_id )' not in file26_body,'File26 legacy resolution must reject lossy ID aliases',fail)
+check('current_diagnostic_actor' in caps,'Dependency-outage read-only diagnostic authority missing',fail)
 
 # Human evidence and CI coverage.
 check('Central CV/CEN/AJ ID' in trace,'Required central trace chain missing from documentation',fail)

@@ -1,6 +1,6 @@
-# File 04 v2.0.5 — Second Fresh Eighty-Round Hardening Status Register
+# File 04 v2.0.6 — Cross-File Completion and Second Eighty-Round Status Register
 
-`source_status=v2.0.5-second-eighty-round-review-in-progress`
+`source_status=v2.0.6-second-eighty-complete-cross-file-candidate`
 `known_unresolved_source_scope_blockers=0`
 `staging_accepted_pending=true`
 `live_deployed=false`
@@ -9,13 +9,13 @@
 | Status | Decision | Evidence boundary |
 |---|---|---|
 | Specified | **Complete for current source scope** | Consolidated plan + File04 plan + CV/CEN/AJ + FR/NFR + Future18 |
-| Coded | **Corrected through Round 79; R80 final fresh adversarial review pending** | Independent second 80-round Review → immediate fix → next-round sequence |
-| Packaged | **v2.0.5 candidate; exact-head regression now required** | Deterministic installable + complete-source double build |
-| Automated-QA Green | **Pending fresh exact-head result after R79 corrective source `f209055bf3d3c2e78bc80db6d500aab552498fa3`** | Historical gates + second-eighty gate + PHP 8.1/8.3 + secret/PII scan |
+| Coded | **Second fresh 80-round review complete; R80 cross-file defects corrected in v2.0.6** | Independent review, correction and regression discipline |
+| Packaged | **v2.0.6 candidate; exact-head deterministic build required** | Installable + complete-source byte-identical double build |
+| Automated-QA Green | **Green on corrective source head `569a7445ea67527a72ceed22564ba66a278a29e9` — workflow #333** | All source gates, second-eighty gate, PHP 8.1/8.3, deterministic double package and repository scan passed |
 | Staging-Accepted | **Pending** | Hostinger real integration/browser/restore/rollback evidence |
 | Live-Deployed | **Pending** | Founder-approved controlled deployment |
 | Operational | **Pending** | Sustained monitoring/support/backup/incident/retirement evidence |
 
-The second fresh 80-round audit is independent from the historical first 80-round audit. Genuine repository/source defects were found and corrected in **Rounds 1–32, 34 and 36–79**. Fresh R33 and R35 found no new defect. **Round 80 alone remains deliberately unclaimed** until one final fresh adversarial review is completed on the corrected R79 source.
+The final R80 review found repository/source defects that the previous commit-message claim had not actually incorporated into the main tree. v2.0.6 corrects strict File26 legacy identity handling; explicit File01 Foundation manifest/route registration; File20 route-context declaration; File19 versioned migration/quarantine/cutover/retirement events; File24 module manifest and assurance-state integration; read-only diagnostics during File21 outage; the File04 plan REST namespace mismatch; strict retirement actor/version semantics; and stale one-time R80 helper residue.
 
-File 04 remains temporary migration/compatibility only. File21 retains publication/feed truth; File26 retains search/discovery; source code cannot self-promote Staging-Accepted, Live-Deployed or Operational. Storage schema remains **1.3.0**.
+File 04 remains temporary migration/compatibility only. File21 retains publication/feed truth; File26 retains search/discovery; File20 retains shell ownership; File24 coordinates assurance while native controls remain active. Source completion does not imply Staging-Accepted, Live-Deployed or Operational. Storage schema remains **1.3.0**.

@@ -94,6 +94,24 @@ final class SNFLA_Capabilities {
 		return $user_id;
 	}
 
+
+	public static function current_diagnostic_actor() {
+		$user_id = get_current_user_id();
+		if ( $user_id <= 0 ) {
+			return new WP_Error( 'snfla_authentication_required', 'Authentication is required.', array( 'status' => 401 ) );
+		}
+		$allowed = current_user_can( self::CAP_REVIEW ) || current_user_can( 'manage_options' ) || current_user_can( 'activate_plugins' );
+		if ( ! $allowed ) {
+			return new WP_Error( 'snfla_forbidden', 'The current account lacks diagnostic review authority.', array( 'status' => 403 ) );
+		}
+		if ( self::file21_ready() ) {
+			if ( ! \Sabri\HomeNewsFeed\CanonicalIdentityAdapter::subject_is_active( $user_id ) ) {
+				return new WP_Error( 'snfla_inactive_identity', 'File 00 does not currently authorize this identity to view migration evidence.', array( 'status' => 403 ) );
+			}
+		}
+		return $user_id;
+	}
+
 	public static function verify_rest_nonce( $request ) {
 		$nonce = $request instanceof WP_REST_Request ? (string) $request->get_header( 'X-WP-Nonce' ) : '';
 		if ( '' === $nonce || ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
