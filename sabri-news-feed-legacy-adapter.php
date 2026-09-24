@@ -20,8 +20,8 @@ define( 'SNFLA_FILE', __FILE__ );
 define( 'SNFLA_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SNFLA_URL', plugin_dir_url( __FILE__ ) );
 define( 'SNFLA_TEXT_DOMAIN', 'sabri-news-feed-legacy-adapter' );
-define( 'SNFLA_FILE21_MIN_PACKAGE', '1.0.6' );
-define( 'SNFLA_FILE21_MIN_RUNTIME', '1.0.4' );
+define( 'SNFLA_FILE21_MIN_PACKAGE', '1.0.3.2' );
+define( 'SNFLA_FILE21_MIN_RUNTIME', '1.0.3' );
 
 $snfla_files = array(
 	'class-snfla-schema.php',
