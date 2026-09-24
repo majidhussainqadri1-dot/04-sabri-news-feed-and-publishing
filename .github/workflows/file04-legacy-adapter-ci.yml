@@ -75,6 +75,71 @@ jobs:
           cat /tmp/a.json
           sha256sum /tmp/file04-a.zip /tmp/file04-source-a.zip
 
+  exact-companion-contract-parity:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout File 04
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Checkout File 00 exact locked head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: majidhussainqadri1-dot/00-sabri-membership-core
+          ref: 2fa7c022ee9cd1b65432e900579512f304532442
+          path: companions/file00
+          persist-credentials: false
+      - name: Checkout File 01 exact locked head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: majidhussainqadri1-dot/01-sabri-platform-foundation
+          ref: adf6dbb9980a85f25f7cf4c2ee679b52703c2e71
+          path: companions/file01
+          persist-credentials: false
+      - name: Checkout File 19 exact locked head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: majidhussainqadri1-dot/19-sabri-unified-notifications
+          ref: 942bff557c020617c805b5cd982f69ec8a717fac
+          path: companions/file19
+          persist-credentials: false
+      - name: Checkout File 20 exact locked head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: majidhussainqadri1-dot/20-sabri-unified-application-shell
+          ref: 8a4dbcaf4fef8e926b9b834ecfde16c21a0f00ca
+          path: companions/file20
+          persist-credentials: false
+      - name: Checkout File 21 exact locked head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: majidhussainqadri1-dot/sabri-complete-home-news-feed
+          ref: de52642b55bb6ea248916cdb796c014a2c8d7933
+          path: companions/file21
+          persist-credentials: false
+      - name: Checkout File 24 exact locked head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: majidhussainqadri1-dot/24-sabri-platform-security-privacy-compliance-and-resilience-center
+          ref: 0d9a969d935e474de0cc54bf5dcd26eb5ad2eee5
+          path: companions/file24
+          persist-credentials: false
+      - name: Checkout File 25 exact locked head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: majidhussainqadri1-dot/25-sabri-public-ui-profile-timeline-visual-experience
+          ref: 59927df876dc92c7461351420c7b7c95c65c6a93
+          path: companions/file25
+          persist-credentials: false
+      - name: Checkout File 26 exact locked head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: majidhussainqadri1-dot/26-search-discovery-recommendations-knowledge-graph-classification
+          ref: bbea3aad466792a4a6a62b53532bbd45c7c592de
+          path: companions/file26
+          persist-credentials: false
+      - name: Verify exact companion heads and source contracts
+        run: python3 tests/run-exact-companion-contract-parity.py
   php-lint-and-tests:
     runs-on: ubuntu-24.04
     strategy:
