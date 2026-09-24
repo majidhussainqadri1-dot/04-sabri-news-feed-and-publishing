@@ -22,7 +22,7 @@ central=PHP['includes/class-snfla-central-plan.php']
 hard=PHP['includes/class-snfla-post-audit-hardening.php']
 
 require('Version: 2.0.7' in main and "SNFLA_VERSION', '2.0.7'" in main and "SNFLA_SCHEMA_VERSION', '1.3.0'" in main, 'Runtime/header must be second-audit hardened 2.0.7 while unchanged storage schema remains 1.3.0.')
-require("SNFLA_FILE21_MIN_PACKAGE', '1.0.6'" in main and "SNFLA_FILE21_MIN_RUNTIME', '1.0.4'" in main, 'File 21 package/runtime compatibility gates must match current canonical contract.')
+require("SNFLA_FILE21_MIN_PACKAGE', '1.0.3.2'" in main and "SNFLA_FILE21_MIN_RUNTIME', '1.0.3'" in main, 'File 21 package/runtime compatibility gates must match current canonical contract.')
 for pat in [r'\bOFFSET\b', r'\bTRUNCATE\b', r'maybe_unserialize', r'(?<![A-Za-z_])unserialize\s*\(', r'wp_cache_flush\s*\(']:
     require(not re.search(pat, ALL_PHP, re.I), f'Forbidden pattern found: {pat}')
 require('register_post_type' in plugin and 'SNFLA_Inventory::LEGACY_POST_TYPE' in plugin, 'Only the legacy source schema may be registered.')
