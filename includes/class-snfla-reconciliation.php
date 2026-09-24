@@ -206,7 +206,7 @@ final class SNFLA_Reconciliation {
 			}
 			do_action( 'snfla_request_search_reindex', $context );
 			$search_evidence = apply_filters( 'snfla_verify_cutover_search_reindex', array( 'verified' => false ), $context );
-			if ( ! self::integration_evidence_valid( $search_evidence, array( 'completed', 'accepted', 'not_required' ), $context ) ) {
+			if ( ! self::integration_evidence_valid( $search_evidence, array( 'completed', 'not_required' ), $context ) ) {
 				return new WP_Error( 'snfla_cutover_search_evidence_required', 'The canonical search/index provider must verify completion, acceptance, or a documented not-required state.', array( 'status' => 412 ) );
 			}
 			$side_effect_evidence = array(
