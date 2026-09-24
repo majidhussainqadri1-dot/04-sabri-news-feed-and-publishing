@@ -17,7 +17,6 @@ final class SNFLA_Cross_File_Contracts {
 		add_filter( 'spcrc/module_manifests', array( __CLASS__, 'file24_manifests' ) );
 		add_filter( 'spcrc/file04_contract_state', array( __CLASS__, 'file24_contract_state' ), 10, 2 );
 		add_filter( 'sabri_file04_foundation_manifest_v1', array( __CLASS__, 'foundation_manifest' ) );
-		add_filter( 'sabri_file04_route_context_v1', array( __CLASS__, 'route_context_contract' ) );
 	}
 
 	public static function file19_producer( $registry ) {
@@ -113,10 +112,17 @@ final class SNFLA_Cross_File_Contracts {
 				'/wp-json/sabri/file04/v1/plan/system-check',
 				'/wp-json/sabri/file04/v1/plan/metrics',
 			),
+			'tables'                 => array( 'snfla_runs', 'snfla_map', 'snfla_conflicts', 'snfla_audit', 'snfla_dry_run', 'snfla_interaction_ledger' ),
+			'files'                  => array( 'sabri-news-feed-legacy-adapter.php', 'includes/', 'tests/' ),
 			'capabilities'           => array( SNFLA_Capabilities::CAP_RUN, SNFLA_Capabilities::CAP_REVIEW, SNFLA_Capabilities::CAP_RETIRE ),
 			'external_vendors'       => array(),
+			'secret_classes'         => array(),
 			'privacy_operations'     => array( 'legacy-source-retention', 'source-only-quarantine', 'non-destructive-rollback' ),
+			'exporters'              => array(),
+			'erasers'                => array(),
+			'emergency_callbacks'    => array( 'rollback', 'retirement', 'read-only-diagnostics' ),
 			'last_security_test'     => '',
+			'verification_level'     => 'repository-source-plus-staging-required',
 			'contract_version'       => self::CONTRACT_VERSION,
 			'canonical_data_owner'   => 'File 21 after verified migration',
 			'canonical_action_owner' => 'File 21 publishing; File 04 migration only',
@@ -150,7 +156,7 @@ final class SNFLA_Cross_File_Contracts {
 			'commands'          => array( 'inventory', 'dry-run', 'migrate', 'reconcile', 'cutover', 'rollback', 'retire' ),
 			'queries'           => array( 'status', 'system-check', 'metrics', 'legacy-resolution' ),
 			'events'            => array( 'LegacyMigrationBatchCompleted.v1', 'LegacyRecordQuarantined.v1', 'LegacyCutoverCompleted.v1', 'LegacyAdapterRetired.v1' ),
-			'routes'            => array( '/wp-json/sabri/file04/v1/status', '/wp-json/sabri/file04/v1/plan/system-check' ),
+			'routes'            => array( '/wp-json/sabri/file04/v1/status/', '/wp-json/sabri/file04/v1/plan/system-check/' ),
 			'data_classes'      => array( 'legacy-publication-source', 'migration-map', 'conflict-ledger', 'audit-evidence' ),
 			'health'            => array( 'system_check' => '/wp-json/sabri/file04/v1/plan/system-check', 'degraded_reads' => true ),
 			'canonical_entities'=> array(),
@@ -167,11 +173,12 @@ final class SNFLA_Cross_File_Contracts {
 			'owner_module'     => 'file-04',
 			'shell_owner'      => 'file-20',
 			'routes'           => array(
-				'status'       => array( 'path' => '/wp-json/sabri/file04/v1/status', 'layout_context' => 'minimal-private-task', 'public' => false ),
-				'system_check' => array( 'path' => '/wp-json/sabri/file04/v1/plan/system-check', 'layout_context' => 'minimal-private-task', 'public' => false ),
+				'status'       => array( 'path' => '/wp-json/sabri/file04/v1/status/', 'layout_context' => 'system_recovery', 'public' => false ),
+				'system_check' => array( 'path' => '/wp-json/sabri/file04/v1/plan/system-check/', 'layout_context' => 'system_recovery', 'public' => false ),
 			),
 			'public_ui_owner'   => 'File 20 / File 25',
 			'legacy_route_mode'=> 'redirect-or-hidden',
+			'file20_context'    => 'system_recovery',
 		);
 		return is_array( $existing ) ? array_replace_recursive( $existing, $contract ) : $contract;
 	}
@@ -200,8 +207,8 @@ final class SNFLA_Cross_File_Contracts {
 		if ( is_wp_error( $registered ) ) { return $registered; }
 
 		$routes = array(
-			array( 'route_key' => 'file04-status', 'route_path' => '/wp-json/sabri/file04/v1/status', 'owner_module' => 'file-04', 'layout_context' => 'minimal-private-task', 'status' => 'active', 'page_id' => 0, 'destination' => '', 'redirects' => array() ),
-			array( 'route_key' => 'file04-system-check', 'route_path' => '/wp-json/sabri/file04/v1/plan/system-check', 'owner_module' => 'file-04', 'layout_context' => 'minimal-private-task', 'status' => 'active', 'page_id' => 0, 'destination' => '', 'redirects' => array() ),
+			array( 'route_key' => 'file04-status', 'route_path' => '/wp-json/sabri/file04/v1/status/', 'owner_module' => 'file-04', 'layout_context' => 'system_recovery', 'status' => 'active', 'destination' => '', 'redirects' => array() ),
+			array( 'route_key' => 'file04-system-check', 'route_path' => '/wp-json/sabri/file04/v1/plan/system-check/', 'owner_module' => 'file-04', 'layout_context' => 'system_recovery', 'status' => 'active', 'destination' => '', 'redirects' => array() ),
 		);
 		$mapped = array();
 		$existing_routes = SPF_Registry::list_routes();
