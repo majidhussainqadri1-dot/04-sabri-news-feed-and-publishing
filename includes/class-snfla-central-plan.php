@@ -111,7 +111,7 @@ final class SNFLA_Central_Plan {
 			'file_number'             => '04',
 			'module'                  => 'News Feed and Publishing — Legacy Foundation Adapter',
 			'contract_version'        => self::CONTRACT_VERSION,
-			'runtime_version'         => defined( 'SNFLA_VERSION' ) ? SNFLA_VERSION : '2.0.6',
+			'runtime_version'         => defined( 'SNFLA_VERSION' ) ? SNFLA_VERSION : '2.0.7',
 			'canonical_public_owner'  => 'File 21',
 			'canonical_search_owner'  => 'File 26',
 			'canonical_shell_owner'   => 'File 20',
