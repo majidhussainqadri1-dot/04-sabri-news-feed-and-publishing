@@ -111,7 +111,7 @@ final class SNFLA_Central_Plan {
 			'file_number'             => '04',
 			'module'                  => 'News Feed and Publishing — Legacy Foundation Adapter',
 			'contract_version'        => self::CONTRACT_VERSION,
-			'runtime_version'         => defined( 'SNFLA_VERSION' ) ? SNFLA_VERSION : '1.3.0',
+			'runtime_version'         => defined( 'SNFLA_VERSION' ) ? SNFLA_VERSION : '2.0.6',
 			'canonical_public_owner'  => 'File 21',
 			'canonical_search_owner'  => 'File 26',
 			'canonical_shell_owner'   => 'File 20',
@@ -148,7 +148,7 @@ final class SNFLA_Central_Plan {
 	 */
 	public static function file26_resolution( $existing, $legacy_id ) {
 		if ( ! empty( $existing ) ) { return $existing; }
-		$legacy_id = absint( $legacy_id );
+		$legacy_id = self::strict_positive_id( $legacy_id );
 		if ( $legacy_id <= 0 || ! SNFLA_Capabilities::file21_ready() ) {
 			return array( 'status' => 'unavailable', 'indexable' => false, 'legacy_id' => $legacy_id );
 		}
@@ -172,6 +172,13 @@ final class SNFLA_Central_Plan {
 			'owner'        => 'File 21',
 			'contract'     => self::CONTRACT_VERSION,
 		);
+	}
+
+	private static function strict_positive_id( $value ) {
+		if ( is_int( $value ) ) { return $value > 0 ? $value : 0; }
+		if ( ! is_string( $value ) || 1 !== preg_match( '/^[1-9][0-9]*$/D', $value ) ) { return 0; }
+		$parsed = (int) $value;
+		return $parsed > 0 && (string) $parsed === $value ? $parsed : 0;
 	}
 
 	/**
