@@ -41,6 +41,9 @@ final class SNFLA_File21_Adapter {
 			$media_context[ absint( $legacy_id ) ] = array(
 				'provider_id'     => sanitize_key( (string) ( $row['media']['provider_id'] ?? '' ) ),
 				'reference_count' => absint( $row['media']['reference_count'] ?? 0 ),
+				'references'      => isset( $row['media']['references'] ) && is_array( $row['media']['references'] ) ? array_values( $row['media']['references'] ) : array(),
+				'source_signature'=> strtolower( trim( (string) ( $row['media']['source_signature'] ?? '' ) ) ),
+				'request_digest'  => strtolower( trim( (string) ( $row['media']['request_digest'] ?? '' ) ) ),
 			);
 		}
 		$result = \Sabri\HomeNewsFeed\LegacyPublicationMigration::migrate_selected(
@@ -53,6 +56,7 @@ final class SNFLA_File21_Adapter {
 				'target'                => 'auto',
 				'migrate_interactions'  => (bool) $with_interactions,
 				'interaction_provider'  => self::INTERACTION_PROVIDER,
+				'require_file04_context'=> true,
 				'author_identity_context'=> $author_context,
 				'media_preflight_context'=> $media_context,
 			)
