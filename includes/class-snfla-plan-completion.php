@@ -23,7 +23,7 @@ final class SNFLA_Plan_Completion {
 
 	public static function register_routes() {
 		register_rest_route(
-			SNFLA_REST::NAMESPACE,
+			SNFLA_REST::NS,
 			'/plan/dry-run-analysis',
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
@@ -32,7 +32,7 @@ final class SNFLA_Plan_Completion {
 			)
 		);
 		register_rest_route(
-			SNFLA_REST::NAMESPACE,
+			SNFLA_REST::NS,
 			'/plan/migration-preflight',
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
@@ -59,7 +59,7 @@ final class SNFLA_Plan_Completion {
 			)
 		);
 		register_rest_route(
-			SNFLA_REST::NAMESPACE,
+			SNFLA_REST::NS,
 			'/plan/system-check',
 			array(
 				'methods'             => WP_REST_Server::READABLE,
@@ -68,12 +68,21 @@ final class SNFLA_Plan_Completion {
 			)
 		);
 		register_rest_route(
-			SNFLA_REST::NAMESPACE,
+			SNFLA_REST::NS,
 			'/plan/metrics',
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( __CLASS__, 'rest_metrics' ),
 				'permission_callback' => array( __CLASS__, 'permission_review' ),
+			)
+		);
+		register_rest_route(
+			SNFLA_REST::NS,
+			'/plan/register-foundation-contracts',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( __CLASS__, 'rest_register_foundation_contracts' ),
+				'permission_callback' => array( __CLASS__, 'permission_run' ),
 			)
 		);
 	}
@@ -87,7 +96,7 @@ final class SNFLA_Plan_Completion {
 
 	public static function permission_review( WP_REST_Request $request ) {
 		unset( $request );
-		$actor = SNFLA_Capabilities::current_read_actor( SNFLA_Capabilities::CAP_REVIEW );
+		$actor = SNFLA_Capabilities::current_diagnostic_actor();
 		return is_wp_error( $actor ) ? $actor : true;
 	}
 
@@ -118,6 +127,12 @@ final class SNFLA_Plan_Completion {
 	public static function rest_metrics( WP_REST_Request $request ) {
 		unset( $request );
 		return self::rest_payload( 'snfla_metrics', self::metrics_summary() );
+	}
+
+	public static function rest_register_foundation_contracts( WP_REST_Request $request ) {
+		unset( $request );
+		$result = SNFLA_Cross_File_Contracts::register_foundation_contracts( get_current_user_id() );
+		return is_wp_error( $result ) ? $result : self::rest_payload( 'snfla_foundation_contracts_registered', $result );
 	}
 
 	/**
@@ -492,7 +507,7 @@ final class SNFLA_Plan_Completion {
 
 	public static function rest_start( $result, $server, $request ) {
 		unset( $server );
-		if ( $request instanceof WP_REST_Request && 0 === strpos( (string) $request->get_route(), '/' . SNFLA_REST::NAMESPACE ) ) {
+		if ( $request instanceof WP_REST_Request && 0 === strpos( (string) $request->get_route(), '/' . SNFLA_REST::NS ) ) {
 			self::$request_started[ spl_object_hash( $request ) ] = microtime( true );
 		}
 		return $result;
@@ -500,7 +515,7 @@ final class SNFLA_Plan_Completion {
 
 	public static function rest_finish( $response, $handler, $request ) {
 		unset( $handler );
-		if ( ! $request instanceof WP_REST_Request || 0 !== strpos( (string) $request->get_route(), '/' . SNFLA_REST::NAMESPACE ) ) { return $response; }
+		if ( ! $request instanceof WP_REST_Request || 0 !== strpos( (string) $request->get_route(), '/' . SNFLA_REST::NS ) ) { return $response; }
 		$key = spl_object_hash( $request );
 		$start = self::$request_started[ $key ] ?? microtime( true );
 		unset( self::$request_started[ $key ] );
