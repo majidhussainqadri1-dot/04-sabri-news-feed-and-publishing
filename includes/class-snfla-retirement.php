@@ -6,11 +6,12 @@ final class SNFLA_Retirement {
 
 	public static function retire( $actor_id, $confirmation, $expected_state, $expected_version ) {
 		if ( self::CONFIRMATION !== trim( (string) $confirmation ) ) { return new WP_Error( 'snfla_retirement_confirmation_required', 'Type the exact retirement confirmation phrase.', array( 'status' => 400 ) ); }
+		if ( ! is_int( $actor_id ) || $actor_id <= 0 || ! is_int( $expected_version ) || $expected_version < 1 ) { return new WP_Error( 'snfla_retirement_identity_or_version_invalid', 'Retirement actor and lifecycle version must be canonical positive integers.', array( 'status' => 400 ) ); }
 		if ( ! SNFLA_Database::acquire_lock( 'operation', 5 ) ) { return new WP_Error( 'snfla_operation_locked', 'Another File 04 operation is running.', array( 'status' => 423 ) ); }
 		try {
 			$authorized_actor = SNFLA_Capabilities::revalidate_actor( $actor_id, SNFLA_Capabilities::CAP_RETIRE );
 			if ( is_wp_error( $authorized_actor ) ) { return $authorized_actor; }
-			$state_check = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), absint( $expected_version ) );
+			$state_check = SNFLA_Schema::assert_current( sanitize_key( $expected_state ), $expected_version );
 			if ( is_wp_error( $state_check ) ) { return $state_check; }
 			if ( ! self::deactivation_api_available() ) {
 				return new WP_Error( 'snfla_retirement_deactivation_unavailable', 'WordPress plugin deactivation APIs are unavailable; retirement cannot complete safely.', array( 'status' => 503 ) );
@@ -50,7 +51,7 @@ final class SNFLA_Retirement {
 			);
 			$previous = get_option( SNFLA_Schema::RETIREMENT_OPTION, array() );
 			if ( ! update_option( SNFLA_Schema::RETIREMENT_OPTION, $evidence, false ) ) { return new WP_Error( 'snfla_retirement_evidence_persist_failed', 'Retirement evidence could not be persisted.', array( 'status' => 500 ) ); }
-			$transition = SNFLA_Schema::transition( 'retired', sanitize_key( $expected_state ), absint( $expected_version ), $actor_id, array( 'confirmation_hash' => hash( 'sha256', self::CONFIRMATION ), 'reconciliation_checksum' => $report['report_checksum'] ?? '', 'retirement_evidence_checksum' => SNFLA_Checksum::hash( $evidence ), 'redirect_handoff_checksum' => $handoff['manifest_checksum'] ?? '' ) );
+			$transition = SNFLA_Schema::transition( 'retired', sanitize_key( $expected_state ), $expected_version, $actor_id, array( 'confirmation_hash' => hash( 'sha256', self::CONFIRMATION ), 'reconciliation_checksum' => $report['report_checksum'] ?? '', 'retirement_evidence_checksum' => SNFLA_Checksum::hash( $evidence ), 'redirect_handoff_checksum' => $handoff['manifest_checksum'] ?? '' ) );
 			if ( is_wp_error( $transition ) ) {
 				$restored_previous = update_option( SNFLA_Schema::RETIREMENT_OPTION, $previous, false ) || get_option( SNFLA_Schema::RETIREMENT_OPTION, array() ) === $previous;
 				return $restored_previous ? $transition : new WP_Error( 'snfla_retirement_compensation_failed', 'Retirement transition failed and previous retirement evidence could not be restored exactly.', array( 'status' => 500, 'cause' => $transition->get_error_code(), 'manual_recovery_required' => true ) );
