@@ -56,6 +56,8 @@ for needle in ['sabri_file21_legacy_media_preflight_v1','rights_or_license_verif
     check(needle in completion,'Media/reference requirement missing: '+needle,fail)
 check("'copy_media'            => true" in file21 and "'copy_references'       => true" in file21,'File 21 canonical migration call must request media/reference copying',fail)
 check('verify_file21_result' in file21,'Post-migration media/reference verification missing',fail)
+for needle in ["'references'", "'source_signature'", "'request_digest'"]:
+    check(needle in file21,'Full media preflight context must be forwarded to File 21: '+needle,fail)
 check("LIMIT %d" in completion and "ID>%d" in completion and '$batch_size = 200' in completion,'Attachment traversal must be bounded and keyset-based',fail)
 check("numberposts' => -1" not in completion and "posts_per_page' => -1" not in completion,'Unbounded media traversal is forbidden',fail)
 check("$source_bytes = $parts['publication_bytes'] + $parts['meta_bytes'] + $parts['comment_bytes'] + $parts['attachment_bytes'];" in completion,'Storage estimate must not count attachment-count units as bytes',fail)
@@ -101,9 +103,12 @@ check('LegacyPublicationMigration::migrate_selected' in file21 and 'LegacyPublic
 # Cross-file completion.
 for needle in ['SPF_Registry::register_manifest','SPF_Registry::map_route','sabri_file04_route_context_v1']:
     check(needle in cross,'File01/File20 cross-file contract missing: '+needle,fail)
+check("'/wp-json/sabri/file04/v1/status/'" in cross and "'/wp-json/sabri/file04/v1/plan/system-check/'" in cross,'File01 routes must use canonical trailing-slash paths',fail)
+check("'layout_context' => 'system_recovery'" in cross and "'layout_context' => 'minimal-private-task'" not in cross,'File20 route context must use canonical system_recovery vocabulary',fail)
+check("'page_id' => 0" not in cross,'File01 route contract must omit invalid zero page IDs',fail)
 for needle in ['sun_registered_producers','LegacyMigrationBatchCompleted.v1','LegacyRecordQuarantined.v1','LegacyCutoverCompleted.v1','LegacyAdapterRetired.v1']:
     check(needle in cross,'File19 domain-event contract missing: '+needle,fail)
-for needle in ['spcrc/module_manifests','spcrc/file04_contract_state',"'module_key'             => 'file-04'"]:
+for needle in ['spcrc/module_manifests','spcrc/file04_contract_state',"'module_key'             => 'file-04'", "'tables'", "'files'", "'secret_classes'", "'exporters'", "'erasers'", "'emergency_callbacks'", "'verification_level'"]:
     check(needle in cross,'File24 assurance manifest contract missing: '+needle,fail)
 file26_body=central.split('public static function file26_resolution',1)[1].split('private static function strict_positive_id',1)[0]
 check('self::strict_positive_id( $legacy_id )' in file26_body and 'absint( $legacy_id )' not in file26_body,'File26 legacy resolution must reject lossy ID aliases',fail)

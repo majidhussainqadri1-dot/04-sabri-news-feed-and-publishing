@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "purpose": "File 04 exact companion contract parity lock; repository/source evidence only",
+  "companions": {
+    "file00": {"repository":"majidhussainqadri1-dot/00-sabri-membership-core","ref":"2fa7c022ee9cd1b65432e900579512f304532442"},
+    "file01": {"repository":"majidhussainqadri1-dot/01-sabri-platform-foundation","ref":"adf6dbb9980a85f25f7cf4c2ee679b52703c2e71"},
+    "file19": {"repository":"majidhussainqadri1-dot/19-sabri-unified-notifications","ref":"942bff557c020617c805b5cd982f69ec8a717fac"},
+    "file20": {"repository":"majidhussainqadri1-dot/20-sabri-unified-application-shell","ref":"8a4dbcaf4fef8e926b9b834ecfde16c21a0f00ca"},
+    "file21": {"repository":"majidhussainqadri1-dot/sabri-complete-home-news-feed","ref":"de52642b55bb6ea248916cdb796c014a2c8d7933"},
+    "file24": {"repository":"majidhussainqadri1-dot/24-sabri-platform-security-privacy-compliance-and-resilience-center","ref":"0d9a969d935e474de0cc54bf5dcd26eb5ad2eee5"},
+    "file25": {"repository":"majidhussainqadri1-dot/25-sabri-public-ui-profile-timeline-visual-experience","ref":"59927df876dc92c7461351420c7b7c95c65c6a93"},
+    "file26": {"repository":"majidhussainqadri1-dot/26-search-discovery-recommendations-knowledge-graph-classification","ref":"bbea3aad466792a4a6a62b53532bbd45c7c592de"}
+  },
+  "production_claim": false
+}

@@ -39,8 +39,11 @@ final class SNFLA_File21_Adapter {
 				'placeholder'   => ! empty( $row['author']['placeholder'] ),
 			);
 			$media_context[ absint( $legacy_id ) ] = array(
-				'provider_id'     => sanitize_key( (string) ( $row['media']['provider_id'] ?? '' ) ),
-				'reference_count' => absint( $row['media']['reference_count'] ?? 0 ),
+				'provider_id'      => sanitize_key( (string) ( $row['media']['provider_id'] ?? '' ) ),
+				'reference_count'  => absint( $row['media']['reference_count'] ?? 0 ),
+				'references'       => array_values( array_filter( (array) ( $row['media']['references'] ?? array() ), 'is_array' ) ),
+				'source_signature' => strtolower( (string) ( $row['media']['source_signature'] ?? '' ) ),
+				'request_digest'   => strtolower( (string) ( $row['media']['request_digest'] ?? '' ) ),
 			);
 		}
 		$result = \Sabri\HomeNewsFeed\LegacyPublicationMigration::migrate_selected(
