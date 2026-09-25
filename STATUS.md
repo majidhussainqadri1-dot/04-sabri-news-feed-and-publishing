@@ -1,6 +1,6 @@
 # File 04 v2.0.7 — Exact Companion-Parity Corrective Status Register
 
-`source_status=v2.0.7-cross-repo-parity-candidate`
+`source_status=v2.0.7-second-eighty-complete-cross-repo-parity-candidate`
 `known_unresolved_source_scope_blockers=0`
 `exact_companion_parity_ci=pending`
 `staging_accepted_pending=true`
