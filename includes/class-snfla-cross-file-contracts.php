@@ -208,7 +208,7 @@ final class SNFLA_Cross_File_Contracts {
 
 		$routes = array(
 			array( 'route_key' => 'file04-status', 'route_path' => '/wp-json/sabri/file04/v1/status/', 'owner_module' => 'file-04', 'layout_context' => 'system_recovery', 'status' => 'active', 'destination' => '', 'redirects' => array() ),
-			array( 'route_key' => 'file04-system-check', 'route_path' => '/wp-json/sabri/file04/v1/plan/system-check/', 'owner_module' => 'file-04', 'layout_context' => 'system_recovery', 'status' => 'active', 'page_id' => 0, 'destination' => '', 'redirects' => array() ),
+			array( 'route_key' => 'file04-system-check', 'route_path' => '/wp-json/sabri/file04/v1/plan/system-check/', 'owner_module' => 'file-04', 'layout_context' => 'system_recovery', 'status' => 'active', 'destination' => '', 'redirects' => array() ),
 		);
 		$mapped = array();
 		$existing_routes = SPF_Registry::list_routes();
