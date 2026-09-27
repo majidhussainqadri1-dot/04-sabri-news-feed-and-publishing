@@ -83,13 +83,13 @@ final class SNFLA_Cross_File_Contracts {
 		do_action( 'snfla_file04_domain_event_v1', $contract_event, $event );
 
 		if ( ! function_exists( 'sun_ingest_domain_event' ) ) {
-			do_action( 'snfla_operational_alert_v1', 'file19_event_delivery_unavailable', array( 'event' => $contract_event ) );
+			do_action( 'snfla_operational_alert_v1', array( 'code' => 'file19_event_delivery_unavailable', 'severity' => 'high', 'event' => $contract_event, 'trace_safe' => true ) );
 			return array( 'delivered' => false, 'reason' => 'file19_unavailable', 'event_id' => $event['event_id'] );
 		}
 
 		$result = sun_ingest_domain_event( $event );
 		if ( is_wp_error( $result ) ) {
-			do_action( 'snfla_operational_alert_v1', 'file19_event_delivery_failed', array( 'event' => $contract_event, 'code' => $result->get_error_code() ) );
+			do_action( 'snfla_operational_alert_v1', array( 'code' => 'file19_event_delivery_failed', 'severity' => 'high', 'event' => $contract_event, 'provider_error_code' => sanitize_key( $result->get_error_code() ), 'trace_safe' => true ) );
 			return $result;
 		}
 		return array( 'delivered' => true, 'event_id' => $event['event_id'], 'result' => $result );
