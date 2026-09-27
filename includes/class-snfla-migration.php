@@ -150,16 +150,9 @@ final class SNFLA_Migration {
 		// source-only and block migration until an approved contract is available.
 		$media_preflight = SNFLA_Plan_Completion::media_preflight( $legacy_id );
 		if ( is_wp_error( $media_preflight ) ) { $codes[] = $media_preflight->get_error_code(); }
-		$governed_meta = array(
-			'_snp_tags'           => 'legacy_tag_metadata_requires_canonical_mapping',
-			'_snp_language'       => 'legacy_language_requires_canonical_mapping',
-			'_snp_featured'       => 'legacy_featured_flag_requires_canonical_policy',
-			'_snp_pinned'         => 'legacy_pinned_flag_requires_canonical_policy',
-		);
-		foreach ( $governed_meta as $meta_key => $conflict_code ) {
-			$value   = get_post_meta( $legacy_id, $meta_key, true );
-			$present = is_array( $value ) ? ! empty( $value ) : ( is_object( $value ) || '' !== trim( (string) $value ) );
-			if ( $present ) { $codes[] = $conflict_code; }
+		$metadata_preflight = SNFLA_Plan_Completion::publication_metadata_preflight( $legacy_id );
+		if ( is_wp_error( $metadata_preflight ) ) {
+			$codes[] = $metadata_preflight->get_error_code();
 		}
 		$view_extra = SNFLA_Interaction_Provider::legacy_view_meta_extra( $legacy_id );
 		if ( is_wp_error( $view_extra ) ) {
