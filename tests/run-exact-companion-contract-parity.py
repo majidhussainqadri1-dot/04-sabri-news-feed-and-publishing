@@ -39,6 +39,12 @@ file01=read('file01','includes/class-spf-registry.php')
 for needle in ["$path = '/' . trim( $raw_path, '/' ) . '/';","$page_id = absint( $route['page_id'] )","0 >= $page_id"]:
     check(needle in file01,'File01 exact route validation invariant missing: '+needle)
 
+file17_readme=read('file17','README.md')
+file17_firewall=read('file17','sabri-network/includes/class-sn-two-plan-contract-firewall.php')
+for needle in ['single communication/realtime owner','communities/groups/channels']:
+    check(needle in file17_readme,'File17 canonical community ownership invariant missing: '+needle)
+check('community-artifacts' in file17_firewall and 'discoverable_private' in file17_firewall,'File17 community/privacy contract drifted')
+
 file19_funcs=read('file19','19-unified-notifications/includes/functions.php')
 file19_registry=read('file19','19-unified-notifications/includes/class-sun-producer-registry.php')
 check('sun_ingest_domain_event' in file19_funcs,'File19 domain-event ingestion API missing')
@@ -55,6 +61,32 @@ for needle in ["array_key_exists( 'mfa_required', $assertions )","sabri_file21_l
     hay=file21_identity+'\n'+file21_migration
     check(needle in hay,'File21/File04 migration invariant missing: '+needle)
 check("FILE26_CONNECTOR_SLUG = 'file21-publication'" in file21_search,'File21 canonical File26 connector slug drifted')
+
+file22_readme=read('file22','README.md')
+for needle in ['File 21: social publication provider integration','does **not** create a duplicate publishing backend']:
+    check(needle in file22_readme,'File22 composer-only ownership boundary missing: '+needle)
+
+file23_diag=read('file23','includes/class-spdb-legacy-migration-diagnostics.php')
+for needle in [
+    "spdb/file04_migration_inventory",
+    "spdb/file04_migration_mapping",
+    "spdb/file04_migration_state",
+    "'total_records'",
+    "'eligible_candidates'",
+    "'migrated_records'",
+    "'mapped_records'",
+    "'duplicate_records'",
+    "'orphaned_records'",
+    "'failed_records'",
+    "'dry_run_completed'",
+    "'legacy_write_state'",
+    "'rollback_evidence_id'",
+    "'reconciliation_evidence_id'",
+    "'provider_version'",
+    "'last_checked_at_gmt'",
+    "'mutation_supported'",
+]:
+    check(needle in file23_diag,'File23/File04 read-only migration diagnostics contract missing: '+needle)
 
 file24=read('file24','plugin/sabri-security-center/src/Registry/ModuleRegistry.php')
 for needle in ["'tables'", "'files'", "'secret_classes'", "'exporters'", "'erasers'", "'emergency_callbacks'", "'verification_level'"]:
@@ -75,6 +107,15 @@ cross=(ROOT/'includes/class-snfla-cross-file-contracts.php').read_text(encoding=
 adapter=(ROOT/'includes/class-snfla-file21-adapter.php').read_text(encoding='utf-8')
 for needle in ["'/wp-json/sabri/file04/v1/status/'","'/wp-json/sabri/file04/v1/plan/system-check/'","'layout_context' => 'system_recovery'"]:
     check(needle in cross,'File04/File01/File20 route parity missing: '+needle)
+for needle in [
+    "spdb/file04_migration_inventory",
+    "spdb/file04_migration_mapping",
+    "spdb/file04_migration_state",
+    "file23_migration_inventory",
+    "file23_migration_mapping",
+    "file23_migration_state",
+]:
+    check(needle in cross,'File04/File23 diagnostics provider missing: '+needle)
 check("'page_id' => 0" not in cross,'File04 must not register invalid zero File01 page IDs')
 for needle in ["'tables'", "'files'", "'secret_classes'", "'exporters'", "'erasers'", "'emergency_callbacks'", "'verification_level'"]:
     check(needle in cross,'File04/File24 complete manifest field missing: '+needle)
@@ -85,4 +126,4 @@ if fail:
     print('Exact companion contract parity FAILED:',file=sys.stderr)
     for item in fail: print('-',item,file=sys.stderr)
     sys.exit(1)
-print('Exact companion contract parity PASS: File00/01/19/20/21/24/25/26 frozen heads match File04 source contracts.')
+print('Exact companion contract parity PASS: File00/01/17/19/20/21/22/23/24/25/26 frozen heads match File04 source contracts.')
