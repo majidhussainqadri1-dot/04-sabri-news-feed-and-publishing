@@ -34,6 +34,13 @@ final class SNFLA_Cross_File_Contracts {
 				'File04.LegacyAdapterRetired',
 			),
 			'schema_versions' => array( '1.0.0' ),
+			'allowed_data_fields' => array(
+				'contract_event', 'file_number', 'canonical_owner',
+				'run_uuid', 'status', 'migrated_count', 'skipped_count',
+				'legacy_id', 'reason_code', 'source_checksum',
+				'source_signature', 'reconciliation_checksum', 'cache_provider', 'search_provider',
+				'retirement_evidence_hash', 'route_manifest_checksum',
+			),
 			'internal'        => true,
 		);
 		return $registry;
