@@ -120,6 +120,9 @@ for needle in ['sun_registered_producers','LegacyMigrationBatchCompleted.v1','Le
     check(needle in cross,'File19 domain-event contract missing: '+needle,fail)
 for needle in ['spcrc/module_manifests','spcrc/file04_contract_state',"'module_key'             => 'file-04'", "'tables'", "'files'", "'secret_classes'", "'exporters'", "'erasers'", "'emergency_callbacks'", "'verification_level'"]:
     check(needle in cross,'File24 assurance manifest contract missing: '+needle,fail)
+check("'verification_level'     => 'asvs-l2'" in cross,'File24 assurance verification level must use accepted vocabulary',fail)
+for needle in ["'snfla_runs'", "'snfla_map'", "'snfla_conflicts'", "'snfla_audit'", "'snfla_dry_run'", "'snfla_interaction_ledger'"]:
+    check(needle in cross,'File24 owned table manifest incomplete: '+needle,fail)
 for needle in ['spdb/file04_migration_inventory','spdb/file04_migration_mapping','spdb/file04_migration_state','file23_migration_inventory','file23_migration_mapping','file23_migration_state']:
     check(needle in cross,'File23 read-only migration diagnostics contract missing: '+needle,fail)
 file26_body=central.split('public static function file26_resolution',1)[1].split('private static function strict_positive_id',1)[0]
