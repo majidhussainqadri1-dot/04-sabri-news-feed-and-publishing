@@ -161,6 +161,7 @@ final class SNFLA_Inventory {
 					$wpdb->term_taxonomy ?? '',
 					$wpdb->term_relationships ?? '',
 					$wpdb->termmeta ?? '',
+					$wpdb->users ?? '',
 				),
 				array_map( static function ( $suffix ) use ( $wpdb ) { return $wpdb->prefix . $suffix; }, self::legacy_table_suffixes() )
 			)
