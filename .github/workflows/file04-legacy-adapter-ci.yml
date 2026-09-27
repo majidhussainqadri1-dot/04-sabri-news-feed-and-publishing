@@ -96,6 +96,13 @@ jobs:
           ref: adf6dbb9980a85f25f7cf4c2ee679b52703c2e71
           path: companions/file01
           persist-credentials: false
+      - name: Checkout File 17 exact locked head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: majidhussainqadri1-dot/17-sabri-network
+          ref: 8ae656e51796d1f05865d8be5dca2480443d79ca
+          path: companions/file17
+          persist-credentials: false
       - name: Checkout File 19 exact locked head
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -116,6 +123,20 @@ jobs:
           repository: majidhussainqadri1-dot/sabri-complete-home-news-feed
           ref: de52642b55bb6ea248916cdb796c014a2c8d7933
           path: companions/file21
+          persist-credentials: false
+      - name: Checkout File 22 exact locked head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: majidhussainqadri1-dot/sabri-universal-post-composer
+          ref: 9bc79b1b5b48c4c513ec9036126af5c00e9ae315
+          path: companions/file22
+          persist-credentials: false
+      - name: Checkout File 23 exact locked head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: majidhussainqadri1-dot/23-sabri-doctor-founder-publishing-dashboard
+          ref: a8a8c805f4730998ccb44bd95c87591836561759
+          path: companions/file23
           persist-credentials: false
       - name: Checkout File 24 exact locked head
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
