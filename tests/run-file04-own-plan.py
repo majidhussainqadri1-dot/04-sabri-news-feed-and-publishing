@@ -118,6 +118,8 @@ check("'layout_context' => 'system_recovery'" in cross and "'layout_context' => 
 check("'page_id' => 0" not in cross,'File01 route contract must omit invalid zero page IDs',fail)
 for needle in ['sun_registered_producers','LegacyMigrationBatchCompleted.v1','LegacyRecordQuarantined.v1','LegacyCutoverCompleted.v1','LegacyAdapterRetired.v1']:
     check(needle in cross,'File19 domain-event contract missing: '+needle,fail)
+for needle in ["'allowed_data_fields'","'contract_event'","'canonical_owner'","'run_uuid'","'legacy_id'","'source_signature'","'retirement_evidence_hash'"]:
+    check(needle in cross,'File19 payload allowlist contract missing: '+needle,fail)
 for needle in ['spcrc/module_manifests','spcrc/file04_contract_state',"'module_key'             => 'file-04'", "'tables'", "'files'", "'secret_classes'", "'exporters'", "'erasers'", "'emergency_callbacks'", "'verification_level'"]:
     check(needle in cross,'File24 assurance manifest contract missing: '+needle,fail)
 check("'verification_level'     => 'asvs-l2'" in cross,'File24 assurance verification level must use accepted vocabulary',fail)
