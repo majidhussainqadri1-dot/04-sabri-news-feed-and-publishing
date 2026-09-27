@@ -119,6 +119,9 @@ for needle in [
 check("'page_id' => 0" not in cross,'File04 must not register invalid zero File01 page IDs')
 for needle in ["'tables'", "'files'", "'secret_classes'", "'exporters'", "'erasers'", "'emergency_callbacks'", "'verification_level'"]:
     check(needle in cross,'File04/File24 complete manifest field missing: '+needle)
+check("'verification_level'     => 'asvs-l2'" in cross,'File04/File24 verification level must use File24 accepted vocabulary')
+for needle in ["'snfla_runs'", "'snfla_map'", "'snfla_conflicts'", "'snfla_audit'", "'snfla_dry_run'", "'snfla_interaction_ledger'"]:
+    check(needle in cross,'File04/File24 owned table inventory incomplete: '+needle)
 for needle in ["'references'", "'source_signature'", "'request_digest'"]:
     check(needle in adapter,'File04 must forward full File21 media evidence: '+needle)
 
