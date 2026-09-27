@@ -49,6 +49,8 @@ file19_funcs=read('file19','19-unified-notifications/includes/functions.php')
 file19_registry=read('file19','19-unified-notifications/includes/class-sun-producer-registry.php')
 check('sun_ingest_domain_event' in file19_funcs,'File19 domain-event ingestion API missing')
 check('sun_registered_producers' in file19_registry,'File19 producer registry filter missing')
+file19_validator=read('file19','19-unified-notifications/includes/class-sun-event-validator.php')
+check("'allowed_data_fields'" in file19_validator and 'sun_event_data_field_not_allowed' in file19_validator,'File19 payload allowlist enforcement missing')
 
 file20=read('file20','sabri-unified-application-shell/includes/class-central-plan-contract.php')
 for needle in ["'04' => array( 'Legacy Publishing Adapter'","'migration-compatibility'","'system_recovery'","'visual-provider'"]:
@@ -67,6 +69,8 @@ for needle in ['File 21: social publication provider integration','does **not** 
     check(needle in file22_readme,'File22 composer-only ownership boundary missing: '+needle)
 
 file23_diag=read('file23','includes/class-spdb-legacy-migration-diagnostics.php')
+for needle in ["'allowed_data_fields'", "'contract_event'", "'canonical_owner'", "'run_uuid'", "'legacy_id'", "'source_signature'", "'retirement_evidence_hash'"]:
+    check(needle in cross,'File04/File19 event payload allowlist incomplete: '+needle)
 for needle in [
     "spdb/file04_migration_inventory",
     "spdb/file04_migration_mapping",
