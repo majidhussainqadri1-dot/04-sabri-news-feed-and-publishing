@@ -8,6 +8,7 @@ def check(cond,msg,failures):
     if not cond: failures.append(msg)
 
 migration=text('includes/class-snfla-migration.php')
+inventory=text('includes/class-snfla-inventory.php')
 completion=text('includes/class-snfla-plan-completion.php')
 file21=text('includes/class-snfla-file21-adapter.php')
 reconciliation=text('includes/class-snfla-reconciliation.php')
@@ -32,6 +33,10 @@ for needle,label in [
     ('mapping','canonical mapping'),
 ]:
     check(needle in migration or needle in trace,label+' is missing',fail)
+for needle in ['author_reference_snapshot','author_reference_count','missing_author_count','author_reference_checksum',"$wpdb->users"]:
+    check(needle in inventory,'FR-001 user/author reference inventory evidence missing: '+needle,fail)
+check("'schema'                    => 3" in inventory,'FR-001 inventory evidence schema must reflect author-reference coverage',fail)
+
 
 # F04-FR-004 — dry-run must be non-destructive and contain counts/conflicts/storage/time/sample diffs.
 for needle in ['candidate_count','eligible_count','conflict_count','estimated_dispositions','storage_estimate','time_estimate','sample_diffs',"'destructive'          => false"]:
@@ -110,6 +115,8 @@ for needle in ['sun_registered_producers','LegacyMigrationBatchCompleted.v1','Le
     check(needle in cross,'File19 domain-event contract missing: '+needle,fail)
 for needle in ['spcrc/module_manifests','spcrc/file04_contract_state',"'module_key'             => 'file-04'", "'tables'", "'files'", "'secret_classes'", "'exporters'", "'erasers'", "'emergency_callbacks'", "'verification_level'"]:
     check(needle in cross,'File24 assurance manifest contract missing: '+needle,fail)
+for needle in ['spdb/file04_migration_inventory','spdb/file04_migration_mapping','spdb/file04_migration_state','file23_migration_inventory','file23_migration_mapping','file23_migration_state']:
+    check(needle in cross,'File23 read-only migration diagnostics contract missing: '+needle,fail)
 file26_body=central.split('public static function file26_resolution',1)[1].split('private static function strict_positive_id',1)[0]
 check('self::strict_positive_id( $legacy_id )' in file26_body and 'absint( $legacy_id )' not in file26_body,'File26 legacy resolution must reject lossy ID aliases',fail)
 check('current_diagnostic_actor' in caps,'Dependency-outage read-only diagnostic authority missing',fail)
