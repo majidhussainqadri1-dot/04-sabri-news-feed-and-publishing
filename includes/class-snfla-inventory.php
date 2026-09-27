@@ -41,13 +41,15 @@ final class SNFLA_Inventory {
 			self::capture_error( $post_stream->get_error_code() );
 		}
 
+		$author_snapshot = self::author_reference_snapshot();
+
 		$routes = array(
 			'snp_page_map'       => SNFLA_Checksum::canonicalize( (array) get_option( 'snp_page_map', array() ) ),
 			'legacy_shortcodes'  => array( 'sabri_news_home', 'sabri_news_feed', 'sabri_publish_form', 'sabri_publication_feed', 'sabri_my_publication_reports' ),
 			'legacy_page_digest' => self::legacy_page_digest(),
 		);
 		$inventory = array(
-			'schema'                    => 2,
+			'schema'                    => 3,
 			'schema_fingerprint'        => self::schema_fingerprint(),
 			'captured_at_utc'           => gmdate( 'Y-m-d H:i:s' ),
 			'post_counts'               => $post_counts,
@@ -55,6 +57,9 @@ final class SNFLA_Inventory {
 			'comment_count'             => self::comment_count(),
 			'term_count'                => self::term_count(),
 			'attachment_count'          => self::attachment_count(),
+			'author_reference_count'    => absint( $author_snapshot['count'] ?? 0 ),
+			'missing_author_count'      => absint( $author_snapshot['missing_count'] ?? 0 ),
+			'author_reference_checksum' => (string) ( $author_snapshot['checksum'] ?? '' ),
 			'table_counts'              => $table_counts,
 			'source_tree_checksum'      => hash_final( $post_hash ),
 			'comment_tree_checksum'     => self::comment_tree_digest(),
@@ -207,6 +212,79 @@ final class SNFLA_Inventory {
 			return 0;
 		}
 		return absint( $count );
+	}
+
+
+	/**
+	 * Privacy-minimized inventory of legacy author references required by FR-001.
+	 * No login, e-mail, display name or other profile data is stored: only
+	 * existence, referenced publication counts and a deterministic digest.
+	 */
+	private static function author_reference_snapshot() {
+		global $wpdb;
+		$hash = hash_init( 'sha256' );
+		$count = 0;
+		$missing = 0;
+
+		$wpdb->last_error = '';
+		$zero_count = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type=%s AND post_author=0",
+				self::LEGACY_POST_TYPE
+			)
+		);
+		if ( ! empty( $wpdb->last_error ) || null === $zero_count || ! is_numeric( $zero_count ) ) {
+			self::capture_error( 'author_reference_zero_count_failed' );
+			$zero_count = 0;
+		}
+		if ( (int) $zero_count > 0 ) {
+			$row = array( 'user_id' => 0, 'user_exists' => 0, 'publication_count' => (int) $zero_count );
+			hash_update( $hash, SNFLA_Checksum::encode( $row ) . "\n" );
+			$count++;
+			$missing++;
+		}
+
+		$cursor = 0;
+		do {
+			$wpdb->last_error = '';
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT p.post_author AS user_id,CASE WHEN u.ID IS NULL THEN 0 ELSE 1 END AS user_exists,COUNT(*) AS publication_count FROM {$wpdb->posts} p LEFT JOIN {$wpdb->users} u ON u.ID=p.post_author WHERE p.post_type=%s AND p.post_author>%d GROUP BY p.post_author,u.ID ORDER BY p.post_author ASC LIMIT %d",
+					self::LEGACY_POST_TYPE,
+					$cursor,
+					self::STREAM_BATCH
+				),
+				ARRAY_A
+			);
+			if ( ! is_array( $rows ) || ! empty( $wpdb->last_error ) ) {
+				self::capture_error( 'author_reference_inventory_failed' );
+				break;
+			}
+			foreach ( $rows as $row ) {
+				$user_id = absint( $row['user_id'] ?? 0 );
+				if ( $user_id <= $cursor ) {
+					self::capture_error( 'author_reference_cursor_invalid' );
+					break 2;
+				}
+				$cursor = $user_id;
+				$normalized = array(
+					'user_id'           => $user_id,
+					'user_exists'       => empty( $row['user_exists'] ) ? 0 : 1,
+					'publication_count' => absint( $row['publication_count'] ?? 0 ),
+				);
+				if ( 0 === $normalized['user_exists'] ) {
+					$missing++;
+				}
+				$count++;
+				hash_update( $hash, SNFLA_Checksum::encode( $normalized ) . "\n" );
+			}
+		} while ( count( $rows ) === self::STREAM_BATCH );
+
+		return array(
+			'count'         => $count,
+			'missing_count' => $missing,
+			'checksum'      => hash_final( $hash ),
+		);
 	}
 
 	private static function comment_count() {
