@@ -63,6 +63,11 @@ check("'copy_media'            => true" in file21 and "'copy_references'       =
 check('verify_file21_result' in file21,'Post-migration media/reference verification missing',fail)
 for needle in ["'references'", "'source_signature'", "'request_digest'"]:
     check(needle in file21,'Full media preflight context must be forwarded to File 21: '+needle,fail)
+for needle in ["'relations'", "'featured'", 'attachment_reference', "get_post_meta( $legacy_id, '_thumbnail_id'"]:
+    check(needle in completion,'Featured-media relationship coverage missing: '+needle,fail)
+for needle in ['sabri_file21_legacy_metadata_preflight_v1','sabri_file21_verify_migrated_legacy_metadata_v1','publication_metadata_preflight',"'_snp_tags'","'_snp_language'","'_snp_featured'","'_snp_pinned'","'_snp_video_url'"]:
+    check(needle in completion,'Known legacy metadata mapping/verification contract missing: '+needle,fail)
+check("'legacy_metadata_context'=> $metadata_context" in file21,'Full legacy metadata context must be forwarded to File 21',fail)
 check("LIMIT %d" in completion and "ID>%d" in completion and '$batch_size = 200' in completion,'Attachment traversal must be bounded and keyset-based',fail)
 check("numberposts' => -1" not in completion and "posts_per_page' => -1" not in completion,'Unbounded media traversal is forbidden',fail)
 check("$source_bytes = $parts['publication_bytes'] + $parts['meta_bytes'] + $parts['comment_bytes'] + $parts['attachment_bytes'];" in completion,'Storage estimate must not count attachment-count units as bytes',fail)
