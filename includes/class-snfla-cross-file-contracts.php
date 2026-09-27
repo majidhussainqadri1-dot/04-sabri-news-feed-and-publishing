@@ -18,6 +18,9 @@ final class SNFLA_Cross_File_Contracts {
 		add_filter( 'spcrc/file04_contract_state', array( __CLASS__, 'file24_contract_state' ), 10, 2 );
 		add_filter( 'sabri_file04_foundation_manifest_v1', array( __CLASS__, 'foundation_manifest' ) );
 		add_filter( 'sabri_file04_route_context_v1', array( __CLASS__, 'route_context_contract' ) );
+		add_filter( 'spdb/file04_migration_inventory', array( __CLASS__, 'file23_migration_inventory' ) );
+		add_filter( 'spdb/file04_migration_mapping', array( __CLASS__, 'file23_migration_mapping' ) );
+		add_filter( 'spdb/file04_migration_state', array( __CLASS__, 'file23_migration_state' ) );
 	}
 
 	public static function file19_producer( $registry ) {
@@ -90,6 +93,144 @@ final class SNFLA_Cross_File_Contracts {
 			return $result;
 		}
 		return array( 'delivered' => true, 'event_id' => $event['event_id'], 'result' => $result );
+	}
+
+
+	/**
+	 * Read-only, privacy-minimized File 23 migration inventory projection.
+	 * File 23 remains a consumer only; File 04 exposes no mutation capability.
+	 */
+	public static function file23_migration_inventory( $existing = array() ) {
+		$existing = is_array( $existing ) ? $existing : array();
+		$locked   = SNFLA_Inventory::locked();
+		$counts   = is_array( $locked['post_counts'] ?? null ) ? $locked['post_counts'] : array();
+		$total    = 0;
+		foreach ( array( 'publish', 'draft', 'pending', 'private', 'future' ) as $status ) {
+			$total += absint( $counts[ $status ] ?? 0 );
+		}
+
+		$eligible = 0;
+		$dry      = get_option( SNFLA_Schema::DRY_RUN_OPTION, array() );
+		if ( is_array( $dry )
+			&& SNFLA_Integrity::report_checksum_valid( $dry )
+			&& ! empty( $dry['complete_scan'] )
+			&& ! empty( $dry['source_signature'] )
+			&& ! empty( $locked['source_signature'] )
+			&& hash_equals( (string) $locked['source_signature'], (string) $dry['source_signature'] ) ) {
+			$eligible = min( $total, absint( $dry['eligible_count'] ?? 0 ) );
+		}
+
+		return array_replace(
+			$existing,
+			array(
+				'provider'            => 'file04',
+				'provider_version'    => defined( 'SNFLA_VERSION' ) ? SNFLA_VERSION : '',
+				'total_records'       => $total,
+				'eligible_candidates' => $eligible,
+			)
+		);
+	}
+
+	/**
+	 * Read-only File 23 mapping projection. Any query uncertainty fails closed by
+	 * exposing a non-zero failed count, so the dashboard cannot infer cutover readiness.
+	 */
+	public static function file23_migration_mapping( $existing = array() ) {
+		$existing = is_array( $existing ) ? $existing : array();
+		$out = array(
+			'provider'          => 'file04',
+			'provider_version'  => defined( 'SNFLA_VERSION' ) ? SNFLA_VERSION : '',
+			'migrated_records'  => 0,
+			'mapped_records'    => 0,
+			'duplicate_records' => 0,
+			'orphaned_records'  => 0,
+			'failed_records'    => 0,
+		);
+		if ( ! class_exists( 'SNFLA_Database' ) || ! SNFLA_Database::schema_healthy() ) {
+			$out['failed_records'] = 1;
+			return array_replace( $existing, $out );
+		}
+
+		global $wpdb;
+		$t = SNFLA_Database::tables();
+		$queries = array(
+			'migrated_records' => "SELECT COUNT(*) FROM {$t['map']} WHERE status='migrated'",
+			'mapped_records'   => "SELECT COUNT(*) FROM {$t['map']} WHERE status='migrated' AND target_id>0",
+			'failed_records'   => "SELECT COUNT(*) FROM {$t['map']} WHERE status IN ('conflict','interaction_pending','rollback_conflict','publication_rolled_back_interactions_pending')",
+			'orphaned_records' => "SELECT COUNT(*) FROM {$t['map']} m LEFT JOIN {$wpdb->posts} p ON p.ID=m.target_id WHERE m.status='migrated' AND m.target_id>0 AND (p.ID IS NULL OR p.post_type NOT IN ('post','sabri_news'))",
+			'duplicate_records'=> "SELECT COUNT(*) FROM (SELECT target_id FROM {$t['map']} WHERE status='migrated' AND target_id>0 GROUP BY target_id HAVING COUNT(*)>1) snfla_file23_duplicates",
+		);
+		foreach ( $queries as $key => $sql ) {
+			$wpdb->last_error = '';
+			$value = $wpdb->get_var( $sql );
+			if ( ! empty( $wpdb->last_error ) || null === $value || ! is_numeric( $value ) ) {
+				$out['failed_records'] = max( 1, (int) $out['failed_records'] );
+				continue;
+			}
+			$out[ $key ] = max( 0, (int) $value );
+		}
+
+		$report = SNFLA_Reconciliation::report();
+		if ( is_array( $report ) && SNFLA_Integrity::report_checksum_valid( $report ) ) {
+			$out['failed_records'] = max(
+				$out['failed_records'],
+				absint( $report['issue_count'] ?? 0 ),
+				absint( $report['open_conflicts'] ?? 0 )
+			);
+		}
+
+		return array_replace( $existing, $out );
+	}
+
+	/**
+	 * Read-only File 23 lifecycle/evidence projection. Positive readiness evidence
+	 * is emitted only when the underlying File 04 proofs are current and verified.
+	 */
+	public static function file23_migration_state( $existing = array() ) {
+		$existing = is_array( $existing ) ? $existing : array();
+		$locked   = SNFLA_Inventory::locked();
+		$dry      = get_option( SNFLA_Schema::DRY_RUN_OPTION, array() );
+		$dry_current = is_array( $dry )
+			&& SNFLA_Integrity::report_checksum_valid( $dry )
+			&& ! empty( $dry['complete_scan'] )
+			&& ! empty( $dry['source_signature'] )
+			&& ! empty( $locked['source_signature'] )
+			&& hash_equals( (string) $locked['source_signature'], (string) $dry['source_signature'] )
+			&& SNFLA_Inventory::unchanged();
+
+		$report = SNFLA_Reconciliation::report();
+		$reconciliation_current = is_array( $report ) && SNFLA_Reconciliation::validate_current_report( $report );
+		$rollback_current = SNFLA_Rollback::proof_current();
+		$rollback = $rollback_current ? SNFLA_Rollback::proof() : array();
+
+		$state = SNFLA_Schema::state();
+		$write_state = in_array( $state, SNFLA_Schema::states(), true )
+			? ( 'retired' === $state ? 'disabled' : 'suppressed' )
+			: 'unknown';
+
+		$last_checked = '';
+		foreach ( array( $report['created_at_utc'] ?? '', $dry['created_at_utc'] ?? '', $locked['captured_at_utc'] ?? '' ) as $candidate ) {
+			$ts = '' !== trim( (string) $candidate ) ? strtotime( (string) $candidate . ' UTC' ) : false;
+			if ( false !== $ts ) {
+				$last_checked = gmdate( 'c', $ts );
+				break;
+			}
+		}
+
+		$rollback_uuid = sanitize_text_field( (string) ( $rollback['run_uuid'] ?? '' ) );
+		$report_uuid   = sanitize_text_field( (string) ( $report['report_uuid'] ?? '' ) );
+
+		return array_replace(
+			$existing,
+			array(
+				'provider_version'           => defined( 'SNFLA_VERSION' ) ? SNFLA_VERSION : '',
+				'dry_run_completed'          => (bool) $dry_current,
+				'legacy_write_state'         => $write_state,
+				'rollback_evidence_id'       => $rollback_current && '' !== $rollback_uuid ? 'rollback:' . $rollback_uuid : '',
+				'reconciliation_evidence_id' => $reconciliation_current && '' !== $report_uuid ? 'reconciliation:' . $report_uuid : '',
+				'last_checked_at_gmt'        => $last_checked,
+			)
+		);
 	}
 
 	public static function file24_manifests( $manifests ) {
