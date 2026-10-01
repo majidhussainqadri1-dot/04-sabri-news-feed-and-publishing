@@ -59,7 +59,7 @@ for needle in ["'04' => array( 'Legacy Publishing Adapter'","'migration-compatib
 file21_identity=read('file21','includes/class-canonical-identity-adapter.php')
 file21_migration=read('file21','includes/class-legacy-publication-migration.php')
 file21_search=read('file21','includes/class-search-provider-registry.php')
-for needle in ["array_key_exists( 'mfa_required', $assertions )","sabri_file21_legacy_media_preflight_v1","sabri_file21_verify_migrated_legacy_media_v1","author_identity_context","media_preflight_context","_sabri_hnf_legacy_author_platform_uuid_v1","_sabri_hnf_legacy_media_reference_manifest_v1"]:
+for needle in ["array_key_exists( 'mfa_required', $assertions )","sabri_file21_legacy_media_preflight_v1","sabri_file21_verify_migrated_legacy_media_v1","sabri_file21_legacy_metadata_preflight_v1","sabri_file21_verify_migrated_legacy_metadata_v1","author_identity_context","media_preflight_context","legacy_metadata_context","_sabri_hnf_legacy_author_platform_uuid_v1","_sabri_hnf_legacy_media_reference_manifest_v1","_sabri_hnf_legacy_metadata_v1"]:
     hay=file21_identity+'\n'+file21_migration
     check(needle in hay,'File21/File04 migration invariant missing: '+needle)
 check("FILE26_CONNECTOR_SLUG = 'file21-publication'" in file21_search,'File21 canonical File26 connector slug drifted')
@@ -128,6 +128,8 @@ for needle in ["'snfla_runs'", "'snfla_map'", "'snfla_conflicts'", "'snfla_audit
     check(needle in cross,'File04/File24 owned table inventory incomplete: '+needle)
 for needle in ["'references'", "'source_signature'", "'request_digest'"]:
     check(needle in adapter,'File04 must forward full File21 media evidence: '+needle)
+for needle in ["'legacy_metadata_context'", "'metadata'", "'fields'", "'field_count'"]:
+    check(needle in adapter,'File04 must forward full File21 legacy metadata evidence: '+needle)
 
 if fail:
     print('Exact companion contract parity FAILED:',file=sys.stderr)
