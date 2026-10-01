@@ -4,14 +4,14 @@ Tags: legacy migration, reconciliation, rollback, wordpress
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.0.7
+Stable tag: 2.0.8
 License: GPLv2 or later
 
 == Description ==
 
 File 04 is a temporary, write-disabled, auditable and reversible adapter from historical `snp_publication` records into canonical File 21. It does not own Home, News, publishing, ranking, comments, reactions, saves, reports, navigation, composition or search truth.
 
-Version 2.0.7 retains the full migration/rollback and Future18 scope, preserves both historical 80-round hardening cycles, and adds a fresh 20-pass exact-companion contract parity correction across File 00/01/19/20/21/24/25/26. Hostinger staging, live deployment and operational acceptance remain separate evidence gates.
+Version 2.0.8 retains the full migration/rollback and Future18 scope, preserves all historical hardening evidence, and adds the fresh plan/current-companion corrections for author inventory, File 21 media/metadata migration, File 19 event payloads, File 23 diagnostics, File 24 assurance semantics, and current exact File 00/01/17/19/20/21/22/23/24/25/26 parity. Staging, live deployment and operational acceptance remain separate evidence gates.
 
 == Installation ==
 
@@ -22,6 +22,9 @@ Version 2.0.7 retains the full migration/rollback and Future18 scope, preserves 
 5. Do not deploy live, cut over or retire without required evidence and Founder approval.
 
 == Changelog ==
+
+= 2.0.8 =
+* Fresh 20-round plan/central-plan/current-companion correction candidate with complete File 21 media/metadata migration evidence, File 23 diagnostics, File 19 allowlist parity, File 24 assurance parity and refreshed exact companion locks.
 
 = 2.0.7 =
 * Added exact companion-head parity correction and CI locking across File 00/01/19/20/21/24/25/26.
