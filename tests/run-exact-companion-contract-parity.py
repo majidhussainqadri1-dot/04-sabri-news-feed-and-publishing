@@ -22,6 +22,9 @@ def git_head(key):
     except Exception:
         return ''
 
+cross=(ROOT/'includes/class-snfla-cross-file-contracts.php').read_text(encoding='utf-8')
+adapter=(ROOT/'includes/class-snfla-file21-adapter.php').read_text(encoding='utf-8')
+
 # Exact frozen companion trees are part of the evidence, not a floating-main test.
 for key,row in LOCK['companions'].items():
     expected=row['ref']
@@ -107,8 +110,6 @@ for needle in ['sabri_file26_accept_file04_contract_v1','snfla_request_search_re
 check('enqueue_reindex' in file26_indexer,'File26 bounded reindex API missing')
 
 # Local File04 consumers must exactly match the frozen companion contracts.
-cross=(ROOT/'includes/class-snfla-cross-file-contracts.php').read_text(encoding='utf-8')
-adapter=(ROOT/'includes/class-snfla-file21-adapter.php').read_text(encoding='utf-8')
 for needle in ["'/wp-json/sabri/file04/v1/status/'","'/wp-json/sabri/file04/v1/plan/system-check/'","'layout_context' => 'system_recovery'"]:
     check(needle in cross,'File04/File01/File20 route parity missing: '+needle)
 for needle in [
