@@ -4,7 +4,7 @@ import hashlib, json, re, sys
 
 ROOT=Path(__file__).resolve().parents[1]
 def rd(path): return (ROOT/path).read_text(encoding='utf-8')
-files={p.relative_to(ROOT).as_posix():p.read_text(encoding='utf-8') for p in ROOT.rglob('*') if p.is_file() and '.git' not in p.parts and '__pycache__' not in p.parts and p.suffix!='.pyc'}
+files={p.relative_to(ROOT).as_posix():p.read_text(encoding='utf-8') for p in ROOT.rglob('*') if p.is_file() and '.git' not in p.parts and 'companions' not in p.parts and '__pycache__' not in p.parts and p.suffix!='.pyc'}
 php='\n'.join(v for k,v in files.items() if k.endswith('.php') and not k.startswith('tests/'))
 
 def contains(path,*needles):

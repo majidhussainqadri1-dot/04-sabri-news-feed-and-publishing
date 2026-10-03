@@ -39,6 +39,10 @@ file01=read('file01','includes/class-spf-registry.php')
 for needle in ["$path = '/' . trim( $raw_path, '/' ) . '/';","$page_id = absint( $route['page_id'] )","0 >= $page_id"]:
     check(needle in file01,'File01 exact route validation invariant missing: '+needle)
 
+file17=read('file17','README.md')
+for needle in ['single communication/realtime owner','communities/groups/channels','does not duplicate']:
+    check(needle in file17,'File17 community/communication ownership boundary missing: '+needle)
+
 file19_funcs=read('file19','19-unified-notifications/includes/functions.php')
 file19_registry=read('file19','19-unified-notifications/includes/class-sun-producer-registry.php')
 check('sun_ingest_domain_event' in file19_funcs,'File19 domain-event ingestion API missing')
@@ -51,10 +55,18 @@ for needle in ["'04' => array( 'Legacy Publishing Adapter'","'migration-compatib
 file21_identity=read('file21','includes/class-canonical-identity-adapter.php')
 file21_migration=read('file21','includes/class-legacy-publication-migration.php')
 file21_search=read('file21','includes/class-search-provider-registry.php')
-for needle in ["array_key_exists( 'mfa_required', $assertions )","sabri_file21_legacy_media_preflight_v1","sabri_file21_verify_migrated_legacy_media_v1","author_identity_context","media_preflight_context","_sabri_hnf_legacy_author_platform_uuid_v1","_sabri_hnf_legacy_media_reference_manifest_v1"]:
+for needle in ["array_key_exists( 'mfa_required', $assertions )","sabri_file21_legacy_media_preflight_v1","sabri_file21_verify_migrated_legacy_media_v1","sabri_file21_legacy_metadata_preflight_v1","sabri_file21_verify_migrated_legacy_metadata_v1","author_identity_context","media_preflight_context","legacy_metadata_context","_sabri_hnf_legacy_author_platform_uuid_v1","_sabri_hnf_legacy_media_reference_manifest_v1","_sabri_hnf_legacy_metadata_v1","'relations'","'featured'","'child'"]:
     hay=file21_identity+'\n'+file21_migration
     check(needle in hay,'File21/File04 migration invariant missing: '+needle)
 check("FILE26_CONNECTOR_SLUG = 'file21-publication'" in file21_search,'File21 canonical File26 connector slug drifted')
+
+file22=read('file22','README.md')
+for needle in ['File 21: social/Founder/Doctor/News/Poll/Patient Case publication lifecycle and canonical records','does **not** create a duplicate publishing backend','metadata-only projection events to Files 19/23/24/25']:
+    check(needle in file22,'File22 non-owning Composer boundary missing: '+needle)
+
+file23=read('file23','includes/class-spdb-legacy-migration-diagnostics.php')
+for needle in ['spdb/file04_migration_inventory','spdb/file04_migration_mapping','spdb/file04_migration_state',"'mutation_supported'         => false","'canonical_owner'            => 'file21'"]:
+    check(needle in file23,'File23 read-only File04 diagnostics contract missing: '+needle)
 
 file24=read('file24','plugin/sabri-security-center/src/Registry/ModuleRegistry.php')
 for needle in ["'tables'", "'files'", "'secret_classes'", "'exporters'", "'erasers'", "'emergency_callbacks'", "'verification_level'"]:
@@ -70,6 +82,14 @@ for needle in ['sabri_file26_accept_file04_contract_v1','snfla_request_search_re
     check(needle in file26_plugin,'File26/File04 cutover contract missing: '+needle)
 check('enqueue_reindex' in file26_indexer,'File26 bounded reindex API missing')
 
+cf04_readme=read('cf04','README.md')
+cf04_ownership=read('cf04','docs/OWNERSHIP-MATRIX.md')
+cf04_contract=read('cf04','contracts/media-asset-reference.schema.json')
+for needle in ['Conditional future shared-infrastructure module','No real-data migration','Runtime coding | Not authorized yet']:
+    check(needle in cf04_readme,'CF04 conditional media boundary missing: '+needle)
+check('File 21' in cf04_ownership and 'publication state and moderation remain File 21' in cf04_ownership,'CF04/File21 ownership boundary missing')
+check('migration_pending' in cf04_contract and 'sha256' in cf04_contract,'CF04 media reference integrity contract missing')
+
 # Local File04 consumers must exactly match the frozen companion contracts.
 cross=(ROOT/'includes/class-snfla-cross-file-contracts.php').read_text(encoding='utf-8')
 adapter=(ROOT/'includes/class-snfla-file21-adapter.php').read_text(encoding='utf-8')
@@ -80,9 +100,15 @@ for needle in ["'tables'", "'files'", "'secret_classes'", "'exporters'", "'erase
     check(needle in cross,'File04/File24 complete manifest field missing: '+needle)
 for needle in ["'references'", "'source_signature'", "'request_digest'"]:
     check(needle in adapter,'File04 must forward full File21 media evidence: '+needle)
+for needle in ["'legacy_metadata_context'", "'metadata'", "'fields'"]:
+    check(needle in adapter,'File04 must forward full File21 metadata evidence: '+needle)
+for needle in ['sabri_file21_legacy_metadata_preflight_v1','sabri_file21_verify_migrated_legacy_metadata_v1',"'relations'", "'featured'"]:
+    check(needle in (ROOT/'includes/class-snfla-plan-completion.php').read_text(encoding='utf-8'),'File04 current File21 migration-completeness consumer missing: '+needle)
+for needle in ['spdb/file04_migration_inventory','spdb/file04_migration_mapping','spdb/file04_migration_state']:
+    check(needle in cross,'File04/File23 diagnostics provider missing: '+needle)
 
 if fail:
     print('Exact companion contract parity FAILED:',file=sys.stderr)
     for item in fail: print('-',item,file=sys.stderr)
     sys.exit(1)
-print('Exact companion contract parity PASS: File00/01/19/20/21/24/25/26 frozen heads match File04 source contracts.')
+print('Exact companion contract parity PASS: File00/01/17/19/20/21/22/23/24/25/26 and CF04 frozen heads match File04 source contracts.')

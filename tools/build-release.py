@@ -4,7 +4,7 @@ import argparse, hashlib, json, shutil, subprocess, sys, tempfile, uuid, zipfile
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-VERSION='2.0.7'
+VERSION='2.0.8'
 PACKAGE_ROOT='04-sabri-news-feed-legacy-adapter'
 FIXED_DT=(2026,8,8,0,0,0)
 GENERATED_NAMES={'SOURCE-INVENTORY.tsv','CHECKSUMS.sha256','RELEASE-LOCK.json','PACKAGE-MANIFEST.json','PACKAGE-CHECKSUMS.sha256'}
@@ -72,6 +72,7 @@ def run_source_gates():
     subprocess.run(['php',str(ROOT/'tests/run-central-plan.php')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-architecture.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-file04-own-plan.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
+    subprocess.run([sys.executable,str(ROOT/'tests/run-runtime-contract-regressions.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-future18.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-central-reviews.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-future18-reviews.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
@@ -134,13 +135,18 @@ def build(output:Path,source_output:Path):
           'contracts':{
             'File 00':{'required_for_mutation':True,'purpose':'current identity, step-up and migration capabilities'},
             'File 01':{'required_for_platform_release':True,'purpose':'module/route/contract registry and release evidence'},
+            'File 17':{'required':False,'must_not_own_publications':True,'purpose':'community and realtime ownership boundary'},
+            'File 19':{'required_for_platform_release':True,'purpose':'canonical notification event ingestion'},
             'File 20':{'required_for_platform_release':True,'purpose':'canonical shell/layout mounting'},
             'File 21':{'required_for_activation':True,'minimum_package':'1.0.3.2','minimum_runtime':'1.0.3','purpose':'canonical publication, interaction, rollback and route ownership'},
             'File 22':{'required':False,'must_not_call_for_import':True,'purpose':'human composer boundary only'},
+            'File 23':{'required':False,'mutation_supported':False,'purpose':'read-only migration diagnostics'},
             'File 24':{'required_for_platform_release':True,'purpose':'assurance evidence; native File 04/File 21 enforcement preserved'},
             'File 25':{'required_for_platform_release':True,'purpose':'visual tokens/components; File 04 does not create a theme'},
             'File 26':{'required_for_platform_release':True,'purpose':'canonical search/discovery; consumes read-only legacy-resolution contract only'},
+            'CF-04':{'required':False,'conditional':True,'purpose':'future shared binary infrastructure; publication truth remains File 21'},
           },
+          'exact_companion_lock':'COMPANION-CONTRACT-LOCK.json',
         }
         sbom={
           'bomFormat':'CycloneDX','specVersion':'1.5',
@@ -183,7 +189,7 @@ def build(output:Path,source_output:Path):
           'known_unresolved_source_scope_blockers':0,
           'truthful_status':{
             'specified':'complete current source scope',
-            'coded':'v2.0.7 cross-file-complete second-eighty hardened candidate',
+            'coded':'v2.0.8 current-contract corrective candidate',
             'packaged':'reproducible candidate when this build succeeds',
             'automated_qa':'source gates executed by builder/CI',
             'staging_accepted':'pending',
@@ -258,8 +264,8 @@ def verify_only():
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.7.zip'))
-    ap.add_argument('--source-output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.7-complete-source.zip'))
+    ap.add_argument('--output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.8.zip'))
+    ap.add_argument('--source-output',type=Path,default=Path('/mnt/data/04-sabri-news-feed-legacy-adapter-2.0.8-complete-source.zip'))
     ap.add_argument('--verify-only',action='store_true')
     args=ap.parse_args()
     if args.verify_only: verify_only(); return

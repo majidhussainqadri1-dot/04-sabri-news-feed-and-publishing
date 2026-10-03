@@ -32,6 +32,7 @@ final class SNFLA_File21_Adapter {
 		if ( is_wp_error( $preflight ) ) { return $preflight; }
 		$author_context = array();
 		$media_context  = array();
+		$metadata_context = array();
 		foreach ( (array) ( $preflight['records'] ?? array() ) as $legacy_id => $row ) {
 			$author_context[ absint( $legacy_id ) ] = array(
 				'user_id'       => absint( $row['author']['user_id'] ?? 0 ),
@@ -44,6 +45,12 @@ final class SNFLA_File21_Adapter {
 				'references'       => array_values( array_filter( (array) ( $row['media']['references'] ?? array() ), 'is_array' ) ),
 				'source_signature' => strtolower( (string) ( $row['media']['source_signature'] ?? '' ) ),
 				'request_digest'   => strtolower( (string) ( $row['media']['request_digest'] ?? '' ) ),
+			);
+			$metadata_context[ absint( $legacy_id ) ] = array(
+				'provider_id'      => sanitize_key( (string) ( $row['metadata']['provider_id'] ?? '' ) ),
+				'fields'           => SNFLA_Checksum::canonicalize( (array) ( $row['metadata']['fields'] ?? array() ) ),
+				'source_signature' => strtolower( (string) ( $row['metadata']['source_signature'] ?? '' ) ),
+				'request_digest'   => strtolower( (string) ( $row['metadata']['request_digest'] ?? '' ) ),
 			);
 		}
 		$result = \Sabri\HomeNewsFeed\LegacyPublicationMigration::migrate_selected(
@@ -58,6 +65,7 @@ final class SNFLA_File21_Adapter {
 				'interaction_provider'  => self::INTERACTION_PROVIDER,
 				'author_identity_context'=> $author_context,
 				'media_preflight_context'=> $media_context,
+				'legacy_metadata_context'=> $metadata_context,
 			)
 		);
 		return SNFLA_Plan_Completion::verify_file21_result( $legacy_ids, $result, absint( $actor_id ) );

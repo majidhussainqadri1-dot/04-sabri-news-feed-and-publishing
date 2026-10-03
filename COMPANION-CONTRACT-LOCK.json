@@ -4,12 +4,16 @@
   "companions": {
     "file00": {"repository":"majidhussainqadri1-dot/00-sabri-membership-core","ref":"2fa7c022ee9cd1b65432e900579512f304532442"},
     "file01": {"repository":"majidhussainqadri1-dot/01-sabri-platform-foundation","ref":"adf6dbb9980a85f25f7cf4c2ee679b52703c2e71"},
-    "file19": {"repository":"majidhussainqadri1-dot/19-sabri-unified-notifications","ref":"942bff557c020617c805b5cd982f69ec8a717fac"},
+    "file17": {"repository":"majidhussainqadri1-dot/17-sabri-network","ref":"8ae656e51796d1f05865d8be5dca2480443d79ca"},
+    "file19": {"repository":"majidhussainqadri1-dot/19-sabri-unified-notifications","ref":"04078025b643ab7696e4cb4e37826bf152defa18"},
     "file20": {"repository":"majidhussainqadri1-dot/20-sabri-unified-application-shell","ref":"8a4dbcaf4fef8e926b9b834ecfde16c21a0f00ca"},
-    "file21": {"repository":"majidhussainqadri1-dot/sabri-complete-home-news-feed","ref":"de52642b55bb6ea248916cdb796c014a2c8d7933"},
-    "file24": {"repository":"majidhussainqadri1-dot/24-sabri-platform-security-privacy-compliance-and-resilience-center","ref":"0d9a969d935e474de0cc54bf5dcd26eb5ad2eee5"},
+    "file21": {"repository":"majidhussainqadri1-dot/sabri-complete-home-news-feed","ref":"f2eb7e95ddea327af36ea725ffb923b029f885e6"},
+    "file22": {"repository":"majidhussainqadri1-dot/sabri-universal-post-composer","ref":"b7a7f2e69411cbd32f0574fd12d766fb70c01b7a"},
+    "file23": {"repository":"majidhussainqadri1-dot/23-sabri-doctor-founder-publishing-dashboard","ref":"a8a8c805f4730998ccb44bd95c87591836561759"},
+    "file24": {"repository":"majidhussainqadri1-dot/24-sabri-platform-security-privacy-compliance-and-resilience-center","ref":"a5b8d49968a7a5a7d6f3f4655bea541bf38a9acb"},
     "file25": {"repository":"majidhussainqadri1-dot/25-sabri-public-ui-profile-timeline-visual-experience","ref":"59927df876dc92c7461351420c7b7c95c65c6a93"},
-    "file26": {"repository":"majidhussainqadri1-dot/26-search-discovery-recommendations-knowledge-graph-classification","ref":"bbea3aad466792a4a6a62b53532bbd45c7c592de"}
+    "file26": {"repository":"majidhussainqadri1-dot/26-search-discovery-recommendations-knowledge-graph-classification","ref":"bbea3aad466792a4a6a62b53532bbd45c7c592de"},
+    "cf04": {"repository":"majidhussainqadri1-dot/cf-04-central-media-processing-secure-delivery","ref":"0294442f0fddd1ca5440d9d5ac992ba80aced972"}
   },
   "production_claim": false
 }

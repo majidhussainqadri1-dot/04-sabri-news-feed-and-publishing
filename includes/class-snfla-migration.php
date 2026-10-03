@@ -144,23 +144,12 @@ final class SNFLA_Migration {
 			$codes[] = 'orphan_patient_case_consent_metadata';
 		}
 
-		// Known legacy fields receive an explicit, reviewable disposition. File 04
-		// never guesses writes into File 21-owned metadata. Fields for which the
-		// accepted File 21 migration contract has no canonical command remain
-		// source-only and block migration until an approved contract is available.
+		// Known legacy fields receive explicit File 21 media and metadata
+		// attestations. File 04 never guesses writes into canonical metadata.
 		$media_preflight = SNFLA_Plan_Completion::media_preflight( $legacy_id );
 		if ( is_wp_error( $media_preflight ) ) { $codes[] = $media_preflight->get_error_code(); }
-		$governed_meta = array(
-			'_snp_tags'           => 'legacy_tag_metadata_requires_canonical_mapping',
-			'_snp_language'       => 'legacy_language_requires_canonical_mapping',
-			'_snp_featured'       => 'legacy_featured_flag_requires_canonical_policy',
-			'_snp_pinned'         => 'legacy_pinned_flag_requires_canonical_policy',
-		);
-		foreach ( $governed_meta as $meta_key => $conflict_code ) {
-			$value   = get_post_meta( $legacy_id, $meta_key, true );
-			$present = is_array( $value ) ? ! empty( $value ) : ( is_object( $value ) || '' !== trim( (string) $value ) );
-			if ( $present ) { $codes[] = $conflict_code; }
-		}
+		$metadata_preflight = SNFLA_Plan_Completion::metadata_preflight( $legacy_id );
+		if ( is_wp_error( $metadata_preflight ) ) { $codes[] = $metadata_preflight->get_error_code(); }
 		$view_extra = SNFLA_Interaction_Provider::legacy_view_meta_extra( $legacy_id );
 		if ( is_wp_error( $view_extra ) ) {
 			$codes[] = $view_extra->get_error_code();
