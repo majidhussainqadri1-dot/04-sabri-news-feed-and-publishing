@@ -7,7 +7,7 @@ final class SNFLA_REST {
 	public static function register() {
 		register_rest_route( self::NS, '/status', array( 'methods' => WP_REST_Server::READABLE, 'permission_callback' => array( __CLASS__, 'can_read' ), 'callback' => array( __CLASS__, 'status' ) ) );
 		register_rest_route( self::NS, '/inventory/capture', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'capture_inventory' ), 'args' => self::state_args() ) );
-		register_rest_route( self::NS, '/dry-run', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'dry_run' ), 'args' => array_merge( self::state_args(), array( 'force' => array( 'type' => 'boolean', 'default' => false ) ) ) ) );
+		register_rest_route( self::NS, '/dry-run', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'dry_run' ), 'args' => array_merge( self::state_args(), array( 'limit' => array( 'type' => 'integer', 'default' => 500, 'minimum' => 50, 'maximum' => 1000 ) ) ) ) );
 		register_rest_route( self::NS, '/backup-proof', array( 'methods' => WP_REST_Server::CREATABLE, 'permission_callback' => array( __CLASS__, 'can_run' ), 'callback' => array( __CLASS__, 'backup_proof' ), 'args' => array(
 			'reference' => array( 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ),
 			'checksum' => array( 'required' => true, 'type' => 'string', 'validate_callback' => static function($v){ return is_string($v) && 1===preg_match('/^[a-f0-9]{64}$/Di',$v); } ),
@@ -106,13 +106,13 @@ final class SNFLA_REST {
 	public static function capture_inventory( WP_REST_Request $request ) {
 		$actor = self::can_run( $request );
 		if ( is_wp_error( $actor ) ) { return self::failure( $actor ); }
-		return self::result( 'snfla_inventory_captured', SNFLA_Inventory::capture( $actor, $request->get_param( 'expected_state' ), $request->get_param( 'expected_version' ) ) );
+		return self::result( 'snfla_inventory_captured', SNFLA_Inventory::lock( $actor, $request->get_param( 'expected_state' ), $request->get_param( 'expected_version' ) ) );
 	}
 
 	public static function dry_run( WP_REST_Request $request ) {
 		$actor = self::can_run( $request );
 		if ( is_wp_error( $actor ) ) { return self::failure( $actor ); }
-		return self::result( 'snfla_dry_run_completed', SNFLA_Migration::dry_run( $actor, $request->get_param( 'expected_state' ), $request->get_param( 'expected_version' ), (bool) $request->get_param( 'force' ) ) );
+		return self::result( 'snfla_dry_run_completed', SNFLA_Migration::dry_run( $actor, $request->get_param( 'limit' ), $request->get_param( 'expected_state' ), $request->get_param( 'expected_version' ) ) );
 	}
 
 	public static function backup_proof( WP_REST_Request $request ) {

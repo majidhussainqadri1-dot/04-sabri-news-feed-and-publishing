@@ -405,6 +405,43 @@ final class SNFLA_Inventory {
 		return is_array( $locked ) ? $locked : array();
 	}
 
+	/**
+	 * Return a bounded, privacy-minimized view of the signed inventory lock.
+	 *
+	 * Status and dashboard consumers must never receive the raw route map,
+	 * per-table digests or other internal inventory material.  They also must
+	 * not treat a merely present option as trusted evidence.
+	 */
+	public static function public_summary() {
+		$locked = self::locked();
+		$source_signature = strtolower( (string) ( $locked['source_signature'] ?? '' ) );
+		$data_signature   = strtolower( (string) ( $locked['data_signature'] ?? '' ) );
+		$valid = 1 === preg_match( '/^[a-f0-9]{64}$/D', $source_signature )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', $data_signature )
+			&& hash_equals( $source_signature, self::signature( $locked ) )
+			&& hash_equals( $data_signature, self::data_signature( $locked ) );
+		if ( ! $valid ) {
+			return array( 'evidence_valid' => false, 'locked' => false );
+		}
+
+		$post_counts = array();
+		foreach ( array( 'publish', 'pending', 'draft', 'private', 'future', 'trash' ) as $status ) {
+			$post_counts[ $status ] = absint( $locked['post_counts'][ $status ] ?? 0 );
+		}
+		return array(
+			'evidence_valid'   => true,
+			'locked'           => true,
+			'captured_at_utc'  => sanitize_text_field( (string) ( $locked['captured_at_utc'] ?? '' ) ),
+			'legacy_records'   => absint( $locked['legacy_record_count'] ?? 0 ),
+			'comments'         => absint( $locked['comment_count'] ?? 0 ),
+			'terms'            => absint( $locked['term_count'] ?? 0 ),
+			'attachments'      => absint( $locked['attachment_count'] ?? 0 ),
+			'post_counts'      => $post_counts,
+			'source_signature' => $source_signature,
+			'data_signature'   => $data_signature,
+		);
+	}
+
 	public static function unchanged() {
 		$locked = self::locked();
 		if ( empty( $locked['source_signature'] ) ) {

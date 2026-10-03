@@ -1,10 +1,14 @@
-# File 04 — News Feed and Publishing — Legacy Foundation Adapter v2.0.7
+# File 04 — News Feed and Publishing — Legacy Foundation Adapter v2.0.8
 
 File 04 remains a **temporary, write-disabled, auditable and reversible migration/compatibility adapter**. File 21 is the sole canonical publication/Home/News/feed owner; File 26 owns search/discovery; File 20 owns the shell; File 25 owns the visual system; File 24 coordinates assurance. File 04 does not create a second composer, feed, ranking service, comments/reactions store, moderation backend, search engine or permanent public route system.
 
 ## Governing scope
 
 The source trace covers the consolidated governing plan, File 04 FR-001..013 and NFR-001..010, 71 CV requirements (all applicable central requirements), F04-CEN-01..02, 15 acceptance journeys and F04-FUT-001..018.
+
+## v2.0.8 current exact-head correction
+
+The v2.0.8 candidate corrects defects found after re-freezing the current File04 and companion heads: REST inventory capture now persists the signed lock and lifecycle transition; REST dry-run binds its bounded limit and lifecycle arguments correctly; the status API uses a validated privacy-minimized inventory summary; File21 receives and verifies all governed legacy metadata plus explicit child/featured media relations; and File23 receives bounded read-only migration diagnostics. CI now checks the exact current heads of Files 00, 01, 17, 19, 20, 21, 22, 23, 24, 25, 26 and CF-04.
 
 ## v2.0.7 exact companion-parity completion
 

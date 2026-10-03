@@ -1,6 +1,6 @@
-# File 04 v2.0.7 — File-Specific Plan Traceability
+# File 04 v2.0.8 — File-Specific Plan Traceability
 
-This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master plan's native functional/non-functional requirements to the v2.0.7 source and current QA. External staging/live evidence remains separate.
+This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master plan's native functional/non-functional requirements to the v2.0.8 source and current QA. External staging/live evidence remains separate.
 
 | Requirement | Source implementation | Verification |
 |---|---|---|
@@ -35,11 +35,11 @@ This matrix supplements the central CV/CEN/AJ trace. It maps the File 04 master 
 
 ## Cross-file contracts
 
-v2.0.7 hardens the bounded `SNFLA_Cross_File_Contracts` layer against the current exact companion contracts: File01 explicit module/route registration; File19 versioned factual events; File20 route-context declaration; File24 module assurance manifest/state; strict File26 legacy resolution. These are integration contracts only and do not transfer canonical ownership.
+v2.0.8 hardens the bounded `SNFLA_Cross_File_Contracts` layer against the current exact companion contracts: File01 explicit module/route registration; File19 versioned factual events; File20 route-context declaration; File21 media/metadata migration; File23 read-only diagnostics; File24 module assurance manifest/state; and strict File26 legacy resolution. These are integration contracts only and do not transfer canonical ownership.
 
 ## Source QA gate
 
-`tests/run-file04-own-plan.py` is the deterministic source-level gate for the above matrix. It is executed directly by exact-head CI and indirectly inside the two fresh review rounds. It checks that source completion does not silently broaden File 04 into a duplicate publication, community, visual, shell or search backend.
+`tests/run-file04-own-plan.py` is the deterministic source-level gate for the above matrix. `tests/run-runtime-contract-regressions.py` protects the corrected executable entry points and current companion handoffs. `tests/run-twenty-round-current-head.py` reruns the complete source/plan/ownership/contract gate set in exactly 20 sequential read-only rounds while proving that the candidate, tracked tree, and companion heads remain unchanged. Exact-head CI executes all three.
 
 ## External acceptance that cannot be encoded as a truthful source PASS
 
