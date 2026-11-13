@@ -153,7 +153,15 @@ final class SNFLA_Central_Plan {
 			return array( 'status' => 'unavailable', 'indexable' => false, 'legacy_id' => $legacy_id );
 		}
 		$target_id = SNFLA_File21_Adapter::target_for( $legacy_id );
-		if ( $target_id <= 0 || ! SNFLA_File21_Adapter::migration_target_valid( $legacy_id, $target_id ) ) {
+		// A canonical search resolution must obey exactly the same migration
+		// provenance and conflict rules as the public legacy 301 redirect.
+		// No canonical URL is available before the verified cutover lifecycle.
+		if ( ! in_array( SNFLA_Schema::state(), array( 'redirect_cutover', 'read_only_fallback' ), true )
+			|| $target_id <= 0 ) {
+			return array( 'status' => 'unmapped', 'indexable' => false, 'legacy_id' => $legacy_id );
+		}
+		$mapping = SNFLA_Mapping::get_checked( $legacy_id );
+		if ( is_wp_error( $mapping ) || ! SNFLA_Redirects::canonical_redirect_mapping_valid( $legacy_id, $target_id, $mapping ) ) {
 			return array( 'status' => 'unmapped', 'indexable' => false, 'legacy_id' => $legacy_id );
 		}
 		if ( ! SNFLA_File21_Adapter::target_public( $target_id ) ) {
