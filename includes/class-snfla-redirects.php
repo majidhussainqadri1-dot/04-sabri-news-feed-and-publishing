@@ -74,7 +74,7 @@ final class SNFLA_Redirects {
 	 * Do not demand an unchanged canonical post checksum here: File 21 owns
 	 * legitimate post-cutover edits, which must not break historic redirects.
 	 */
-	private static function canonical_redirect_mapping_valid( $legacy_id, $target_id, $mapping ) {
+	public static function canonical_redirect_mapping_valid( $legacy_id, $target_id, $mapping ) {
 		$legacy_id = absint( $legacy_id );
 		$target_id = absint( $target_id );
 		if ( $legacy_id <= 0 || $target_id <= 0 || ! is_array( $mapping )
