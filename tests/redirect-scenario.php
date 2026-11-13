@@ -63,6 +63,7 @@ function wp_parse_url( $url ) { return parse_url( $url ); }
 function untrailingslashit( $path ) { return rtrim( $path, '/' ); }
 function wp_safe_redirect( $url, $code, $by ) {
     unset( $by );
+    if ( 'redirect_rejected' === $GLOBALS['redirect_scenario'] ) { return false; }
     $GLOBALS['redirect_url'] = $url;
     $GLOBALS['redirect_code'] = $code;
     return true;
