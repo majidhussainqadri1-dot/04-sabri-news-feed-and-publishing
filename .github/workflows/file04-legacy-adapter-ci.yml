@@ -77,7 +77,15 @@ jobs:
           cmp /tmp/file04-a.zip /tmp/file04-b.zip
           cmp /tmp/file04-source-a.zip /tmp/file04-source-b.zip
           cat /tmp/a.json
-          sha256sum /tmp/file04-a.zip /tmp/file04-source-a.zip | tee /tmp/file04-checksums.sha256
+          (
+            cd /tmp
+            sha256sum file04-a.zip file04-source-a.zip | tee file04-checksums.sha256
+            sha256sum -c file04-checksums.sha256
+            if grep -q '/' file04-checksums.sha256; then
+              echo 'Release checksum manifest must contain portable bare filenames only.' >&2
+              exit 1
+            fi
+          )
       - name: Preserve reproducible release candidate artifacts (NOT staging/live deployment)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
