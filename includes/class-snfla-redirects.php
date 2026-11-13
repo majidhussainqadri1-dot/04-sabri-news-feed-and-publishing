@@ -36,8 +36,12 @@ final class SNFLA_Redirects {
 			&& SNFLA_File21_Adapter::target_public( $target_id ) ) {
 			$url = get_permalink( $target_id );
 			if ( self::safe_target( $url, $legacy_id ) ) {
-				wp_safe_redirect( $url, 301, 'Sabri File 04 Legacy Adapter' );
-				exit;
+				// WordPress or a redirect filter may reject the header. Never exit
+				// silently with a false success after a failed canonical redirect.
+				if ( wp_safe_redirect( $url, 301, 'Sabri File 04 Legacy Adapter' ) ) {
+					exit;
+				}
+				self::private_legacy_response( 503 );
 			}
 		}
 
