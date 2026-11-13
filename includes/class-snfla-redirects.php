@@ -31,7 +31,9 @@ final class SNFLA_Redirects {
 		}
 		$file21_ready = SNFLA_Capabilities::file21_ready();
 		$target_id = SNFLA_File21_Adapter::target_for( $legacy_id );
-		if ( $target_id > 0 && SNFLA_File21_Adapter::target_public( $target_id ) ) {
+		if ( $target_id > 0
+			&& self::canonical_redirect_mapping_valid( $legacy_id, $target_id, $mapping )
+			&& SNFLA_File21_Adapter::target_public( $target_id ) ) {
 			$url = get_permalink( $target_id );
 			if ( self::safe_target( $url, $legacy_id ) ) {
 				wp_safe_redirect( $url, 301, 'Sabri File 04 Legacy Adapter' );
@@ -58,6 +60,29 @@ final class SNFLA_Redirects {
 			self::private_legacy_response( 410 );
 		}
 		self::private_legacy_response( 404 );
+	}
+
+	/**
+	 * A public 301 must be supported by the audited local migration ledger as
+	 * well as File 21's current canonical provenance. A public File 21 target on
+	 * its own cannot override a conflict, incomplete migration or corrupted map.
+	 *
+	 * Do not demand an unchanged canonical post checksum here: File 21 owns
+	 * legitimate post-cutover edits, which must not break historic redirects.
+	 */
+	private static function canonical_redirect_mapping_valid( $legacy_id, $target_id, $mapping ) {
+		$legacy_id = absint( $legacy_id );
+		$target_id = absint( $target_id );
+		if ( $legacy_id <= 0 || $target_id <= 0 || ! is_array( $mapping )
+			|| 'migrated' !== sanitize_key( (string) ( $mapping['status'] ?? '' ) )
+			|| $target_id !== absint( $mapping['target_id'] ?? 0 )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $mapping['source_checksum'] ?? '' ) )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $mapping['target_checksum'] ?? '' ) )
+			|| ! SNFLA_File21_Adapter::migration_target_valid( $legacy_id, $target_id ) ) {
+			return false;
+		}
+		// A conflict-ledger read failure is also a nonempty sentinel: fail closed.
+		return empty( SNFLA_Mapping::open_conflict_codes( $legacy_id ) );
 	}
 
 	private static function legacy_public_fallback_allowed( $legacy_id, $mapping ) {
