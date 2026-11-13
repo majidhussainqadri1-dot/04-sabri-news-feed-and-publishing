@@ -82,6 +82,7 @@ def run_source_gates():
     subprocess.run([sys.executable,str(ROOT/'tests/run-eighty-round-hardening.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-second-eighty-round-hardening.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable,str(ROOT/'tests/run-redirect-guards.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
+    subprocess.run([sys.executable,str(ROOT/'tests/run-file26-legacy-resolution-guards.py')],check=True,cwd=ROOT,stdout=subprocess.DEVNULL)
 
 def build(output:Path,source_output:Path):
     run_source_gates()
