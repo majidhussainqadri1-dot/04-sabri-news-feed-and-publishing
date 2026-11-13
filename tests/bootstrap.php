@@ -22,6 +22,14 @@ function absint( $value ) { return abs( (int) $value ); }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/', '', (string) $value ) ); }
 function sanitize_text_field( $value ) { return trim( preg_replace( '/[\x00-\x1F\x7F]/u', '', strip_tags( (string) $value ) ) ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ); }
+// Minimal WordPress UTF-8 guard for stand-alone tests with ext-mbstring disabled.
+function wp_check_invalid_utf8( $value, $strip = false ) {
+    $value = (string) $value;
+    if ( 1 === preg_match( '//u', $value ) ) { return $value; }
+    if ( ! $strip ) { return ''; }
+    $filtered = function_exists( 'iconv' ) ? @iconv( 'UTF-8', 'UTF-8//IGNORE', $value ) : false;
+    return is_string( $filtered ) ? $filtered : '';
+}
 function wp_salt( $scheme = 'auth' ) { return 'test-salt-' . $scheme; }
 function get_option( $name, $default = false ) { global $snfla_test_options; return array_key_exists( $name, $snfla_test_options ) ? $snfla_test_options[ $name ] : $default; }
 function update_option( $name, $value, $autoload = null ) { global $snfla_test_options; unset( $autoload ); $snfla_test_options[ $name ] = $value; return true; }
