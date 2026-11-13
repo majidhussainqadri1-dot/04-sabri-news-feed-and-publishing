@@ -20,6 +20,7 @@ scenarios = {
     'private_target': ('deny', 404),
     'self_loop': ('deny', 404),
     'mapping_error': ('error', 503),
+    'redirect_rejected': ('error', 503),
 }
 errors = []
 for name, (outcome, status) in scenarios.items():
