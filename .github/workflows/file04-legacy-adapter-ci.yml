@@ -25,7 +25,7 @@ jobs:
         run: python3 tests/run-file04-own-plan.py
       - name: Current runtime and cross-file contract regressions
         run: python3 tests/run-runtime-contract-regressions.py
-      - name: Redirect provenance fail-closed scenarios (13 cases)
+      - name: Redirect provenance and redirect-failure guards (14 cases)
         run: python3 tests/run-redirect-guards.py
       - name: Modern central-plan requirement trace
         run: php tests/run-central-plan.php
@@ -211,7 +211,7 @@ jobs:
         run: python3 tests/run-file04-own-plan.py
       - name: Current runtime and cross-file contract regressions
         run: python3 tests/run-runtime-contract-regressions.py
-      - name: Redirect provenance fail-closed scenarios (13 cases)
+      - name: Redirect provenance and redirect-failure guards (14 cases)
         run: python3 tests/run-redirect-guards.py
       - name: Future18 source checks
         run: python3 tests/run-future18.py
