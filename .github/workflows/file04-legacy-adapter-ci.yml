@@ -201,6 +201,8 @@ jobs:
         run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
       - name: Deterministic unit checks
         run: php tests/run-unit.php
+      - name: Unit checks without optional mbstring or iconv extensions
+        run: php -n tests/run-unit.php
       - name: Central-plan contract checks
         run: php tests/run-central-plan.php
       - name: File 04 own-plan source checks
