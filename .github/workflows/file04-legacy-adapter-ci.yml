@@ -75,7 +75,18 @@ jobs:
           cmp /tmp/file04-a.zip /tmp/file04-b.zip
           cmp /tmp/file04-source-a.zip /tmp/file04-source-b.zip
           cat /tmp/a.json
-          sha256sum /tmp/file04-a.zip /tmp/file04-source-a.zip
+          sha256sum /tmp/file04-a.zip /tmp/file04-source-a.zip | tee /tmp/file04-checksums.sha256
+      - name: Preserve reproducible release candidate artifacts (NOT staging/live deployment)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: file04-v2.0.8-source-candidate-${{ github.sha }}
+          path: |
+            /tmp/file04-a.zip
+            /tmp/file04-source-a.zip
+            /tmp/file04-checksums.sha256
+            /tmp/a.json
+          if-no-files-found: error
+          retention-days: 14
 
   exact-companion-contract-parity:
     runs-on: ubuntu-24.04
