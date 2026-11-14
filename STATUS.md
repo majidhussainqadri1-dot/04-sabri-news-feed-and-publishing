@@ -2,6 +2,15 @@
 
 **Evidence date:** 2026-11-14 (Asia/Karachi). **Scope:** source repository only unless explicitly marked otherwise.
 
+Canonical lifecycle flags (also consumed by the historical R80 source gate):
+
+```text
+staging_accepted_pending=true
+live_deployed=false
+operational=false
+```
+
+
 > **Never use this file to infer a deployed plugin version or a current live database.** GitHub, staging, and live evidence are independent. The approved governing Word document is *Sabri-Website-Master-Plan-V12.3.docx* dated 2026-11-13; the locally inspected attachment SHA-256 is `c061d9c9964d2434b040b814120d446e9004bd3b2f853eb355df1ccc4648e1cf`. This digest identifies the supplied artifact, not a deployed artifact.
 
 ## Exact source baseline (confirmed)
