@@ -33,6 +33,8 @@ jobs:
         run: php tests/run-central-plan.php
       - name: V12.3 source and external-evidence truth gate
         run: python3 tests/run-v123-source-evidence.py
+      - name: Hostinger S0 read-only evidence collector safety
+        run: python3 tests/run-file04-live-reality-collector.py
       - name: Future18 source completion
         run: python3 tests/run-future18.py
       - name: Two post-central-plan review-fix-retest rounds
@@ -221,6 +223,8 @@ jobs:
         run: php tests/run-central-plan.php
       - name: V12.3 source and external-evidence truth gate
         run: python3 tests/run-v123-source-evidence.py
+      - name: Hostinger S0 read-only evidence collector safety
+        run: python3 tests/run-file04-live-reality-collector.py
       - name: File 04 own-plan source checks
         run: python3 tests/run-file04-own-plan.py
       - name: Current runtime and cross-file contract regressions
