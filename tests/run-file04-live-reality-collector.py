@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """S0 Hostinger collector: synthetic read-only and checksum-parity negative tests."""
 from pathlib import Path
-import tempfile, subprocess, json, hashlib
+import tempfile, subprocess, json, hashlib, os
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'tools/collect_file04_deployed_readonly.php'
@@ -47,6 +47,18 @@ with tempfile.TemporaryDirectory(prefix='file04-s0-fixture-') as temp:
     (plug/'extra.txt').write_text('untracked')
     code,data,_=run(root)
     assert code==0 and data['file04']['unexpected_files']==1 and not data['file04']['manifest_parity_verified']
+    # A file unreadable to the CLI actor must fail closed without logging
+    # an absolute filesystem path or leaking PHP warnings on stderr.
+    if hasattr(os, 'geteuid') and os.geteuid()!=0:
+        protected=plug/'includes/class-demo.php'
+        protected.chmod(0o000)
+        proc=subprocess.run(['php',str(SCRIPT),str(root)],capture_output=True,text=True,check=False)
+        assert proc.returncode==0 and proc.stderr == '', 'No absolute-path PHP warning may escape'
+        protected_data=json.loads(proc.stdout)
+        assert protected_data['file04']['scan_complete'] is False
+        assert protected_data['file04']['manifest_parity_verified'] is False
+        assert 'file_hash_failed' in protected_data['file04']['safe_error_codes']
+        protected.chmod(0o644)
     (plug/'includes/class-demo.php').unlink()
     code,data,_=run(root)
     assert code==0 and data['file04']['manifest_missing_files']==1 and not data['file04']['manifest_parity_verified']
@@ -59,4 +71,4 @@ with tempfile.TemporaryDirectory(prefix='file04-s0-fixture-') as temp:
     text=SCRIPT.read_text()
     for dangerous in ('wp-load.php','wp-config.php','file_put_contents','mysqli_connect','shell_exec(', 'wp_insert_post('):
         assert dangerous not in text, 'Collector must not read secrets/bootstrap DB or write: '+dangerous
-print('File04 S0 read-only collector PASS: seven positive/negative fixtures, no leaked secrets or file changes.')
+print('File04 S0 read-only collector PASS: eight positive/negative fixtures, no leaked secrets or file changes.')
