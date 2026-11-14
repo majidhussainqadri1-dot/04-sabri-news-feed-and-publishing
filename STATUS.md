@@ -1,26 +1,67 @@
-# File 04 v2.0.8 — Current Exact-Head Corrective Status Register
+# File 04 v2.0.8 — V12.3 Exact-Source and Deployment Evidence Status
 
-`source_status=v2.0.8-current-contract-corrective-candidate`
-`known_unresolved_source_scope_blockers=0`
-`exact_companion_parity_ci=green_for_observed_main_run_43342118266_on_9a83f65d; verify_new_HEAD_again`
-`staging_accepted_pending=true`
-`live_deployed=false`
-`operational=false`
+**Evidence date:** 2026-11-14 (Asia/Karachi). **Scope:** source repository only unless explicitly marked otherwise.
 
-| Status | Decision | Evidence boundary |
-|---|---|---|
-| Specified | **Complete for current source scope** | Consolidated plan + File04 plan + CV/CEN/AJ + FR/NFR + Future18 |
-| Coded | **Current exact-head defects corrected in v2.0.8 candidate** | File04 plus exact locked File00/01/17/19/20/21/22/23/24/25/26/CF04 source contracts |
-| Packaged | **Source release candidate reproducibility verified in CI; published installable release and installed staging artifact not yet evidenced** | Double-build byte identity is not a published ZIP checksum or deployment |
-| Automated-QA Green | **Last verified: 4/4 GREEN on 2026-11-13 for main SHA `9a83f65d0efc7609f98d0c7793850c0806b65663`, run `43342118266`; any newer HEAD must pass separately** | Native gates + PHP 8.1/8.3 + 12 locked companion refs + 20 sequential unchanged-head reviews + reproducible package |
-| Staging-Accepted | **Pending** | Real WordPress/Hostinger integration, browser, restore, migration and rollback evidence |
-| Live-Deployed | **Pending** | Founder-approved controlled deployment |
-| Operational | **Pending** | Sustained monitoring/support/backup/incident/retirement evidence |
+Canonical source review identity and lifecycle flags (also consumed by both historical R80 source gates):
 
-At the 2026-11-13 source audit, five frozen companion SHAs (Files 21/22/23/25/26) had advanced; source-only parity lock refresh was reviewed, tested (PR #18, 4/4 exact-head CI) and merged as `9a83f65d0efc7609f98d0c7793850c0806b65663`. The last post-merge main CI run `43342118266` completed green. This does **not** establish staging/live parity. The latest live read/connection was blocked by HTTP 530 and Jetpack site_disconnected; the WordPress plugin list that surfaced was a July 14 stale sync snapshot. See issue #19; actual deployed plugin/version/hash, DB schema/options, migration, backups, and operational state remain unknown. This document is a dated evidence snapshot and must not predict later CI outcomes.
+```text
+source_status=v2.0.8-current-contract-corrective-candidate
+staging_accepted_pending=true
+live_deployed=false
+operational=false
+```
 
-v2.0.8 follows the historical review cycles and a fresh current-head review. It corrects executable REST inventory/dry-run defects, adds a validated bounded inventory summary, completes File21 metadata and featured-media relation handoffs with post-migration verification/containment, publishes File23's read-only diagnostics, and freezes every materially related current companion head. Repository evidence does not prove staging, deployed code, database schema, migration execution, or live behavior.
 
-The exact companion evidence is frozen in `COMPANION-CONTRACT-LOCK.json`. `tests/run-exact-companion-contract-parity.py` must verify the checked-out commits byte-for-source-contract, and `tests/run-twenty-round-current-head.py` must prove 20 sequential read-only green rounds on one unchanged candidate, before this candidate can be called Automated-QA Green.
+> **Never use this file to infer a deployed plugin version or a current live database.** GitHub, staging, and live evidence are independent. The approved governing Word document is *Sabri-Website-Master-Plan-V12.3.docx* dated 2026-11-13; the locally inspected attachment SHA-256 is `c061d9c9964d2434b040b814120d446e9004bd3b2f853eb355df1ccc4648e1cf`. This digest identifies the supplied artifact, not a deployed artifact.
 
-File 04 remains a temporary migration/compatibility adapter only. File21 retains publication/feed truth; File26 retains search/discovery; File20 retains shell ownership; File25 retains visual ownership; File24 coordinates assurance while native controls remain active. Source/CI completion does not imply Staging-Accepted, Live-Deployed or Operational. Storage schema remains **1.3.0**.
+## Exact source baseline (confirmed)
+
+| Field | Evidence |
+|---|---|
+| Repository `main` at audit | `1e244e85c793314f8eda6c501af1b61c1dba6cfb` |
+| Source plugin version | `2.0.8` (`sabri-news-feed-legacy-adapter.php`) |
+| Source *declared* storage schema | `1.3.0` (not a live DB reading) |
+| Last observed exact-main CI | Workflow run `43357015677`, success `4/4` jobs on `1e244e85c793314f8eda6c501af1b61c1dba6cfb` (2026-11-13) |
+| Stored source candidate | Artifact ID `14006631811`, name bound to `1e244e85c793314f8eda6c501af1b61c1dba6cfb`; downloadable artifact's independent checksum and staging installation remain unverified |
+| Source functionality | File 04 owns temporary legacy inventory, migration, reconciliation, redirects, rollback, retirement; File 21 alone owns canonical publication/feed truth |
+| Active release contract | `CEN-REL-001`: zero known open defects in in-scope functionality and shared dependencies; two review/fix/retest rounds; live retest after approved deployment |
+| Live deployment / operational status | **UNVERIFIED / NOT ACCEPTED** |
+| Live DB version / migration state / installed plugin hash | **UNKNOWN**, not `1.3.0` by assumption |
+
+## Current discrepancy register
+
+- **DOC-001**: Previous `STATUS.md` reported older exact-head CI `43342118266` on `9a83f65d...`. Corrected in the V12.3 source documentation using run `43357015677`; docs-only correction, not a staging/live fix.
+- **DOC-002**: Previous `ARCHITECTURE.md` described `v1.2.0` and temporary `302` routing, while present v2.0.8 runtime implements conditional canonical `301` on independently validated mapping. Corrected in the architecture document to match inspected source; no production behavior is established.
+- **PAR-001 (File 00)**: locked `2fa7c022ee9cd1b65432e900579512f304532442`; observed `main` `1fad051c86d530d558be3eb1890d3c6e67bce6e8` (13 commits ahead). Primarily purpose-scoped File 09 doctor-verification intake; **impact on File 04 provider contracts requires review; no auto-pin**.
+- **PAR-002 (File 19)**: locked `04078025b643ab7696e4cb4e37826bf152defa18`; observed `main` `66a4de6077e32c4c6cd692ae3d906afc4a5f3eb2` (70 commits ahead). Changes include notification privacy, provider receipts, Safe Mode, registry readiness, and read-only evidence collector; **contract review required; no auto-pin**.
+- **PAR-003 (File 22)**: locked `e8da36355f4cf94f49c960ee4f8330ca1e313722`; observed `main` `ed672a0d271f10e2cf224951d9f3622a44a70152` (5 commits ahead). Upload expiry, REST body bound, RTL textarea, citation safety; **contract review required; no auto-pin**.
+- Nine other locked companions matched their observed `main` during this audit; this does **not** establish staging or live contract acceptance.
+- **LIVE-001**: WordPress connector reports Jetpack site disconnected; WPVibe site_info had no connected credentials, and connect attempt returned HTTP 530. The failure hop is not proven. Existing incident `#19` remains open.
+
+The above are **2 confirmed documentation discrepancies, 3 version-drift observations, and 1 live-evidence access blocker**, not six independently verified runtime bugs.
+
+## V12.3 source compliance versus external gates
+
+The source registry currently enumerates 71 applicable CV IDs, 2 `F04-CEN` IDs, 15 AJ journeys, 13 `F04-FR` IDs, 10 `F04-NFR` IDs and 18 optional `F04-FUT` IDs. These are requirements, not numbers of user-facing features. Source tests exist; **V12.3 M11/QA-24 production acceptance is not demonstrated by CI**.
+
+The required production sequence is:
+`live symptom → authorized read-only deployed evidence → deployed version and DB/migration → parity audit → reproducible source root cause → minimal fix/test → package → staging backup/restore/migration/reconciliation → founder approval → limited deployment → live re-test → deployed-hash parity confirmation`.
+
+Until the live evidence bundle is available, **Exact deployed code ابھی unverified ہے؛ repository-based diagnosis provisional ہے۔**
+
+## Status by phase
+
+| Phase | Current status |
+|---|---|
+| P00 source baseline / V12.3 mandate | Evidence reviewed; this PR provides updated records |
+| P01 Live Reality Freeze | BLOCKED: HTTP 530 / disconnected Jetpack / no authenticated live artifact |
+| P02 deployed/source parity | UNVERIFIED |
+| P03 documentation correction | Corrected in source documents; current exact-head CI/review evidence must be inspected separately |
+| P04 V12.3 mapping | Source/evidence registry in `F04-V12.3-EXECUTION-EVIDENCE.md`; external tests pending |
+| P05 root-cause source corrections | No additional reproducible File 04 runtime defect established by this audit |
+| P06 exact source CI / release candidate | Historical exact-main 4/4 PASS; this PR-head **not presumed green** |
+| P07–P13 staging, inventory, migration, restore, integration, acceptance | BLOCKED / NOT PERFORMED in this session |
+| P14 controlled live rollout | NOT PERFORMED; founder approval and parity required |
+| P15 monitoring / retirement | NOT PERFORMED; separately authorized retirement required |
+
+**Defect accounting:** Found=2 documented content defects; source-document corrections=2 (PR merge and later exact-head evidence separately); source runtime defects confirmed in this review=0; live-fixed=0; active external blockers=1; version drifts requiring review=3. Never close the live incident based solely on this source correction.
