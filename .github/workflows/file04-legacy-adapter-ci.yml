@@ -31,6 +31,8 @@ jobs:
         run: python3 tests/run-file26-legacy-resolution-guards.py
       - name: Modern central-plan requirement trace
         run: php tests/run-central-plan.php
+      - name: V12.3 source and external-evidence truth gate
+        run: python3 tests/run-v123-source-evidence.py
       - name: Future18 source completion
         run: python3 tests/run-future18.py
       - name: Two post-central-plan review-fix-retest rounds
@@ -217,6 +219,8 @@ jobs:
         run: php -n tests/run-unit.php
       - name: Central-plan contract checks
         run: php tests/run-central-plan.php
+      - name: V12.3 source and external-evidence truth gate
+        run: python3 tests/run-v123-source-evidence.py
       - name: File 04 own-plan source checks
         run: python3 tests/run-file04-own-plan.py
       - name: Current runtime and cross-file contract regressions
