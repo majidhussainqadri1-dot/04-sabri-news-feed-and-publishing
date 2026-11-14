@@ -32,13 +32,13 @@ operational=false
 
 - **DOC-001**: Previous `STATUS.md` reported older exact-head CI `43342118266` on `9a83f65d...`. Corrected in the V12.3 source documentation using run `43357015677`; docs-only correction, not a staging/live fix.
 - **DOC-002**: Previous `ARCHITECTURE.md` described `v1.2.0` and temporary `302` routing, while present v2.0.8 runtime implements conditional canonical `301` on independently validated mapping. Corrected in the architecture document to match inspected source; no production behavior is established.
-- **PAR-001 (File 00)**: locked `2fa7c022ee9cd1b65432e900579512f304532442`; observed `main` `1fad051c86d530d558be3eb1890d3c6e67bce6e8` (13 commits ahead). Primarily purpose-scoped File 09 doctor-verification intake; **impact on File 04 provider contracts requires review; no auto-pin**.
-- **PAR-002 (File 19)**: locked `04078025b643ab7696e4cb4e37826bf152defa18`; observed `main` `66a4de6077e32c4c6cd692ae3d906afc4a5f3eb2` (70 commits ahead). Changes include notification privacy, provider receipts, Safe Mode, registry readiness, and read-only evidence collector; **contract review required; no auto-pin**.
-- **PAR-003 (File 22)**: locked `e8da36355f4cf94f49c960ee4f8330ca1e313722`; observed `main` `ed672a0d271f10e2cf224951d9f3622a44a70152` (5 commits ahead). Upload expiry, REST body bound, RTL textarea, citation safety; **contract review required; no auto-pin**.
-- Nine other locked companions matched their observed `main` during this audit; this does **not** establish staging or live contract acceptance.
+- **PAR-001 (File 00)**: prior frozen ref `2fa7c022...` was 13 commits behind; exact current-main ref `1fad051c86d530d558be3eb1890d3c6e67bce6e8` is now proposed in source lock after verifying both File04-consumed identity contract blobs are identical. External provider acceptance remains pending.
+- **PAR-002 (File 19)**: prior frozen ref `04078025...` was 70 commits behind; exact current-main ref `66a4de6077e32c4c6cd692ae3d906afc4a5f3eb2` is now proposed in source lock after confirming unchanged File04 event-consumer API and producer-registry blobs. Staging acceptance remains pending.
+- **PAR-003 (File 22)**: prior frozen ref `e8da3635...` was 5 commits behind; exact current-main ref `ed672a0d271f10e2cf224951d9f3622a44a70152` is now proposed in source lock; File22's ownership README blob was identical. Staging acceptance remains pending.
+- All 12 source companion refs are now proposed at their observed audited main SHAs; this does **not** establish staging or live contract acceptance. See `F04-V12.3-COMPANION-PARITY-AUDIT-2026-11-14.md`. Exact PR-head CI and post-merge main check remain separate.
 - **LIVE-001**: WordPress connector reports Jetpack site disconnected; WPVibe site_info had no connected credentials, and connect attempt returned HTTP 530. The failure hop is not proven. Existing incident `#19` remains open.
 
-The above are **2 confirmed documentation discrepancies, 3 version-drift observations, and 1 live-evidence access blocker**, not six independently verified runtime bugs.
+The above are **2 documentation corrections (merged PR #27), 3 reviewed version-drift observations (source locks candidate; CI pending), and 1 live-evidence access blocker**, not six independently verified runtime bugs.
 
 ## V12.3 source compliance versus external gates
 
@@ -64,4 +64,4 @@ Until the live evidence bundle is available, **Exact deployed code ابھی unve
 | P14 controlled live rollout | NOT PERFORMED; founder approval and parity required |
 | P15 monitoring / retirement | NOT PERFORMED; separately authorized retirement required |
 
-**Defect accounting:** Found=2 documented content defects; source-document corrections=2 (PR merge and later exact-head evidence separately); source runtime defects confirmed in this review=0; live-fixed=0; active external blockers=1; version drifts requiring review=3. Never close the live incident based solely on this source correction.
+**Defect accounting:** Found=2 documented content defects; source-document corrections=2 (PR merge and later exact-head evidence separately); source runtime defects confirmed in this review=0; live-fixed=0; active external blockers=1; version drifts with candidate locked source parity=3 (exact source CI pending). Never close the live incident based solely on this source correction.
