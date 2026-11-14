@@ -90,6 +90,6 @@ Capture these five distinct fields in the private S0 receipt:
 
 ## 5. Source-only collector acceptance and limitations
 
-`tests/run-file04-live-reality-collector.py` proves seven synthetic positive/negative cases: intact local manifest, tampering, extra file, missing file, absent main filename, invalid WP root and no private path/secret output or writes. It cannot verify real Hostinger/DB conditions without an operator-run evidence bundle.
+`tests/run-file04-live-reality-collector.py` proves eight synthetic positive/negative cases: intact local manifest, tampering, extra file, missing file, absent main filename, invalid WP root, unreadable-file fail-closed behavior with no absolute-path PHP warning, and no private path/secret output or writes. It cannot verify real Hostinger/DB conditions without an operator-run evidence bundle.
 
 **No site mutation was performed by authoring this source-only tool.** All external deployment, migration, live acceptance and retirement gates remain **PENDING** until proven. Exact deployed code ابھی unverified ہے؛ repository-based diagnosis provisional ہے۔
