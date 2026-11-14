@@ -30,8 +30,8 @@ operational=false
 
 ## Current discrepancy register
 
-- **DOC-001**: Previous `STATUS.md` reported older exact-head CI `43342118266` on `9a83f65d...`. Corrected here using run `43357015677`; source docs correction only, pending PR-head CI.
-- **DOC-002**: Previous `ARCHITECTURE.md` described `v1.2.0` and temporary `302` routing, while present v2.0.8 runtime implements conditional canonical `301` on independently validated mapping. Corrected in the accompanying architecture document; source docs only.
+- **DOC-001**: Previous `STATUS.md` reported older exact-head CI `43342118266` on `9a83f65d...`. Corrected in the V12.3 source documentation using run `43357015677`; docs-only correction, not a staging/live fix.
+- **DOC-002**: Previous `ARCHITECTURE.md` described `v1.2.0` and temporary `302` routing, while present v2.0.8 runtime implements conditional canonical `301` on independently validated mapping. Corrected in the architecture document to match inspected source; no production behavior is established.
 - **PAR-001 (File 00)**: locked `2fa7c022ee9cd1b65432e900579512f304532442`; observed `main` `1fad051c86d530d558be3eb1890d3c6e67bce6e8` (13 commits ahead). Primarily purpose-scoped File 09 doctor-verification intake; **impact on File 04 provider contracts requires review; no auto-pin**.
 - **PAR-002 (File 19)**: locked `04078025b643ab7696e4cb4e37826bf152defa18`; observed `main` `66a4de6077e32c4c6cd692ae3d906afc4a5f3eb2` (70 commits ahead). Changes include notification privacy, provider receipts, Safe Mode, registry readiness, and read-only evidence collector; **contract review required; no auto-pin**.
 - **PAR-003 (File 22)**: locked `e8da36355f4cf94f49c960ee4f8330ca1e313722`; observed `main` `ed672a0d271f10e2cf224951d9f3622a44a70152` (5 commits ahead). Upload expiry, REST body bound, RTL textarea, citation safety; **contract review required; no auto-pin**.
@@ -56,7 +56,7 @@ Until the live evidence bundle is available, **Exact deployed code ابھی unve
 | P00 source baseline / V12.3 mandate | Evidence reviewed; this PR provides updated records |
 | P01 Live Reality Freeze | BLOCKED: HTTP 530 / disconnected Jetpack / no authenticated live artifact |
 | P02 deployed/source parity | UNVERIFIED |
-| P03 documentation correction | Proposed in this branch; mark fixed only after PR checks/review and merge |
+| P03 documentation correction | Corrected in source documents; current exact-head CI/review evidence must be inspected separately |
 | P04 V12.3 mapping | Source/evidence registry in `F04-V12.3-EXECUTION-EVIDENCE.md`; external tests pending |
 | P05 root-cause source corrections | No additional reproducible File 04 runtime defect established by this audit |
 | P06 exact source CI / release candidate | Historical exact-main 4/4 PASS; this PR-head **not presumed green** |
@@ -64,4 +64,4 @@ Until the live evidence bundle is available, **Exact deployed code ابھی unve
 | P14 controlled live rollout | NOT PERFORMED; founder approval and parity required |
 | P15 monitoring / retirement | NOT PERFORMED; separately authorized retirement required |
 
-**Defect accounting:** Found=2 documented content defects; fixed-in-branch=2 pending review; source runtime defects confirmed in this review=0; live-fixed=0; active external blockers=1; version drifts requiring review=3. Never close the live incident based solely on this source correction.
+**Defect accounting:** Found=2 documented content defects; source-document corrections=2 (PR merge and later exact-head evidence separately); source runtime defects confirmed in this review=0; live-fixed=0; active external blockers=1; version drifts requiring review=3. Never close the live incident based solely on this source correction.
