@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Offline V12.3 P02 parity gate: do not mistake filesystem match for live acceptance."""
 from pathlib import Path
-import tempfile,zipfile,subprocess,hashlib,json,datetime,warnings
+import tempfile,zipfile,subprocess,hashlib,json,datetime,warnings,os,io,contextlib,importlib.util
 
 ROOT=Path(__file__).resolve().parents[1]
 COLLECTOR=ROOT/'tools/collect_file04_deployed_readonly.php'
@@ -108,4 +108,40 @@ with tempfile.TemporaryDirectory(prefix='file04-parity-') as t:
             z.writestr('04-sabri-news-feed-legacy-adapter/duplicate.txt','second')
     code,data,_=verify(host,duplicate)
     assert code==2 and 'archive_file_count_or_duplicates_invalid' in data['reasons']
-print('File04 independent offline P02 gate PASS: 20 positive/negative fixtures; MATCH is filesystem-only.')
+
+    # P02 TOCTOU negative case: the ZIP must be hashed from the identical
+    # bytes used for ZIP inspection, even if its disk path is swapped.
+    host.write_text(collected.stdout)
+    original_sha=sha(approved.read_bytes())
+    replacement=root/'replacement.zip'
+    changed_files=dict(original)
+    changed_files['includes/example.php']=b'<?php echo 999;'
+    changed_files['PACKAGE-CHECKSUMS.sha256']=''.join(
+        sha(value)+'  '+name+'\n' for name,value in sorted(changed_files.items())
+        if name!='PACKAGE-CHECKSUMS.sha256'
+    ).encode()
+    with zipfile.ZipFile(replacement,'w',zipfile.ZIP_DEFLATED) as z:
+        for name,value in sorted(changed_files.items()):
+            z.writestr('04-sabri-news-feed-legacy-adapter/'+name,value)
+    replacement_sha=sha(replacement.read_bytes())
+    assert replacement_sha!=original_sha
+    spec=importlib.util.spec_from_file_location('file04_parity_under_test',VERIFIER)
+    verifier=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(verifier)
+    original_zip_class=zipfile.ZipFile
+    class SwapOnOpen(original_zip_class):
+        def __enter__(self):
+            os.replace(replacement,approved)
+            return super().__enter__()
+    zipfile.ZipFile=SwapOnOpen
+    output=io.StringIO()
+    try:
+        with contextlib.redirect_stdout(output):
+            decision=verifier.audit(host,approved)
+    finally:
+        zipfile.ZipFile=original_zip_class
+    response=json.loads(output.getvalue())
+    assert decision==0 and response['filesystem_parity']=='MATCH'
+    assert response['approved_zip_sha256']==original_sha, 'Reported ZIP checksum must be from inspected bytes'
+    assert sha(approved.read_bytes())==replacement_sha, 'Fixture must swap ZIP on disk'
+print('File04 independent offline P02 gate PASS: 21 positive/negative fixtures; MATCH is filesystem-only.')
