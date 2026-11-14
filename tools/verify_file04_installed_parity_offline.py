@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Offline File04 host-JSON-to-approved-ZIP parity. No live/DB claim or network."""
-import argparse, datetime, hashlib, json, re, sys, zipfile
+import argparse, datetime, hashlib, io, json, re, sys, zipfile
 from pathlib import Path
 
 def digest(data):
@@ -44,10 +44,14 @@ def audit(report_path,package_path):
         result('UNVERIFIED',['input_too_large']); return 2
     try:
         report=json.loads(report_path.read_text(encoding='utf-8'))
+        # One immutable package snapshot must support both digest and inspection.
+        archive_bytes=package_path.read_bytes()
+        if len(archive_bytes)>50000000:
+            result('UNVERIFIED',['input_too_large']);return 2
         if not isinstance(report, dict) or not isinstance(report.get('file04'), dict):
             result('UNVERIFIED',['host_report_structure_invalid']); return 2
         plugin=report['file04']
-        with zipfile.ZipFile(package_path) as archive:
+        with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
             names=archive.namelist()
             if not names or len(names)>1000 or len(names)!=len(set(names)):
                 result('UNVERIFIED',['archive_file_count_or_duplicates_invalid']);return 2
@@ -65,7 +69,7 @@ def audit(report_path,package_path):
             contents={name[len(root):]:archive.read(name) for name in names}
     except (OSError,ValueError,zipfile.BadZipFile,UnicodeDecodeError,KeyError,TypeError,EOFError):
         result('UNVERIFIED',['input_unreadable_or_invalid']);return 2
-    package_hash=digest(package_path.read_bytes())
+    package_hash=digest(archive_bytes)
     required=('sabri-news-feed-legacy-adapter.php','PACKAGE-CHECKSUMS.sha256')
     if not all(key in contents for key in required):
         result('UNVERIFIED',['not_a_file04_installable_package'],package_hash,len(contents));return 2
