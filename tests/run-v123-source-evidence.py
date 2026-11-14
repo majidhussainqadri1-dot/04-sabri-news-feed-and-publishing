@@ -44,7 +44,7 @@ ensure("1e244e85c793314f8eda6c501af1b61c1dba6cfb" in status, "Frozen original ma
 ensure("301" in architecture and "v2.0.8" in architecture, "Architecture lacks current 301/v2.0.8 scope")
 ensure("HTTP 530" in status and "UNVERIFIED" in status, "Live-evidence uncertainty absent")
 ensure("QA-24" in doc and "CEN-REL-001" in doc and "File 21" in doc, "V12.3 release or canonical owner gate absent")
-ensure("no untested SHA auto-update" in doc.lower(), "Companion drift safety gate not stated")
+ensure("no untested sha auto-update" in doc.lower(), "Companion drift safety gate not stated")
 ensure("File 04 is a **temporary" in doc, "Canonical owner statement missing")
 ensure("live-fixed=0" in status, "No truthful live-fixed defect count")
 for label in ("PAR-001", "PAR-002", "PAR-003", "LIVE-001", "DOC-001", "DOC-002"):
