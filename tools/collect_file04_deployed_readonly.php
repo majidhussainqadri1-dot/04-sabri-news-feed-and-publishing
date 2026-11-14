@@ -20,7 +20,7 @@ if ( false === $root || ! is_dir( $root . '/wp-includes' ) || ! is_dir( $root . 
 $version = 'unknown';
 $version_file = $root . '/wp-includes/version.php';
 if ( is_file( $version_file ) && ! is_link( $version_file ) ) {
-    $version_source = file_get_contents( $version_file, false, null, 0, 16384 );
+    $version_source = @file_get_contents( $version_file, false, null, 0, 16384 );
     if ( is_string( $version_source ) && preg_match( '/\$wp_version\s*=\s*[\'\"]([0-9][0-9A-Za-z.\-]*)[\'\"]/', $version_source, $m ) ) { $version = $m[1]; }
 }
 $matches = glob( $root . '/wp-content/plugins/*/sabri-news-feed-legacy-adapter.php' );
@@ -52,13 +52,13 @@ $plugins = realpath( $root . '/wp-content/plugins' );
 if ( false === $main || false === $dir || false === $plugins || ! str_starts_with( $dir, $plugins . DIRECTORY_SEPARATOR ) || is_link( $matches[0] ) ) {
     report( array( 'ok'=>false, 'error'=>'Symlink or unsafe File04 path requires manual inspection' ), 67 );
 }
-$main_head = file_get_contents( $main, false, null, 0, 8192 );
+$main_head = @file_get_contents( $main, false, null, 0, 8192 );
 $plugin_version = 'unknown';
 if ( is_string( $main_head ) && preg_match( '/^\s*\*?\s*Version:\s*([0-9A-Za-z.\-]+)/mi', $main_head, $m ) ) { $plugin_version=$m[1]; }
 $checksums_file = $dir . '/PACKAGE-CHECKSUMS.sha256';
 $expected=array(); $manifest_verified=false; $errors=array();
-if ( is_file( $checksums_file ) && ! is_link( $checksums_file ) && filesize( $checksums_file ) <= 262144 ) {
-    $manifest = file( $checksums_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
+if ( is_file( $checksums_file ) && ! is_link( $checksums_file ) && @filesize( $checksums_file ) <= 262144 ) {
+    $manifest = @file( $checksums_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
     if ( is_array( $manifest ) && count( $manifest ) <= 1000 ) {
         $manifest_verified=true;
         foreach ( $manifest as $line ) {
@@ -80,7 +80,7 @@ try {
         $relative=str_replace(DIRECTORY_SEPARATOR,'/',$relative);
         $size=$file->getSize();
         if ( count($all)>=$file_limit || $bytes+$size>$byte_limit || $size>10485760 ) { $truncated=true; break; }
-        $digest=hash_file('sha256',$absolute);
+        $digest=@hash_file('sha256',$absolute);
         if ( ! is_string($digest) ) { $errors[]='file_hash_failed'; continue; }
         $all[$relative]=array( 'bytes'=>$size, 'sha256'=>$digest );
         $bytes+=$size;
@@ -96,13 +96,17 @@ foreach ( $expected as $path=>$digest ) {
 }
 $extras=0;
 foreach ( $all as $path=>$rec ) { if ( $path!=='PACKAGE-CHECKSUMS.sha256' && ! isset($expected[$path]) ) { $extras++; } }
+$entry_digest = @hash_file('sha256',$main);
+if ( ! is_string($entry_digest) ) { $errors[]='entry_hash_failed'; }
+$manifest_digest = is_file($checksums_file) ? @hash_file('sha256',$checksums_file) : null;
+if ( is_file($checksums_file) && ! is_string($manifest_digest) ) { $errors[]='manifest_hash_failed'; }
 $checked=(bool)($manifest_verified && !$truncated && !$errors && count($expected)>0 && $missing===0 && $mismatched===0 && $extras===0);
 $base['file04']=array(
     'signature_file_found'=>true,
     'plugin_version_from_header'=>$plugin_version,
-    'entry_file_sha256'=>hash_file('sha256',$main),
+    'entry_file_sha256'=>is_string($entry_digest)?$entry_digest:null,
     'package_manifest_present'=>is_file($checksums_file),
-    'package_manifest_sha256'=>is_file($checksums_file)?hash_file('sha256',$checksums_file):null,
+    'package_manifest_sha256'=>is_string($manifest_digest)?$manifest_digest:null,
     'files_scanned'=>count($all),
     'bytes_scanned'=>$bytes,
     'read_only_tree_sha256'=>hash('sha256',$tree),
