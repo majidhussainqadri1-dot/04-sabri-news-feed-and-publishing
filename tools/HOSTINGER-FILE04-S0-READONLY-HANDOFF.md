@@ -41,9 +41,9 @@ After the operator privately saves the collector's JSON, obtain the **approved i
 python3 tools/verify_file04_installed_parity_offline.py FILE04-HOST-EVIDENCE.json APPROVED-FILE04-INSTALLABLE.zip
 ```
 
-This checks the approved ZIP against the operator's reported main-file SHA-256, installed `PACKAGE-CHECKSUMS.sha256`, bounded full file-tree digest and expected file count. It also rejects stale report timestamps, corrupt archives, mismatches, incomplete/changed host manifests and ambiguous evidence. Its outputs are **`MATCH`**, **`MISMATCH`** or **`UNVERIFIED`**, explicitly scoped to **installed-filesystem parity only**. The report is operator-provided, not independently signed; verify its origin. A local MATCH does **not** establish active WordPress plugin state, DB schema, migration, deployment approval or live functional acceptance.
+This checks the approved ZIP against the operator's reported main-file SHA-256, installed `PACKAGE-CHECKSUMS.sha256`, bounded full file-tree digest and expected file count. It also strictly rejects malformed JSON structures, incorrect timestamp/Boolean/integer types, unsafe or corrupt archives and ZIP manifests, stale reports, incomplete host manifests, and ambiguous evidence. A rejected report yields machine-readable `UNVERIFIED`, never a raw stack trace. Its outputs are **`MATCH`**, **`MISMATCH`** or **`UNVERIFIED`**, explicitly scoped to **installed-filesystem parity only**. The report is operator-provided, not independently signed; verify its origin. A local MATCH does **not** establish active WordPress plugin state, DB schema, migration, deployment approval or live functional acceptance.
 
-`tests/run-file04-offline-parity.py` exercises six positive/negative source fixtures and prevents confusing a byte-level file match with QA-24 Live completion. Never upload host logs or private migration data to GitHub.
+`tests/run-file04-offline-parity.py` exercises 20 positive/negative source fixtures and prevents confusing a byte-level file match with QA-24 Live completion. Never upload host logs or private migration data to GitHub.
 
 ## 2. Database-only read observations, separately authorized
 
