@@ -33,6 +33,18 @@ Interpretation:
 
 Keep the JSON evidence in a private, access-controlled incident folder. Do not post raw filesystem paths, passwords, WP salts, config files, private runtime logs, unredacted clinical/post data or DB dumps to public GitHub issues.
 
+## 1B. Independent offline package-to-host matching (P02)
+
+After the operator privately saves the collector's JSON, obtain the **approved installable ZIP** from a known exact-head GitHub Actions artifact, and verify the ZIP's SHA-256 independently first. In an isolated local terminal (not on production), run:
+
+```sh
+python3 tools/verify_file04_installed_parity_offline.py FILE04-HOST-EVIDENCE.json APPROVED-FILE04-INSTALLABLE.zip
+```
+
+This checks the approved ZIP against the operator's reported main-file SHA-256, installed `PACKAGE-CHECKSUMS.sha256`, bounded full file-tree digest and expected file count. It also rejects stale report timestamps, corrupt archives, mismatches, incomplete/changed host manifests and ambiguous evidence. Its outputs are **`MATCH`**, **`MISMATCH`** or **`UNVERIFIED`**, explicitly scoped to **installed-filesystem parity only**. The report is operator-provided, not independently signed; verify its origin. A local MATCH does **not** establish active WordPress plugin state, DB schema, migration, deployment approval or live functional acceptance.
+
+`tests/run-file04-offline-parity.py` exercises six positive/negative source fixtures and prevents confusing a byte-level file match with QA-24 Live completion. Never upload host logs or private migration data to GitHub.
+
 ## 2. Database-only read observations, separately authorized
 
 In Hostinger's *phpMyAdmin* or a safe DB read-only account, confirm the **actual table prefix** before selecting anything. Do not guess `wp_`; examples below use `PREFIX_` as a **placeholder**. Run only SELECT/SHOW commands, do not run migrations, plugin activation or UPDATE/ALTER statements. If a table is absent, record the error and continue the audit; do not create it.
