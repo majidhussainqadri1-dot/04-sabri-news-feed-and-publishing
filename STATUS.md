@@ -2,9 +2,10 @@
 
 **Evidence date:** 2026-11-14 (Asia/Karachi). **Scope:** source repository only unless explicitly marked otherwise.
 
-Canonical lifecycle flags (also consumed by the historical R80 source gate):
+Canonical source review identity and lifecycle flags (also consumed by both historical R80 source gates):
 
 ```text
+source_status=v2.0.8-current-contract-corrective-candidate
 staging_accepted_pending=true
 live_deployed=false
 operational=false
