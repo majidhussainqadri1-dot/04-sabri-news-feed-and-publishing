@@ -17,7 +17,8 @@ def ensure(ok, message):
         errors.append(message)
 
 def rows(prefix, width):
-    return re.findall(r"^\|\s*(" + re.escape(prefix) + r"-[0-9]{" + str(width) + r"})\s*\|", doc, re.MULTILINE)
+    separator = "" if prefix == "M" else "-"
+    return re.findall(r"^\|\s*(" + re.escape(prefix) + re.escape(separator) + r"[0-9]{" + str(width) + r"})\s*\|", doc, re.MULTILINE)
 
 def exact_rows(name, observed, expected):
     ensure(len(observed) == len(expected), f"{name}: count {len(observed)} != {len(expected)}")
@@ -45,7 +46,7 @@ ensure("HTTP 530" in status and "UNVERIFIED" in status, "Live-evidence uncertain
 ensure("QA-24" in doc and "CEN-REL-001" in doc and "File 21" in doc, "V12.3 release or canonical owner gate absent")
 ensure("no untested SHA auto-update" in doc.lower(), "Companion drift safety gate not stated")
 ensure("File 04 is a **temporary" in doc, "Canonical owner statement missing")
-ensure("Live-verified=0" in status, "No truthful live-verified defect count")
+ensure("live-fixed=0" in status, "No truthful live-fixed defect count")
 for label in ("PAR-001", "PAR-002", "PAR-003", "LIVE-001", "DOC-001", "DOC-002"):
     ensure(label in status and label in doc, f"Discrepancy not tracked: {label}")
 if errors:
