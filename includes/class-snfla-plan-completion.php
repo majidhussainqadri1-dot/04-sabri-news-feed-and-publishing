@@ -154,7 +154,13 @@ final class SNFLA_Plan_Completion {
 				array( 'verified' => false ),
 				$placeholder_request
 			);
-			$placeholder_bound = is_array( $replacement ) && ! empty( $replacement['provider_id'] ) && absint( $replacement['legacy_id'] ?? 0 ) === $legacy_id && absint( $replacement['legacy_author_id'] ?? -1 ) === $author_id && ! empty( $replacement['request_digest'] ) && hash_equals( (string) $placeholder_request['request_digest'], (string) $replacement['request_digest'] );
+			$placeholder_bound = is_array( $replacement )
+				&& 'file00_legacy_author_placeholder_v1' === sanitize_key( (string) ( $replacement['provider_id'] ?? '' ) )
+				&& 'unknown_or_deleted_legacy_author' === sanitize_key( (string) ( $replacement['attribution_class'] ?? '' ) )
+				&& absint( $replacement['legacy_id'] ?? 0 ) === $legacy_id
+				&& absint( $replacement['legacy_author_id'] ?? -1 ) === $author_id
+				&& ! empty( $replacement['request_digest'] )
+				&& hash_equals( (string) $placeholder_request['request_digest'], (string) $replacement['request_digest'] );
 			if ( ! is_array( $replacement ) || ! $placeholder_bound || empty( $replacement['verified'] ) || empty( $replacement['user_id'] ) || empty( $replacement['platform_uuid'] ) ) {
 				return new WP_Error( 'snfla_author_placeholder_contract_required', 'A deleted or unknown legacy author requires a File 00 governed placeholder contract; File 04 will not guess attribution.', array( 'status' => 412, 'legacy_id' => $legacy_id ) );
 			}
@@ -162,7 +168,8 @@ final class SNFLA_Plan_Completion {
 			$user      = $author_id > 0 ? get_userdata( $author_id ) : false;
 			$uuid      = strtolower( trim( (string) $replacement['platform_uuid'] ) );
 			$placeholder = true;
-			if ( ! $user || ! self::valid_uuid( $uuid ) ) {
+			$resolved_placeholder_id = function_exists( 'smc_get_user_id_by_subject_uuid' ) ? smc_get_user_id_by_subject_uuid( $uuid ) : 0;
+			if ( ! $user || ! self::valid_uuid( $uuid ) || $resolved_placeholder_id !== $author_id ) {
 				return new WP_Error( 'snfla_author_placeholder_invalid', 'The governed author placeholder contract returned an invalid identity.', array( 'status' => 412, 'legacy_id' => $legacy_id ) );
 			}
 		} else {
@@ -173,7 +180,8 @@ final class SNFLA_Plan_Completion {
 				array( 'file_number' => '04', 'legacy_id' => $legacy_id, 'purpose' => 'legacy_publication_migration' )
 			);
 			$uuid = strtolower( trim( (string) $uuid ) );
-			if ( ! self::valid_uuid( $uuid ) ) {
+			$resolved_author_id = function_exists( 'smc_get_user_id_by_subject_uuid' ) ? smc_get_user_id_by_subject_uuid( $uuid ) : 0;
+			if ( ! self::valid_uuid( $uuid ) || $resolved_author_id !== $author_id ) {
 				return new WP_Error( 'snfla_author_platform_uuid_unresolved', 'File 00 must resolve the author to an immutable platform UUID before migration.', array( 'status' => 412, 'legacy_id' => $legacy_id, 'author_id' => $author_id ) );
 			}
 		}

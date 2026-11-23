@@ -38,6 +38,8 @@ check( 'ok' === $redacted['safe'], 'Non-sensitive data must remain available.' )
 check( SNFLA_Audit::actor_digest( 42 ) === SNFLA_Audit::actor_digest( 42 ), 'Actor digest must be stable.' );
 check( SNFLA_Audit::actor_digest( 42 ) !== SNFLA_Audit::actor_digest( 43 ), 'Actor digest must separate identities.' );
 
+require __DIR__ . '/file00-authorship-preflight-contract.php';
+
 if ( $failures ) {
     fwrite( STDERR, "Unit checks failed:\n- " . implode( "\n- ", $failures ) . "\n" );
     exit( 1 );
