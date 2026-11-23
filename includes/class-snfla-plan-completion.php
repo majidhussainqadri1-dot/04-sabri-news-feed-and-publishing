@@ -169,7 +169,8 @@ final class SNFLA_Plan_Completion {
 			$uuid      = strtolower( trim( (string) $replacement['platform_uuid'] ) );
 			$placeholder = true;
 			$resolved_placeholder_id = function_exists( 'smc_get_user_id_by_subject_uuid' ) ? smc_get_user_id_by_subject_uuid( $uuid ) : 0;
-			if ( ! $user || ! self::valid_uuid( $uuid ) || $resolved_placeholder_id !== $author_id ) {
+			$placeholder_identity = function_exists( 'smc_is_legacy_author_placeholder' ) && smc_is_legacy_author_placeholder( $author_id );
+			if ( ! $user || ! self::valid_uuid( $uuid ) || $resolved_placeholder_id !== $author_id || ! $placeholder_identity ) {
 				return new WP_Error( 'snfla_author_placeholder_invalid', 'The governed author placeholder contract returned an invalid identity.', array( 'status' => 412, 'legacy_id' => $legacy_id ) );
 			}
 		} else {
