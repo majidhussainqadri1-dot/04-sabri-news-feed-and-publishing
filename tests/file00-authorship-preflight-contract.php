@@ -60,7 +60,7 @@ $f04_check( 'placeholder UUID resolving to another user is rejected', is_wp_erro
 $GLOBALS['f04_subjects']['00000000-0000-4000-8000-000000000088'] = 88;
 $GLOBALS['f04_placeholder_users'][88] = false;
 $not_placeholder = SNFLA_Plan_Completion::authorship_preflight( 502 );
-$f04_check( 'is_wp_error( $not_placeholder )', 'ordinary account cannot impersonate the File00 placeholder' );
+$f04_check( 'ordinary account cannot impersonate the File00 placeholder', is_wp_error( $not_placeholder ) );
 $GLOBALS['f04_placeholder_users'][88] = true;
 $GLOBALS['f04_placeholder']['request_digest'] = str_repeat( '0', 64 );
 $bad_digest = SNFLA_Plan_Completion::authorship_preflight( 502 );
